@@ -27,7 +27,7 @@ with sync_playwright() as pw:
     pg.click('#tab-settings'); pg.select_option('[data-key="brpBasis"]', 'standalone'); pg.wait_for_timeout(900)
     check(pg.is_visible('[data-field="brpBasis"].changed'), 'the changed setting is marked')
     pg.click('#tab-wallet')
-    check(pg.inner_text('#hero-value') == '€270,000 to €434,000', 'Settings change reaches the wallet: ' + pg.inner_text('#hero-value'))
+    check(pg.inner_text('#hero-value') == '€126,000 to €170,000', 'Settings change reaches the wallet: ' + pg.inner_text('#hero-value'))
     pg.click('#tab-settings'); pg.select_option('[data-key="collateralMode"]', 'daily'); pg.wait_for_timeout(900)
     pg.click('#tab-wallet')
     check('optimised by day' in pg.inner_text('#hero-sub'), 'collateral optimised by day shows the weekday amount: ' + pg.inner_text('#hero-sub')[-150:])

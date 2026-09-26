@@ -87,11 +87,11 @@ with sync_playwright() as pw:
     check(calc is not None and not calc.evaluate('d => d.open'), 'BRP row: "Detailed calculation", closed')
     calc.query_selector('summary').click(); pg.wait_for_timeout(200)
     ct = calc.inner_text()
-    check('article 10.8' in ct and rows_of(calc)[:8] == [['Daily volume at the TenneT boundary', '95 MWh'], ['Price', '€100/MWh'], ['A', '€9,500'], ['Connection capacity counted', '26 MW'], ['B', '€62,400'], ['2A', '€19,000'], ['Security = A + B', '€71,900'], ['BRP collateral', '€71,900']] and 'no 50 MW volume floor' in ct, 'the BRP calculation shows the rule and the figures: ' + ct.replace(chr(10), ' | ')[:300])
+    check('article 10.8' in ct and rows_of(calc)[:8] == [['Daily volume at the TenneT boundary', '95 MWh'], ['Price', '€40/MWh'], ['A', '€3,800'], ['Connection capacity counted', '26 MW'], ['B', '€24,960'], ['2A', '€7,600'], ['Security = A + B', '€28,760'], ['BRP collateral', '€28,760']] and 'no 50 MW volume floor' in ct, 'the BRP calculation shows the rule and the figures: ' + ct.replace(chr(10), ' | ')[:300])
     check(calc.query_selector('.rule-switch [data-rule="current"]').get_attribute('aria-pressed') == 'true' and 'the rule the estimate uses' in ct, 'the switch starts on the rule in force for October 2026')
     calc.query_selector('.rule-switch [data-rule="draft"]').click(); pg.wait_for_timeout(150)
     dt = calc.inner_text()
-    check('ACM' in dt and '3A + 4B + 6C + 6D' in dt and ['3 × A', '€28,500'] in rows_of(calc) and ['4 × B', '€11,040'] in rows_of(calc) and ['BRP collateral', '€40,440'] in rows_of(calc) and 'no €96,000 minimum' in dt and 'uses the other rule' in dt, 'the switch shows the draft rule: ' + dt.replace(chr(10), ' | ')[:260])
+    check('ACM' in dt and '3A + 4B + 6C + 6D' in dt and ['3 × A', '€11,400'] in rows_of(calc) and ['4 × B', '€11,040'] in rows_of(calc) and ['BRP collateral', '€23,340'] in rows_of(calc) and 'no €96,000 minimum' in dt and 'uses the other rule' in dt, 'the switch shows the draft rule: ' + dt.replace(chr(10), ' | ')[:260])
     calc.query_selector('.rule-switch [data-rule="current"]').click(); pg.wait_for_timeout(150)
     check('article 10.8' in calc.inner_text(), 'and back to the rule in force')
     core = pg.inner_text('#core')
@@ -121,7 +121,7 @@ with sync_playwright() as pw:
     h = walk(pg, 'trader', {2: lambda p: p.click('label[for="w-both"]'), 4: lambda p: p.click('label[for="h-no"]')})
     check(heads(pg, 'purposes') == ['what for', 'business days only', 'also at weekends'] and 'business days only' in pg.inner_text('#hero-sub'), 'weekends "show me both": two columns and both amounts: ' + h)
     # Portfolio: a trader with 20 MW of production sees the size question and gets BRP collateral (one site in the
-    # 11-25 MW class counts 11 MW: 11 × 24 × €100 = €26,400, rounded to €26,000).
+    # 11-25 MW class counts 11 MW: 11 × 24 × €40 = €10,560, rounded to €11,000; BRP at €40/MWh for now).
     def production(p):
         check(p.is_hidden('#size-q'), 'no assets: the size question is hidden')
         p.click('label[for="a-production"]'); p.wait_for_timeout(100)
@@ -129,7 +129,7 @@ with sync_playwright() as pw:
         p.fill('#capacityMW', '20'); p.dispatch_event('#capacityMW', 'input'); p.fill('#sites', '1'); p.dispatch_event('#sites', 'input')
     walk(pg, 'trader', {2: lambda p: p.click('label[for="w-yes"]'), 3: lambda p: p.click('label[for="s-flat"]'), 5: production})
     brp = [r for r in pg.eval_on_selector_all('#purposes tbody tr', 'rs => rs.map(r => r.innerText)') if r.startswith('BRP collateral')]
-    check(brp and '€26,000' in brp[0], 'production adds BRP collateral: ' + (brp[0].split('\t')[-1] if brp else 'none'))
+    check(brp and '€11,000' in brp[0], 'production adds BRP collateral: ' + (brp[0].split('\t')[-1] if brp else 'none'))
     # Collateral adjusted every business day: the headline shows the weekday and the weekend amount; the selector switches.
     h = walk(pg, 'trader', {7: lambda p: p.click('label[for="k-daily"]')})
     check('during the week' in h and 'around the weekend' in h, 'daily collateral: weekday and weekend amounts: ' + h)

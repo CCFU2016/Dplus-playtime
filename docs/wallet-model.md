@@ -557,6 +557,7 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 | Weekend and holiday trading | on | The cautious choice: weekend periods set the Friday limit |
 | Typical / stress price | €100 / €250 per MWh | A normal day and a spike day (normal price €100: Niki, 26 Sep 2026; it was €80) |
 | Stress 2–3-month average | €150 (1.5 × the normal price) | Security uses averages, which move less than spot |
+| Price for BRP collateral | €40/MWh, normal and tough week | Niki, 26 Sep 2026: TenneT's price floor, used for now instead of the averages (`brpPrice`; blank = the averages) |
 | Negative-price hours | 5%, at −€20 average | A few hundred negative hours a year |
 | s | 34% | Niki, 26 Sep 2026: buys and sells are mixed through the day, so the largest open position is assumed to be 66% of the day's buys (first 25%, then set to 66% / 33% for the two answers; the brief's cautious default is 0) |
 | Resting orders over 16:00 / net buying 16:00–update | €2,300 / €1,150 | A few open orders and some trading while ECC recalculates |

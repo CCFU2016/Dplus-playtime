@@ -785,7 +785,7 @@
     var views = {
       current: { label: 'Rule in force (2026)', title: 'TenneT\'s rule in force: Systeemcode elektriciteit 2026, article 10.8', result: cSec, rows: [
         volRow,
-        ['Price', 'average of the last three months, at least €40', eurP(cur.price) + '/MWh'],
+        ['Price', st.brpPrice != null && st.brpPrice !== '' ? 'TenneT\'s price floor, used for now' : 'average of the last three months, at least €40', eurP(cur.price) + '/MWh'],
         ['A', 'volume × price', ex(cA)],
         ['Connection capacity counted', countedMW > 0 ? 'the size class your ' + fmt.format(ans.capacityMW || 0) + ' MW falls in' : 'no connections join the Direct+ BRP', fmt.format(Math.round(countedMW)) + ' MW'],
         ['B', 'capacity × 24 hours × price', ex(cB)],
@@ -795,7 +795,7 @@
         note: marginal ? 'As a Direct+ member you have no 50 MW volume floor: it applies once to the Direct+ BRP.' : 'As your own BRP, with the 50 MW volume floor.' },
       draft: { label: 'ACM draft (from 2027)', title: 'ACM\'s draft rule from 1 January 2027 (ACM/25/196985, not yet final)', result: dSec, rows: [
         volRow,
-        ['Price', 'average of the last two months', eurP(b.price) + '/MWh'],
+        ['Price', st.brpPrice != null && st.brpPrice !== '' ? '€40 used for now' : 'average of the last two months', eurP(b.price) + '/MWh'],
         ['A', 'volume × price', ex(dA)],
         ['B', 'weekly imbalance invoices, last 10 weeks: average + 2σ', ex(dB)],
         ['C', 'profile-metered reconciliation, 12 months: average + 0.5σ', ex(dC)],
@@ -949,7 +949,7 @@
     if (ans.type === 'trader') add('Largest open M7 position', Math.round((1 - s.s) * 100) + '% of a day\'s buys, about ' + mwh((1 - s.s) * s.contBuy));
     if (x.ecc.fixed) add('Trading collateral at ECC', 'From your limit calculator, ' + eur(x.ecc.fixed.C));
     add('Split continuous / auctions', x.ecc.key + '% / ' + (100 - x.ecc.key) + '%');
-    add('BRP collateral', (x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027') + ', no minimum');
+    add('BRP collateral', (x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027') + ' at ' + eurP(x.brp.price) + '/MWh, no minimum');
     add('Collateral at ECC', ans.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
     add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
   }
@@ -962,7 +962,7 @@
     add('You hold some positions over ECC\'s 16:00 booking cut, about a third of a day\'s buys (for example bought day-ahead, sold intraday the next day). ECC collects those purchases a business day before the sale comes back, so that money waits in your wallet.');
     if (x.settlement.badDay > 0.5) add('A bad trading day loses €' + fmt.format(Math.round(s.badMove)) + ' on each MWh of your largest open position (continuous buys not yet sold again, plus auction buys until sold or used). Your wallet keeps room for ' + s.badDays + (s.badDays === 1 ? ' bad day' : ' bad days') + (ans.tough ? ', ' + s.badDaysStress + ' in a tough week' : '') + ', not for a whole bad week.');
     add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
-    add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum.');
+    add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum, at ' + eurP(x.brp.price) + '/MWh' + (s.brpPrice != null && s.brpPrice !== '' ? ' (TenneT\'s price floor, used for now instead of the market average)' : '') + '.');
     add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions.' + (ans.tough ? ' A tough week takes a high but not extreme imbalance week.' : ''));
     if (s.connectionsMW) add('Your capacity is spread evenly over your sites, all metered by telemetry or smart meter; reconciliation of metered volumes varies by about €10 per MW a month.');
     add('Nothing nets between Direct+ members: the estimate is for you alone. Fees and VAT are not included.');

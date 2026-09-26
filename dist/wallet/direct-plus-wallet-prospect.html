@@ -1377,6 +1377,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     ] },
     { id: 'brp', title: 'BRP security', note: 'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum.', fields: [
       f('brpBasis', 'Basis', '', 'select', 'Direct+ contract', 'Direct+ decision (26 Sep 2026): no minimum for members, only the marginal collateral; the €96,000 minimum and the 50 MW floors apply once to the Direct+ BRP. ASSUMPTION: the rule\'s formula on your own figures, never below €0; netting inside the Direct+ portfolio is not modelled', { options: [['marginal', 'Direct+: your marginal collateral'], ['standalone', 'On your own as a BRP (with the minimum), for comparison']] }),
+      f('brpPrice', 'Price for BRP collateral', '€/MWh', 'optional', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026: €40 for now, TenneT\'s price floor (SC 2026 art. 10.8). Blank: the average market price (normal week) or the stress average (tough week)'),
       f('rule', 'Rule', '', 'select', 'input', 'The draft takes effect on 1 January 2027 once ACM decides (ACM draft Artikel II B)', { options: [['auto', 'By date (the draft from 2027)'], ['current', 'Rule in force now'], ['draft', 'ACM draft']] }),
       f('reading', 'The current rule\'s 50 MW floor (on your own as a BRP)', '', 'select', 'INTERPRETATION', 'SC 2026 art. 10.8(3), (6), (11); the €96,000 minimum is on TenneT\'s page only (Q14). Not used for the marginal basis', { options: [['1200', '50 MW × 24 h = 1,200 MWh'], ['flat', 'A flat €96,000 minimum']] }),
       f('perPeriod', 'Daily net volume', '', 'select', 'INTERPRETATION', '"voor alle uren gedurende één kalenderdag" (current) / "één etmaal" (draft)', { options: [['i', '(i) Net over the day'], ['ii', '(ii) Net per settlement period, added up']] }),
@@ -1398,7 +1399,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     aucMaxPrice: null, aucMinPrice: null, realMin: null, realMax: null,
     carryShare: 0, lossShare: 0, badMove: 100, badDays: 1, badDaysStress: 2, replenish: 'none', feesPerWindow: 0,
     imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
-    connectionsMW: '', between: 'down', profileMean: 0, profileSd: 0, smartMean: 0, smartSd: 0,
+    brpPrice: 40, connectionsMW: '', between: 'down', profileMean: 0, profileSd: 0, smartMean: 0, smartSd: 0,
     brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population',
     debitLagWeeks: 4
   };
@@ -1593,7 +1594,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var shift = st.perPeriod === 'ii' ? st.shiftShare : 0;
     var vol = function (buy, sell) { return Math.abs(buy - sell) + 2 * Math.min(buy, sell) * shift; };
     var V = st.counterparties === 'total' ? vol(bx + nom, sx) : Math.max(vol(bx, sx), nom);
-    var pAvg = hot ? st.stressAvgPrice : st.price;
+    // Price for BRP collateral: €40 for now (Direct+ decision, 26 Sep 2026), in a tough week too; blank = the market averages.
+    var pAvg = num(st.brpPrice) != null ? num(st.brpPrice) : hot ? st.stressAvgPrice : st.price;
     var ruleId = st.rule === 'auto' ? R.ruleFor(isoDays[0]) : st.rule;
     var cur = R.current({ kind: 'first', expected: V, price3m: pAvg, capacityMW: R.countedCapacity(listMW(st.connectionsMW), st.between), reading: st.reading, floors: !marginal });
     var floor = marginal || st.reading === 'flat' ? 0 : 1200, pFl = Math.max(pAvg, 40);
@@ -1981,7 +1983,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var views = {
       current: { label: 'Rule in force (2026)', title: 'TenneT\'s rule in force: Systeemcode elektriciteit 2026, article 10.8', result: cSec, rows: [
         volRow,
-        ['Price', 'average of the last three months, at least €40', eurP(cur.price) + '/MWh'],
+        ['Price', st.brpPrice != null && st.brpPrice !== '' ? 'TenneT\'s price floor, used for now' : 'average of the last three months, at least €40', eurP(cur.price) + '/MWh'],
         ['A', 'volume × price', ex(cA)],
         ['Connection capacity counted', countedMW > 0 ? 'the size class your ' + fmt.format(ans.capacityMW || 0) + ' MW falls in' : 'no connections join the Direct+ BRP', fmt.format(Math.round(countedMW)) + ' MW'],
         ['B', 'capacity × 24 hours × price', ex(cB)],
@@ -1991,7 +1993,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
         note: marginal ? 'As a Direct+ member you have no 50 MW volume floor: it applies once to the Direct+ BRP.' : 'As your own BRP, with the 50 MW volume floor.' },
       draft: { label: 'ACM draft (from 2027)', title: 'ACM\'s draft rule from 1 January 2027 (ACM/25/196985, not yet final)', result: dSec, rows: [
         volRow,
-        ['Price', 'average of the last two months', eurP(b.price) + '/MWh'],
+        ['Price', st.brpPrice != null && st.brpPrice !== '' ? '€40 used for now' : 'average of the last two months', eurP(b.price) + '/MWh'],
         ['A', 'volume × price', ex(dA)],
         ['B', 'weekly imbalance invoices, last 10 weeks: average + 2σ', ex(dB)],
         ['C', 'profile-metered reconciliation, 12 months: average + 0.5σ', ex(dC)],
@@ -2145,7 +2147,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     if (ans.type === 'trader') add('Largest open M7 position', Math.round((1 - s.s) * 100) + '% of a day\'s buys, about ' + mwh((1 - s.s) * s.contBuy));
     if (x.ecc.fixed) add('Trading collateral at ECC', 'From your limit calculator, ' + eur(x.ecc.fixed.C));
     add('Split continuous / auctions', x.ecc.key + '% / ' + (100 - x.ecc.key) + '%');
-    add('BRP collateral', (x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027') + ', no minimum');
+    add('BRP collateral', (x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027') + ' at ' + eurP(x.brp.price) + '/MWh, no minimum');
     add('Collateral at ECC', ans.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
     add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
   }
@@ -2158,7 +2160,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     add('You hold some positions over ECC\'s 16:00 booking cut, about a third of a day\'s buys (for example bought day-ahead, sold intraday the next day). ECC collects those purchases a business day before the sale comes back, so that money waits in your wallet.');
     if (x.settlement.badDay > 0.5) add('A bad trading day loses €' + fmt.format(Math.round(s.badMove)) + ' on each MWh of your largest open position (continuous buys not yet sold again, plus auction buys until sold or used). Your wallet keeps room for ' + s.badDays + (s.badDays === 1 ? ' bad day' : ' bad days') + (ans.tough ? ', ' + s.badDaysStress + ' in a tough week' : '') + ', not for a whole bad week.');
     add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
-    add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum.');
+    add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum, at ' + eurP(x.brp.price) + '/MWh' + (s.brpPrice != null && s.brpPrice !== '' ? ' (TenneT\'s price floor, used for now instead of the market average)' : '') + '.');
     add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions.' + (ans.tough ? ' A tough week takes a high but not extreme imbalance week.' : ''));
     if (s.connectionsMW) add('Your capacity is spread evenly over your sites, all metered by telemetry or smart meter; reconciliation of metered volumes varies by about €10 per MW a month.');
     add('Nothing nets between Direct+ members: the estimate is for you alone. Fees and VAT are not included.');
