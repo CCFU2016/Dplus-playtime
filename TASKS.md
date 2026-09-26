@@ -14,6 +14,10 @@ Work top to bottom. Run `npm test` before and after each task. One commit per ta
   Proposed 26 Sep 2026: exact search on per-market minimum keys (see `docs/model.md`, "Cheapest split"). No explicit go-ahead; built as the recommended option once GO was left out. Same results as the old scan for two markets.
 
 ## 3. Add EPEX GO auctions (EPEX_GOEU_EUR)
+**Left out for now (Niki, 26 Sep 2026).** Not started. What ECC's tool does for GO is written up in
+`docs/model.md` ("Markets with their own trading calendar"), and the open points are questions 5–8 and 10.
+The trading-day question below is still open.
+
 - [ ] Market definition from the table: reset `day`, auction flag 1, own trading calendar.
 - [ ] Trading-day calendar from `reference/epex/go_auction_dates_2026.csv`. Decide with the user which date counts as the trading day: see open questions 5 and 6. ECC's 2025 calendar in `reference/ecc/separate_trading_day_calendars_2025.csv` suggests the closing day.
 - [ ] Port the VBA behaviour: base limit only on GO trading days; the market only counts when the next business day is a GO trading day; reset count 1.
