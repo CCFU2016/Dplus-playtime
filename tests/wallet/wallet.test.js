@@ -5,10 +5,15 @@ const T = require('./assert.js')('wallet');
 // The worked example (§8.5): financial trader, week of 5 Oct 2026, rule in force, all cash. Direct+ members put up
 // their marginal BRP collateral, with no minimum (Niki, 26 Sep 2026): a flat trader without connections adds nothing.
 const ft = C.compute(C.preset('trader'));
-T.money(ft.expected.total, 125834.25, 'financial trader: expected total');
-T.money(ft.stress.total, 442383.25, 'financial trader: stress total');
-T.eq(ft.expected.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 125745], ['fund', 0], ['settlement', 0], ['brp', 0], ['invoices', 89.25]], 'financial trader: expected parts');
-T.eq(ft.stress.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 406594], ['fund', 0], ['settlement', 29750], ['brp', 0], ['invoices', 6039.25]], 'financial trader: stress parts');
+T.money(ft.expected.total, 133994.25, 'financial trader: expected total');
+T.money(ft.stress.total, 467883.25, 'financial trader: stress total');
+T.eq(ft.expected.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 125745], ['fund', 0], ['settlement', 8160], ['brp', 0], ['invoices', 89.25]], 'financial trader: expected parts');
+T.eq(ft.stress.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 406594], ['fund', 0], ['settlement', 55250], ['brp', 0], ['invoices', 6039.25]], 'financial trader: stress parts');
+// Settlement: ECC nets each business day, but purchases sold only after the 16:00 cut are paid one collection before
+// the sale comes back. The trader carries 30% of a day's buys: a float of 0.3 × 340 MWh × €80, and × €250 in stress.
+T.money(ft.expected.settlement.float, 8160, 'financial trader: settlement float (expected)');
+T.money(ft.stress.settlement.float, 25500, 'financial trader: settlement float (stress)');
+T.money(ft.stress.settlement.flows, 29750, 'financial trader: stress loss share on top of the float');
 T.eq([ft.expected.ecc.key, ft.expected.ecc.binding.date], [53, '2026-10-09'], 'financial trader: 53/47, the Friday calculation sets the amount');
 T.eq([ft.expected.brp.rule, ft.expected.brp.basis], ['current', 'marginal'], 'October 2026: the rule in force, marginal collateral');
 T.money(ft.expected.brp.draft.security, 7973, 'financial trader: under the draft, 4B = 4 × 1,993.25 and no minimum');
@@ -17,11 +22,11 @@ T.money(ft.expected.segments.trading + ft.expected.segments.brp + ft.expected.se
 // On your own as a BRP (for comparison): the minimum and the 50 MW floors apply.
 let s = C.preset('trader'); s.brpBasis = 'standalone';
 let sa = C.compute(s);
-T.money(sa.expected.total, 317834.25, 'on your own as a BRP: expected (1,200 MWh reading: 2 × 1,200 × €80)');
-T.money(sa.stress.total, 730383.25, 'on your own as a BRP: stress');
+T.money(sa.expected.total, 325994.25, 'on your own as a BRP: expected (1,200 MWh reading: 2 × 1,200 × €80)');
+T.money(sa.stress.total, 755883.25, 'on your own as a BRP: stress');
 T.money(sa.expected.brp.draft.security, 96000, 'on your own as a BRP, the draft gives the €96,000 minimum');
 s.reading = 'flat';
-T.money(C.compute(s).expected.total, 221834.25, 'on your own as a BRP, flat €96,000 reading');
+T.money(C.compute(s).expected.total, 229994.25, 'on your own as a BRP, flat €96,000 reading');
 // Marginal amounts from members with volume or connections.
 const ag = C.compute(C.preset('aggregator')).expected.brp, as = C.compute(C.preset('asset')).expected.brp;
 T.money(ag.security, 150 * 80 * 2, 'aggregator: 150 MWh a day with one counterparty, 2 × A, no floors');
@@ -33,7 +38,7 @@ T.ok(neg.draft.sum < 0 && neg.security === 0, 'a member whose imbalance earns mo
 
 // Choices move the right parts.
 s = C.preset('trader'); s.reading = 'flat';
-T.money(C.compute(s).expected.total, 125834.25, 'the 50 MW reading does not affect the marginal basis');
+T.money(C.compute(s).expected.total, 133994.25, 'the 50 MW reading does not affect the marginal basis');
 s = C.preset('trader'); s.eccForm = 'guarantee';
 T.money(C.compute(s).expected.parts[1].value, 5029.8, 'a guarantee adds a 4% default-fund contribution');
 s = C.preset('trader'); s.week = '2027-03-22';

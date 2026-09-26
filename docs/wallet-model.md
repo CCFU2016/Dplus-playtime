@@ -290,9 +290,25 @@ Replenishment is an **ASSUMPTION**, default none:
 - The window closing Thursday 25 March has value date Tuesday 30 March.
 - The window closing Tuesday 30 March covers five days of trading and has value date Wednesday 31 March.
 
-**Flat traders.** With one price per market, a trader who buys and sells the same volume nets to zero in every window.
-Their settlement need is then losses plus fees. **ASSUMPTION** for the stress end: each window's net payable is `x` % of
-its gross buy value at the stress price (default 5%), with no replenishment.
+**Positions held over the 16:00 cut (the float).** ECC nets each business day, but a purchase made before the 16:00
+cut and sold after it is collected one business day before the sale's proceeds come back. An example is buying
+day-ahead and selling intraday the next day. In steady state each collection pays for the newly carried purchases and
+receives the previous ones, so this amount stays in the wallet all the time:
+
+```
+float = c × (gross MWh bought in a trading day) × price
+```
+
+`c` is the share of a day's buys that is carried: an **ASSUMPTION**, 30% for the financial-trader preset (about its
+day-ahead buying) and 0 for the sellers. The float counts in the settlement need, in both the expected and the stress
+case. It doesn't change `OR`, because ECC's exposure nets buys and sells (deck p.4).
+
+The first model left this out, so a flat trader showed €0 in the expected case. Niki pointed out on 26 Sep 2026 that
+money is needed there every day.
+
+**Flat traders' losses.** With one price per market, equal buys and sells net to zero apart from the float. **ASSUMPTION**
+for the stress end: each window's net payable is `x` % of its gross buy value at the stress price (default 5%), with no
+replenishment.
 
 **Missed payments** follow ECC's Clearing Conditions (not in the pack). They are never modelled as a state and never
 fed into `OR`.
@@ -545,6 +561,7 @@ release; I haven't verified them against market data.
 | Imbalance | 0.5% of traded volume, no bias, cv 0.5 | Only partial fills and slips at gate closure |
 | State-2 share / gap | 5% / €150 | Dual pricing is rare but expensive |
 | Settlement stress share x | 5% | A bad week for a flat desk |
+| Purchases paid before their sale | 30% of a day's buys | Roughly the day-ahead buying, sold intraday the next day |
 | Connections | none | |
 
 **Aggregator** (flexibility held in other BRPs' portfolios, as in the aggregator video)
@@ -634,9 +651,10 @@ replenishment none. A throwaway script repeated each step with the engine, and e
 | Wed 7 → Thu 8 | 1 | Thu 8 18:00 | Fri 9 | 0 | 4,250 |
 | Thu 8 → Fri 9 | 1 | Fri 9 18:00 | **Mon 12 Oct** | 0 | 4,250 |
 
-- **Typical:** buys and sells have equal volumes at one price, so every window nets to 0. The need is **€0 plus fees** (not set, Q7).
+- **Typical:** buys and sells have equal volumes at one price, so every window nets to 0 apart from the float. The trader carries 30% of a day's buys over the 16:00 cut: 0.3 × 340 MWh × €80 = **€8,160**. That stays in the wallet, plus fees (not set, Q7).
+- **Stress float:** 0.3 × 340 × €250 = €25,500, on top of the stress windows below.
 - **Stress:** 5% of the window's gross buys at €250. One day is 5% × 340 MWh × €250 = €4,250; the three-day Monday window is €12,750.
-- **Stress need:** with no replenishment, the peak cumulative outflow is **€29,750**.
+- **Stress need:** with no replenishment, the peak cumulative outflow is €29,750, plus the €25,500 float: **€55,250**.
 - **Open risk:** OR(D) equals these amounts, and OR(Friday) = €4,250 feeds section 8.1.
 
 ### 8.3 Part 3: BRP collateral (marginal; 5 October 2026, so the current rule)
@@ -684,13 +702,13 @@ Direct+ marginal collateral, rule in force on 5 October 2026, collateral as cash
 | Purpose | Wallet segment | Form | Label | Expected | Stress |
 |---|---|---|---|---|---|
 | 1. ECC collateral | Trading collateral (at ECC) | cash or guarantee | Estimate · ECC rule | 125,745 | 406,594 |
-| 2. ECC settlement | Available balance | cash | Estimate · ECC rule | 0 + fees | 29,750 |
+| 2. ECC settlement (float + net payments) | Available balance | cash | Estimate · ECC rule | 8,160 + fees | 55,250 |
 | 3. BRP collateral (marginal) | BRP collateral | cash or guarantee | TenneT rule · Direct+ contract | 0 | 0 |
 | 4. Imbalance invoices | Available balance | cash | Estimate | 89.25 | 6,039.25 |
-| **Total** | | | | **€125,834** | **€442,383** |
+| **Total** | | | | **€133,994** | **€467,883** |
 
 - **The same week with dates in 2027 (the draft):** the BRP collateral is €7,973 to €33,154.
-- **On your own as a BRP, for comparison:** €317,834 to €730,383 with the 1,200 MWh reading, or €221,834 to €538,383 with the flat €96,000.
+- **On your own as a BRP, for comparison:** €325,994 to €755,883 with the 1,200 MWh reading, or €229,994 to €563,883 with the flat €96,000.
 - **ECC collateral as a guarantee:** add €5,030 to €16,264 of cash for the default fund.
 - **Largest driver for this trader:** the ECC collateral, and within it the Friday period and the weekend auctions.
 

@@ -50,6 +50,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('realMax', 'Realistic price range: maximum', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10 p.25 (Q9)')
     ] },
     { id: 'settlement', title: 'ECC settlement', fields: [
+      f('carryShare', 'Purchases paid before their sale', '% of a day\'s buys', 'share', 'ASSUMPTION', 'Positions bought before the 16:00 booking cut and sold after it (e.g. bought day-ahead, sold intraday the next day): ECC collects the purchase one business day before the sale comes back, so this much stays in the wallet as a float (ECC DCP payments page: one net payment per business day)'),
       f('lossShare', 'Stress: net payment per window', '% of gross buys', 'share', 'ASSUMPTION', 'A flat trader nets to €0 at one price; the stress end assumes this loss in every window (wallet-model §3)'),
       f('replenish', 'Topping up the wallet', '', 'select', 'ASSUMPTION', 'How often you replace what ECC collects', { options: [['none', 'Not within the period'], ['daily', 'Every business day'], ['weekly', 'Every Monday']] }),
       f('feesPerWindow', 'Fees per business day', '€', 'number', 'ASSUMPTION', 'ECC, EPEX and Direct+ fees: not set until the price lists are in (Q7)')
@@ -92,7 +93,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     s: 0, restingCont: 0, eveningCont: 0, restingAuc: 0, restingAucWeekend: 0, updateHour: 18, stressUpdateHour: 19,
     measure: 'l18', splitMode: 'cheapest', key: 60, eccForm: 'cash', cap: null,
     aucMaxPrice: null, aucMinPrice: null, realMin: null, realMax: null,
-    lossShare: 0.05, replenish: 'none', feesPerWindow: 0,
+    carryShare: 0, lossShare: 0.05, replenish: 'none', feesPerWindow: 0,
     imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
     connectionsMW: '', between: 'down', profileMean: 0, profileSd: 0, smartMean: 0, smartSd: 0,
     brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population', brpForm: 'guarantee',
@@ -101,7 +102,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   // Presets approved by Niki "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page.
   var PRESETS = {
     trader: { label: 'Financial trader', note: 'A small desk that ends each day flat.',
-      values: { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, aucLimitPrice: 150, restingCont: 10000, eveningCont: 5000,
+      values: { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, aucLimitPrice: 150, restingCont: 10000, eveningCont: 5000, carryShare: 0.3,
                 imbShare: 0.005, imbBase: 'traded', bias: 0 } },
     aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
       values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000,
@@ -146,6 +147,9 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     // Part 2: settlement windows and cash
     var ws = S.windows(isoDays, flowOf, function () { return st.feesPerWindow || 0; });
     var cash = S.cashPath(ws, st.replenish);
+    // Float: purchases paid one collection before their sale (bought before the 16:00 cut, sold after). In steady state each
+    // collection pays the new carried purchases and receives the previous ones, so the amount stays in the wallet.
+    var carry = (st.carryShare || 0) * (st.contBuy + st.aucBuy) * vm * st.price * fp;
 
     // Part 1: ECC collateral
     var tg = L.targets(days, flowOf, st.s, st.restingCont * fp);
@@ -204,7 +208,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var parts = [
       { id: 'ecc', label: 'ECC trading collateral', segment: 'trading', value: split.C, form: st.eccForm === 'guarantee' ? 'Bank guarantee' : 'Cash', formRule: 'Cash or guarantee', confidence: 'Estimate · ECC rule' },
       { id: 'fund', label: 'ECC default fund', segment: 'available', value: form.defaultFund, form: 'Cash', formRule: 'Cash only', confidence: 'ECC rule' },
-      { id: 'settlement', label: 'ECC settlement', segment: 'available', value: cash.need, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
+      { id: 'settlement', label: 'ECC settlement', segment: 'available', value: cash.need + carry, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
       { id: 'brp', label: marginal ? 'BRP collateral (marginal)' : 'BRP security (TenneT)', segment: 'brp', value: security, form: st.brpForm === 'guarantee' ? 'Bank guarantee' : 'Cash', formRule: 'Cash or guarantee', confidence: (ruleId === 'current' ? 'TenneT rule' : 'Draft rule') + ' · Direct+ contract' },
       { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate' }
     ];
@@ -213,7 +217,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     return {
       total: total, parts: parts, segments: seg,
       ecc: { key: split.key, C: split.C, form: form, targets: tg, baseLimits: bl, binding: binding, windows: ws },
-      settlement: { windows: ws, need: cash.need, path: cash.path },
+      settlement: { windows: ws, need: cash.need + carry, flows: cash.need, float: carry, path: cash.path },
       brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
       tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }
     };

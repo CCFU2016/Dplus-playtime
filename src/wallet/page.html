@@ -460,9 +460,13 @@
     card('var(--p-ecc)', 'ECC trading collateral', x.ecc.C, y.ecc.C,
       'Set by the calculation on ' + dLabel(b.date) + (b.gap > 1 ? ', whose limit has to last ' + b.gap + ' days until the next business day,' : '') + ' at a ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ' split between continuous and auctions.' + (x.ecc.form.guarantee ? ' As a guarantee it adds ' + eur(x.ecc.form.defaultFund) + ' of default fund in cash.' : ''),
       b.gap > 1 && st.weekend ? [['weekend', 'Weekend trading'], ['s', 'Buys offset by sells']] : [['contBuy', 'Continuous buying'], ['aucLimitPrice', 'Auction bid prices']]);
-    card('var(--p-settlement)', 'ECC settlement', x.settlement.need, y.settlement.need,
-      x.settlement.need < 0.5 ? 'Your buys and sells net to about zero at one price, so ECC only collects fees (not set yet). The stress end assumes a loss of ' + Math.round(st.lossShare * 100) + '% of gross buys in every window.' : 'The most ECC collects before you top up, over the week.',
-      [['replenish', 'Topping up'], ['lossShare', 'Stress loss share']]);
+    var se = x.settlement, seText = 'ECC settles each business day\'s trades from the wallet as one net payment. ';
+    if (se.float > 0.5) seText += 'Purchases you sell only after the 16:00 cut are paid one collection before the sale comes back, so about ' + eur(se.float) + ' stays in the wallet as a float.' + (se.flows < 0.5 ? ' Otherwise your buys and sells net to about zero.' : ' On top of that come the week\'s net purchases, ' + eur(se.flows) + '.');
+    else if (se.flows < 0.5) seText += 'Yours net to about zero or to money coming in, so apart from fees nothing has to wait in the wallet.';
+    else seText += 'This is the most ECC collects over the week before you top up.';
+    seText += ' Fees are not included yet. The stress end assumes a loss of ' + Math.round(st.lossShare * 100) + '% of gross buys in every window.';
+    card('var(--p-settlement)', 'ECC settlement', x.settlement.need, y.settlement.need, seText,
+      [['carryShare', 'Positions held over 16:00'], ['replenish', 'Topping up']]);
     var br = x.brp, ruleName = br.rule === 'current' ? 'the rule in force (Systeemcode 2026, art. 10.8)' : 'ACM\'s draft for 2027', brpText;
     if (br.basis === 'marginal') {
       brpText = br.security < 0.5 && br.rule === 'current'
@@ -496,6 +500,11 @@
       else ev.push({ at: p.at, what: p.kind === 'collect' ? 'ECC receives the collection (before 08:00)' : p.kind === 'credit' ? 'ECC pays out a credit' : 'You top up the wallet', amount: p.kind === 'collect' ? -p.amount : p.amount, level: p.level });
     });
     ev.push({ at: sc.tennet.debit + ' 12:00', what: 'TenneT debits the imbalance invoice for this week (about ' + st.debitLagWeeks + ' weeks later; day to be confirmed)', amount: sc.tennet.invoice, tennet: true });
+    var fl = sc.settlement.float;
+    if (fl > 0.5) {                                   // the float stays in the wallet throughout
+      ev.forEach(function (e) { if (e.level != null) e.level += fl; });
+      ev.push({ at: st.week + ' 00:00', what: 'Float for purchases paid before their sale (positions held over the 16:00 cut); it stays in the wallet', amount: fl, level: fl, tennet: true });
+    }
     ev.sort(function (a, b) { return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
     head(t, [{ t: 'When' }, { t: 'What happens' }, { t: 'Amount', cls: 'r' }, { t: 'Wallet needs', cls: 'r' }]);
     var tb = el('tbody');
