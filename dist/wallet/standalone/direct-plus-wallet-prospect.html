@@ -93,6 +93,21 @@
   .error { font-size: 13.5px; color: var(--critical); }
   .conn { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
   .conn select { border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); padding: 8px 10px; }
+  details.fold { padding: 0; }
+  details.fold > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin: -4px 4px 0 0; transition: transform .15s; }
+  details.fold[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
+  details.fold > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 10px; }
+  .ft { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-width: 0; }
+  .ft h3 { font-size: 16.5px; font-weight: 600; margin: 0; }
+  .fh { font-size: 13px; color: var(--muted); }
+  .fold-body { padding: 0 20px 20px; display: grid; gap: 14px; }
+  .two { align-items: start; }
+  td details.why { margin-top: 2px; }
+  td details.why > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); width: max-content; }
+  td details.why[open] > summary { margin-bottom: 2px; }
+  .page.showing-results .masthead .lede, .page.showing-results .masthead .fine { display: none; }
   .handoff { display: grid; gap: 8px; justify-items: start; padding: 14px 16px; border: 1px solid var(--rule); border-left: 6px solid var(--s-trading); border-radius: 10px; background: var(--surface); }
   .handoff[hidden] { display: none; }
   .handoff b { font-size: 15px; }
@@ -389,38 +404,56 @@
       </div>
     </div>
 
-    <div class="panel card">
-      <h3>When you need it</h3>
-      <p class="sub" id="when-sub" hidden></p>
-      <ul class="when" id="when"></ul>
-    </div>
+    <details class="panel fold">
+      <summary><span class="ft"><h3>When you need it</h3><span class="fh">Day by day: when money goes out and comes back</span></span></summary>
+      <div class="fold-body">
+        <p class="sub" id="when-sub" hidden></p>
+        <ul class="when" id="when"></ul>
+      </div>
+    </details>
 
-    <div class="panel card">
-      <h3>How often you top up</h3>
-      <p class="sub">ECC collects each business day's net purchases from your wallet. The more often you top up, the less money has to wait in it. The estimate covers one week, so a Monday top-up only starts to help from the second week.</p>
-      <div class="table-wrap"><table id="topups"></table></div>
-    </div>
+    <details class="panel fold">
+      <summary><span class="ft"><h3>How often you top up</h3><span class="fh">Never, every Monday or every business day, compared</span></span></summary>
+      <div class="fold-body">
+        <p class="sub">ECC collects each business day's net purchases from your wallet. The more often you top up, the less money has to wait in it. The estimate covers one week, so a Monday top-up only starts to help from the second week.</p>
+        <div class="table-wrap"><table id="topups"></table></div>
+      </div>
+    </details>
 
-    <div class="panel card">
-      <h3>What moves the estimate</h3>
-      <p class="sub">The normal-week estimate with one thing changed.</p>
-      <div class="table-wrap"><table id="sens"></table></div>
-    </div>
+    <details class="panel fold">
+      <summary><span class="ft"><h3>What moves the estimate</h3><span class="fh">The normal week with one thing changed</span></span></summary>
+      <div class="fold-body">
+        <div class="table-wrap"><table id="sens"></table></div>
+      </div>
+    </details>
 
     <div class="two">
-      <div class="panel card"><h3 id="answers-title">Your answers</h3><dl id="answers"></dl><div class="no-print"><button type="button" class="linkbtn" id="edit2">Change my answers</button></div></div>
-      <div class="panel card" id="assumed-card"><h3>What we assumed</h3><ul class="plain" id="assumed"></ul></div>
+    <details class="panel fold">
+      <summary><span class="ft"><h3><span id="answers-title">Your answers</span></h3><span class="fh" id="answers-hint">What you told us</span></span></summary>
+      <div class="fold-body">
+        <dl id="answers"></dl><div class="no-print"><button type="button" class="linkbtn" id="edit2">Change my answers</button></div>
+      </div>
+    </details>
+    <details class="panel fold" id="assumed-card">
+      <summary><span class="ft"><h3>What we assumed</h3><span class="fh">Everything else the estimate assumes</span></span></summary>
+      <div class="fold-body">
+        <ul class="plain" id="assumed"></ul>
+      </div>
+    </details>
     </div>
 
-    <div class="panel card">
-      <h3>Sources</h3>
-      <ul class="plain">
-        <li>ECC: DCP Risk Management and DCP Payments pages; Risk Management Services Manual, release 056 (§3.10 auctions, §3.11 continuous); DCP client presentation (July 2025); Linking a Connected Bank Settlement Account with ECC (2025/2026).</li>
-        <li>TenneT BRP rules: Systeemcode elektriciteit 2026, articles 10.8, 10.26, 10.27 and 10.29 (wetten.overheid.nl).</li>
-        <li>From 1 January 2027: ACM draft decision ACM/25/196985 of 25 August 2026 on BRP security (not yet final).</li>
-      </ul>
-      <p class="disclaimer">Amounts are rounded to the nearest €1,000: this is an estimate, not an exact figure. Indicative only: not an offer and not advice. Fees (ECC, EPEX SPOT, Direct+) and VAT are not included. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
-    </div>
+    <details class="panel fold">
+      <summary><span class="ft"><h3>Sources</h3><span class="fh">ECC, TenneT and ACM documents</span></span></summary>
+      <div class="fold-body">
+        <ul class="plain">
+          <li>ECC: DCP Risk Management and DCP Payments pages; Risk Management Services Manual, release 056 (§3.10 auctions, §3.11 continuous); DCP client presentation (July 2025); Linking a Connected Bank Settlement Account with ECC (2025/2026).</li>
+          <li>TenneT BRP rules: Systeemcode elektriciteit 2026, articles 10.8, 10.26, 10.27 and 10.29 (wetten.overheid.nl).</li>
+          <li>From 1 January 2027: ACM draft decision ACM/25/196985 of 25 August 2026 on BRP security (not yet final).</li>
+        </ul>
+      </div>
+    </details>
+
+    <p class="disclaimer">Amounts are rounded to the nearest €1,000: this is an estimate, not an exact figure. Indicative only: not an offer and not advice. Fees (ECC, EPEX SPOT, Direct+) and VAT are not included. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
   </section>
 </div>
 <div id="tip" role="tooltip" hidden></div>
@@ -1635,6 +1668,18 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var WEEKS = [[nextMonday(), 'Next week (' + dLabel(nextMonday(), true) + ')'], ['2026-12-21', 'Christmas 2026 (from Mon 21 Dec)'], ['2027-03-22', 'Easter 2027 (from Mon 22 Mar)']];
   WEEKS.forEach(function (w) { var o = el('option', null, w[1]); o.value = w[0]; $('week').appendChild(o); });
 
+  // ---------- folded sections ----------
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href="#assumed-card"]');
+    if (a) { e.preventDefault(); $('assumed-card').open = true; $('assumed-card').scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+  });
+  var foldedForPrint = [];
+  window.addEventListener('beforeprint', function () {
+    foldedForPrint = Array.prototype.filter.call(document.querySelectorAll('#results details'), function (d) { return !d.open; });
+    foldedForPrint.forEach(function (d) { d.open = true; });
+  });
+  window.addEventListener('afterprint', function () { foldedForPrint.forEach(function (d) { d.open = false; }); foldedForPrint = []; });
+
   // ---------- links to and from the limit calculator ----------
   // Values travel in the link after the # (browsers don't send it to the server; nothing is stored). The answers ride
   // along too, so Back, or coming back from the limit calculator, reopens the same estimate.
@@ -1793,7 +1838,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     example = true; results(); window.scrollTo(0, 0);
   });
   $('back').addEventListener('click', function () { if (step > 1) show(step - 1); });
-  function edit() { $('results').hidden = true; $('wizard').hidden = false; show(1); window.scrollTo(0, 0); }
+  function edit() { $('results').hidden = true; $('wizard').hidden = false; document.querySelector('.page').classList.remove('showing-results'); show(1); window.scrollTo(0, 0); }
   $('example-own').addEventListener('click', edit);
   // Switch the example between member types: that type's typical answers, keeping the week, collateral and top-ups shown.
   Array.prototype.forEach.call(document.querySelectorAll('[data-extype]'), function (b) {
@@ -1841,13 +1886,14 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var primary = runs[runs.length - 1], s = primary.s;
     try { history.replaceState(null, '', location.pathname + location.search + '#' + stateHash()); } catch (e) { /* the link just doesn't update */ }
     last = primary.full;
-    $('wizard').hidden = true; $('results').hidden = false; $('week').value = ans.week; $('topup').value = ans.replenish; $('cmode').value = ans.collateral;
+    $('wizard').hidden = true; $('results').hidden = false; document.querySelector('.page').classList.add('showing-results'); $('week').value = ans.week; $('topup').value = ans.replenish; $('cmode').value = ans.collateral;
     $('example').hidden = !example;
     Array.prototype.forEach.call(document.querySelectorAll('[data-extype]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-extype') === ans.type)); });
     $('example-text').textContent = 'These numbers use typical answers for ' + { trader: 'a trader', aggregator: 'an aggregator', asset: 'an asset owner' }[ans.type] +
       ', not your plans. They show what the estimate looks like; your own wallet needs can be very different.';
     $('results-title').textContent = example ? 'Example estimate' : 'Your estimate';
     $('answers-title').textContent = example ? 'Example answers' : 'Your answers';
+    $('answers-hint').textContent = example ? 'Typical answers for the example' : 'What you told us';
     $('edit').textContent = example ? 'Answer the questions' : 'Change my answers';
     $('edit2').textContent = example ? 'Answer the questions' : 'Change my answers';
     var cols = runs.map(function (r) { return { label: r.label || 'Normal week', res: r.exp }; });
@@ -1901,7 +1947,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var tb = el('tbody');
     cols[0].res.parts.forEach(function (p, i) {
       var tr = el('tr'), td = el('td');
-      td.appendChild(el('b', null, LABEL[p.id])); td.appendChild(el('span', 'what', describe(p, primary)));
+      td.appendChild(el('b', null, LABEL[p.id]));
+      var why = el('details', 'why'); why.appendChild(el('summary', null, 'What is it?')); why.appendChild(el('span', 'what', describe(p, primary))); td.appendChild(why);
       if (p.id === 'ecc') eccLinks(td, primary.exp);
       tr.appendChild(td);
       cols.forEach(function (c) { tr.appendChild(el('td', 'r', eur(c.res.parts[i].value))); });

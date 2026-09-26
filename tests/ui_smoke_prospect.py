@@ -19,6 +19,7 @@ def walk(pg, member, tweak=None, quiet=True):
         if tweak and step in tweak: tweak[step](pg)
         pg.click('#next'); pg.wait_for_timeout(150 if step < 7 else 1500)
     return pg.inner_text('#hero-value')
+def open_all(pg): pg.evaluate("document.querySelectorAll('#results details').forEach(d => d.open = true)")
 def heads(pg, table):
     return pg.eval_on_selector_all('#' + table + ' thead th', 'hs => hs.map(h => h.innerText.trim().toLowerCase())')
 with sync_playwright() as pw:
@@ -66,10 +67,20 @@ with sync_playwright() as pw:
         check(pg.is_visible('input#n-mixed:checked + label') or pg.eval_on_selector('#n-mixed', 'n => n.checked'), 'traders are asked how their trades run; mixed is the default')
     h_flat = walk(pg, 'trader', tweak={3: lambda pg: (see_step3(pg), pg.click('label[for="n-flat"]'))})
     check(amount(h_flat) < amount(h), 'many small trades, close to flat, needs less: ' + h_flat + ' against ' + h)
+    folded = pg.eval_on_selector_all('#results details.fold', 'ds => ds.map(d => d.open)')
+    check(len(folded) == 6 and not any(folded), 'the six detail sections start collapsed')
+    check(pg.is_visible('#purposes') and pg.is_visible('#core') and pg.is_hidden('#topups'), 'the chart, what the money is for and core assumptions stay open')
+    pg.click('#core + a'); pg.wait_for_timeout(300)
+    check(pg.eval_on_selector('#assumed-card', 'd => d.open') and pg.is_visible('#assumed'), '"All assumptions and sources" opens that section')
+    pg.emulate_media(media='print'); pg.evaluate("window.dispatchEvent(new Event('beforeprint'))")
+    check(all(pg.eval_on_selector_all('#results details', 'ds => ds.map(d => d.open)')), 'printing unfolds every section')
+    pg.evaluate("window.dispatchEvent(new Event('afterprint'))"); pg.emulate_media(media='screen')
+    open_all(pg)
     check('close to flat' in pg.inner_text('#answers'), 'the answer is listed with the estimate')
     def no_netting(pg): check(pg.is_hidden('.q[data-type="trader"]'), 'asset owners are not asked the trader question')
     walk(pg, 'asset', tweak={3: no_netting})
     # Top-ups: the table compares the three rhythms and marks the answer; the selector recomputes.
+    open_all(pg)
     rows = pg.eval_on_selector_all('#topups tbody tr', 'rs => rs.map(r => r.innerText)')
     check(len(rows) == 3 and any('(your answer)' in r for r in rows), 'top-ups: three rhythms, the answer marked')
     pg.select_option('#topup', 'daily'); pg.wait_for_timeout(1500)
