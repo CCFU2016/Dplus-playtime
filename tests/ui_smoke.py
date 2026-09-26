@@ -13,8 +13,20 @@ with sync_playwright() as pw:
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
+    # The page picks its weeks from today: fix today at Mon 28 Sep 2026, so the standard week is the deck's, 5 Oct.
+    pg.clock.set_fixed_time('2026-09-28T09:00:00')
     pg.goto(f); pg.wait_for_timeout(600)
-    pg.fill('#week', '2026-10-05'); pg.dispatch_event('#week', 'change'); pg.wait_for_timeout(200)
+
+    # Week: a standard week by default, and the ECC holiday weeks of the next 12 months.
+    opts = pg.eval_on_selector_all('#week option', 'os => os.map(o => [o.value, o.textContent])')
+    print('     weeks:', opts)
+    check(opts[0] == ['2026-10-05', 'A standard week, no holidays'] and pg.input_value('#week') == '2026-10-05', 'the standard week is selected: 5 Oct 2026')
+    check('Showing Mon 5 – Fri 9 Oct 2026' in pg.inner_text('#week-note'), 'the note says which dates are shown')
+    check([o[0] for o in opts[1:]] == ['2026-12-21', '2026-12-28', '2027-03-22'] and [o[1] for o in opts[1:]] == ['Christmas · Fri 25 Dec 2026', 'New Year · Fri 1 Jan 2027', 'Easter · 26–29 Mar 2027'], 'holiday weeks: Christmas, New Year, Easter 2027 (Easter as one option)')
+    pg.select_option('#week', '2027-03-22'); pg.wait_for_timeout(400)
+    tabs = pg.inner_text('#day-tabs')
+    check('Thu 25' in tabs and 'Mar' in tabs and 'Good Friday' in pg.inner_text('#week-note'), 'picking Easter jumps to the week of 22 Mar 2027: ' + tabs.replace(chr(10), ' '))
+    pg.select_option('#week', '2026-10-05'); pg.wait_for_timeout(400)
 
     # Market names: M7 and MATS everywhere, explained once in the header.
     text = pg.inner_text('body')

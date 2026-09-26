@@ -95,15 +95,12 @@
   .steppers button:hover { background: var(--band); color: var(--ink); }
   .steppers button:active { background: var(--rule); }
   .steppers svg { width: 10px; height: 6px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-  input[type="date"] { box-sizing: border-box; border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--surface); padding: 7px 10px; width: 100%; }
   .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule-strong); border-radius: 7px; padding: 3px; gap: 3px; background: var(--surface-2); }
   .seg input { position: absolute; opacity: 0; pointer-events: none; }
   .seg label { text-align: center; font-size: 13px; font-weight: 500; padding: 7px 6px; border-radius: 5px; cursor: pointer; line-height: 1.3; }
   .seg input:checked + label { background: var(--select-bg); color: var(--select-ink); }
   .seg input:focus-visible + label { outline: 2px solid var(--focus); outline-offset: 1px; }
-  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip-btn { border: 1px solid var(--rule-strong); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
-  .chip-btn:hover { background: var(--surface-2); }
+  select#week { box-sizing: border-box; width: 100%; border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--surface); padding: 7px 10px; cursor: pointer; }
   .radio-row { display: grid; gap: 4px; }
   .radio-row label, .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--ink-2); cursor: pointer; }
   .radio-row input, .check input { margin-top: 3px; accent-color: var(--ink); }
@@ -265,13 +262,8 @@
 
       <div class="field">
         <label for="week">Week</label>
-        <input type="date" id="week">
-        <div class="presets" id="presets">
-          <button type="button" class="chip-btn" data-week="next">Next week</button>
-          <button type="button" class="chip-btn" data-week="2026-12-21">Christmas 2026</button>
-          <button type="button" class="chip-btn" data-week="2026-12-28">New Year 2027</button>
-          <button type="button" class="chip-btn" data-week="2027-03-22">Easter 2027</button>
-        </div>
+        <select id="week" aria-describedby="week-note"></select>
+        <p class="hint" id="week-note"></p>
       </div>
 
       <div class="field" id="fwd-fields">
@@ -717,6 +709,7 @@ var LimitEngine = (function () {
     var d = E.parse(iso);
     return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (withYear ? ' ' + d.getUTCFullYear() : '');
   }
+  function dayNote(n) { return n === 'Weekend' ? 'weekend' : n; }
   function dShort(iso) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate(); }
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   function num(id) { var v = parseFloat($(id).value.replace(/[^\d.]/g, '')); return isFinite(v) && v > 0 ? v : 0; }
@@ -780,8 +773,60 @@ var LimitEngine = (function () {
     var w = t.getUTCDay(), add = ((8 - w) % 7) || 7;
     return clampWeek(E.iso(new Date(t.getTime() + add * 864e5)));
   }
-  $('week').min = E.MIN_DATE; $('week').max = E.MAX_DATE;
-  $('week').value = nextMondayIso();
+  var addDays = function (iso, n) { return E.iso(new Date(E.parse(iso).getTime() + n * 864e5)); };
+  // A standard week: from next Monday, the first week whose weekdays, the Friday before and the Monday after are all
+  // ECC business days, so no calculation in it covers a holiday.
+  function standardWeek() {
+    for (var mon = nextMondayIso(); addDays(mon, 7) <= E.MAX_DATE; mon = addDays(mon, 7)) {
+      var ok = true;
+      for (var i = -3; i <= 7 && ok; i++) { var d = E.parse(addDays(mon, i)), w = d.getUTCDay(); if (w !== 0 && w !== 6 && !E.isBD(d)) ok = false; }
+      if (ok) return mon;
+    }
+    return nextMondayIso();
+  }
+  // Weekday ECC holidays in the next 12 months (up to the end of the calendar). Each goes to the week holding the last
+  // business day before it, whose calculation has to bridge the holiday; holidays landing in the same week share an option.
+  function holidayWeeks() {
+    var today = E.iso(new Date()), until = addDays(today, 365), out = [], byWeek = {};
+    Object.keys(E.HOLIDAYS).sort().forEach(function (h) {
+      if (h < today || h > until || h > E.MAX_DATE) return;
+      var before = E.prevBD(E.parse(h)), w = before.getUTCDay(), mon = E.iso(new Date(before.getTime() - ((w + 6) % 7) * 864e5));
+      if (mon < E.MIN_DATE) return;
+      if (!byWeek[mon]) { byWeek[mon] = { mon: mon, days: [] }; out.push(byWeek[mon]); }
+      byWeek[mon].days.push(h);
+    });
+    return out;
+  }
+  var SHORT = { "New Year's Day": 'New Year', 'Good Friday': 'Easter', 'Easter Monday': 'Easter', 'Christmas Day': 'Christmas' };
+  function holidayLabel(g) {
+    var names = [];
+    g.days.forEach(function (h) { var n = SHORT[E.HOLIDAYS[h]] || E.HOLIDAYS[h]; if (names.indexOf(n) < 0) names.push(n); });
+    var a = E.parse(g.days[0]), b = E.parse(g.days[g.days.length - 1]);
+    var when = g.days.length === 1 ? dLabel(g.days[0], true)
+      : a.getUTCMonth() === b.getUTCMonth() ? a.getUTCDate() + '–' + b.getUTCDate() + ' ' + MO[b.getUTCMonth()] + ' ' + b.getUTCFullYear()
+      : dLabel(g.days[0]).slice(4) + ' – ' + dLabel(g.days[g.days.length - 1], true).slice(4);
+    return names.join(' and ') + ' · ' + when;
+  }
+  var weekHolidays = {};
+  (function fillWeeks() {
+    var sel = $('week'), std = el('option', null, 'A standard week, no holidays');
+    std.value = standardWeek(); sel.appendChild(std);
+    var groups = holidayWeeks();
+    if (groups.length) {
+      var og = document.createElement('optgroup'); og.label = 'Weeks with an ECC holiday, next 12 months';
+      groups.forEach(function (g) { var o = el('option', null, holidayLabel(g)); o.value = g.mon; weekHolidays[g.mon] = g.days; og.appendChild(o); });
+      sel.appendChild(og);
+    }
+  })();
+  function weekNote() {
+    var mon = $('week').value, fri = addDays(mon, 4), a = E.parse(mon), b = E.parse(fri);
+    var span = 'Mon ' + a.getUTCDate() + (a.getUTCMonth() === b.getUTCMonth() ? '' : ' ' + MO[a.getUTCMonth()]) + ' – Fri ' + b.getUTCDate() + ' ' + MO[b.getUTCMonth()] + ' ' + b.getUTCFullYear();
+    var hs = weekHolidays[mon];
+    $('week-note').textContent = 'Showing ' + span + (hs
+      ? '. ' + hs.map(function (h) { return E.HOLIDAYS[h] + ' (' + dShort(h) + ')'; }).join(' and ') + (hs.length > 1 ? ' are not ECC business days.' : ' is not an ECC business day.')
+      : '. Every day is an ECC business day; the Friday calculation covers the weekend.');
+  }
+  weekNote();
 
   var selected = null; // selected calc day (iso)
 
@@ -790,7 +835,7 @@ var LimitEngine = (function () {
     var split = Math.max(0, Math.min(100, parseInt($('split').value, 10) || 0));
     return {
       mode: mode,
-      week: clampWeek($('week').value || nextMondayIso()),
+      week: clampWeek($('week').value || standardWeek()),
       C: num('collateral'), OR: num('open-risk'),
       cont: { bd: num('c-bd'), nbd: num('c-nbd') },
       da: { bd: num('a-bd'), nbd: num('a-nbd') },
@@ -912,7 +957,7 @@ var LimitEngine = (function () {
     var lowA = minBy(auc, function (a) { return a.limit; }), highA = maxBy(auc, function (a) { return a.limit; });
     var hiR = maxBy(rows, function (r) { return r.blr; }), loR = minBy(rows, function (r) { return r.blr; });
     box.appendChild(tile('M7 continuous, from 18:00', eurShort(lowC.cont.l18), 'lowest, ' + dLabel(lowC.date) + ' · highest ' + eurShort(highC.cont.l18), { swatch: 'sw-cont' }));
-    box.appendChild(tile('MATS auctions, per day-ahead auction', eurShort(lowA.limit), 'lowest, ' + dLabel(lowA.date) + (lowA.note ? ' (' + lowA.note.toLowerCase() + ')' : '') + ' · highest ' + eurShort(highA.limit), { swatch: 'sw-da' }));
+    box.appendChild(tile('MATS auctions, per day-ahead auction', eurShort(lowA.limit), 'lowest, ' + dLabel(lowA.date) + (lowA.note ? ' (' + dayNote(lowA.note) + ')' : '') + ' · highest ' + eurShort(highA.limit), { swatch: 'sw-da' }));
     box.appendChild(tile('Reserved for base limits', eurShort(hiR.blr), 'peak, ' + dLabel(hiR.date) + (loR.blr < hiR.blr ? ' · lowest ' + eurShort(loR.blr) : ''), null));
   }
   function bindingText(b) {
@@ -926,7 +971,7 @@ var LimitEngine = (function () {
     if (b.market === 'base') return 'Collateral must at least cover the reserved base limits on ' + dLabel(b.date);
     if (b.market === 'cont') return 'the evening calculation on ' + dLabel(b.date) + ' is the tightest';
     var nm = E.holidayName(E.parse(b.date));
-    return 'day-ahead auction on ' + dLabel(b.date) + (nm ? ' (' + nm.toLowerCase() + ', share of ' + dShort(b.calc) + '\'s calculation)' : '');
+    return 'day-ahead auction on ' + dLabel(b.date) + (nm ? ' (' + dayNote(nm) + ', share of ' + dShort(b.calc) + '\'s calculation)' : '');
   }
 
   // ---------- alert ----------
@@ -1116,7 +1161,7 @@ var LimitEngine = (function () {
       s('text', { x: cx, y: H - m.b + 34, 'text-anchor': 'middle', class: 'xv' }, eurShort(a.limit));
       if (a === lo || a === hi) s('text', { x: cx, y: y0 - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(a.limit));
       var hit = s('rect', { x: m.l + i * slot, y: m.t, width: slot, height: ph, class: 'hit' });
-      var label = dLabel(a.date) + ' day-ahead auction · ' + (a.settled ? (a.rollover ? 'after settlement, full limit again if the weekend or holiday auctions went unused' : 'after settlement') : (a.note ? a.note.toLowerCase() + ', ' : '') + 'share of ' + dShort(a.calc) + '\'s calculation');
+      var label = dLabel(a.date) + ' day-ahead auction · ' + (a.settled ? (a.rollover ? 'after settlement, full limit again if the weekend or holiday auctions went unused' : 'after settlement') : (a.note ? dayNote(a.note) + ', ' : '') + 'share of ' + dShort(a.calc) + '\'s calculation');
       hoverable(hit, eur(a.limit), label);
     });
     if (target > 0) {
@@ -1193,14 +1238,7 @@ var LimitEngine = (function () {
   $('setup').addEventListener('input', schedule);
   $('setup').addEventListener('change', schedule);
   $('setup').addEventListener('submit', function (e) { e.preventDefault(); });
-  Array.prototype.forEach.call(document.querySelectorAll('#presets button'), function (b) {
-    b.addEventListener('click', function () {
-      var w = b.getAttribute('data-week');
-      $('week').value = w === 'next' ? nextMondayIso() : w;
-      selected = null; render();
-    });
-  });
-  $('week').addEventListener('change', function () { selected = null; });
+  $('week').addEventListener('change', function () { selected = null; weekNote(); });
   var ro = null;
   if (window.ResizeObserver) { ro = new ResizeObserver(function () { if (lastRes) renderAuctions(lastRes); }); ro.observe($('auction-chart')); }
   render();
