@@ -47,13 +47,31 @@ Continuous stays at `carry`. ECC's p.10 example gives Monday = 9, and the engine
 | EEX_GAS_SPOT_EUR | business day | 0 | no | EUR |
 | EEX_GOFR_POWER / _GAS, EEX_NEHS | day | 1 | yes | EUR |
 
-The engine currently implements EPEX_CONTINUOUS_EUR and EPEX_AUCTION_EUR only.
+The engine currently implements EPEX_CONTINUOUS_EUR and EPEX_AUCTION_EUR only. `LimitEngine.MARKETS` holds
+their definitions from this table (`tests/markets.test.js` checks them against it). The rules follow from the
+reset column: "business day" markets work like continuous, "day" markets like the day-ahead auction.
 
-What the VBA does for markets with their own trading calendar (the GO and capacity auctions):
+## Engine API with a list of markets
 
-- Base limits only count on that market's trading days. See `DistributeValues`, around VBA line 1030, and `ECCCalendar.IsTradingDay`.
-- The market is only included when the next business day is one of its trading days (`clsCalcForBD.Initiate`).
-- The limit reset count is fixed at 1, around VBA line 5500.
+`day(t, p)` takes either form:
+
+- `p = { C, OR, markets: [{ id, bd, nbd, key }, ...] }` gives one result per market in `r.markets[id]`: `blr`, `share`, `l16`, `l18`, `l09`, `resetDays`, and `auctions` for "day" markets.
+- `p = { C, OR, cont: {...}, da: {...} }`, the original two-market form, gives the original result (`cont`, `da`, `blrC`, …). The page and the deck copy use this form.
+
+`solve`, `binding` and `cheapestKey` take targets per market id with the first form (`{ <id>: { limit, measure } }` for business-day markets, `{ <id>: { limit, nonBD } }` for day markets), and the original `{ cont, contMeasure, da, daNonBD }` with the second.
+
+**Cheapest split.** A market's limits depend only on the collateral and its own key. So at collateral C each market has a smallest whole-% key that meets its target, and C works with some split exactly when those keys add up to 100% or less. `cheapestKey` bisects on C for the smallest such amount. It then places the leftover percentage as close to the member's current split as it can: markets below their minimum are raised, and the others give up the difference in proportion to their spare share. With two markets this gives the same result as trying every split from 0 to 100 (the previous method), about twelve times faster. ECC's tool has no such search: it uses the split the member enters.
+
+## Markets with their own trading calendar (GO, capacity auctions): not implemented
+
+EPEX GO auctions were left out for now (September 2026). What ECC's tool does, for when they come back (line numbers in `DCP_SimulationTool4Clients_vba.txt`):
+
+- **Trading days** are the dates in the tool's calendar sheet, matched exactly (`IsTradingDay`, 1703). ECC's 2025 GO dates are the order-book closing days: 18 Wednesdays and 4 Tuesdays, the same pattern as EPEX's closing days. EPEX's order book never opens on those weekdays.
+- **The market is only included** in a calculation when the next business day is one of its trading days (`clsCalcForBD.Initiate`, 1220–1224). For a Wednesday close that is Tuesday's calculation only. GO then has a limit from Tuesday 16:00 until the close at 11:00 on Wednesday, and none between the Monday 17:00 opening and Tuesday 16:00 (open question 5).
+- **Base limit requirement:** base limits count only on trading days (`DistributeValues`, 1048–1051), and the Auction Flag drops the last day of the window from the reserve (`CalcExposure`, 1160). So GO reserves **one** base limit, the closing day's, not today's plus the next business day's.
+- **Reset count** is fixed at 1 for EPEX_GOEU_EUR and EPEX_CPCTY_EUR (5500–5504). The check meant for EEX_GOFR (5502) never matches a market name, so the EEX GO markets divide by the gap to the next business day.
+- **On days the market is not included,** its key share of the excess goes to no market: each market's dynamic limit is its own `excess × key ÷ reset days` (5534), with no redistribution.
+- **GO-only member:** the evening limit is base limit + (C − base limit − open risk) = C − open risk. This matches the deck (p.15: "the limit will be equal to the posted collateral").
 
 ## Exchange-side rules worth knowing (ECC Risk Management Services Manual v056)
 

@@ -7,10 +7,11 @@ Work top to bottom. Run `npm test` before and after each task. One commit per ta
 - [x] `npm run build` reproduces `dist/` with no diff: `git status` stays clean.
 
 ## 2. Generalise the engine to any number of markets (no number changes)
-- [ ] Replace the fixed `cont` / `da` parameters with a list of markets. Each market has a definition taken from `reference/ecc/markets_table.csv`: reset rule (`business day` / `day`), auction flag, own trading calendar, currency.
-- [ ] Keep `cont` / `da` as a thin compatibility layer, or update `src/page.html` in the same change.
-- [ ] The snapshot and ECC-example tests must pass **unchanged**. This task changes no numbers.
-- [ ] The solver (`solve`, `cheapestKey`) must work for N markets. `cheapestKey` currently scans one split from 0 to 100; with more than two markets it needs a different search. Propose one before building it.
+- [x] Replace the fixed `cont` / `da` parameters with a list of markets. Each market has a definition taken from `reference/ecc/markets_table.csv`: reset rule (`business day` / `day`), auction flag, own trading calendar, currency.
+- [x] Keep `cont` / `da` as a thin compatibility layer, or update `src/page.html` in the same change.
+- [x] The snapshot and ECC-example tests must pass **unchanged**. This task changes no numbers.
+- [x] The solver (`solve`, `cheapestKey`) must work for N markets. `cheapestKey` currently scans one split from 0 to 100; with more than two markets it needs a different search. Propose one before building it.
+  Proposed 26 Sep 2026: exact search on per-market minimum keys (see `docs/model.md`, "Cheapest split"). No explicit go-ahead; built as the recommended option once GO was left out. Same results as the old scan for two markets.
 
 ## 3. Add EPEX GO auctions (EPEX_GOEU_EUR)
 - [ ] Market definition from the table: reset `day`, auction flag 1, own trading calendar.

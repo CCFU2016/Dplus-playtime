@@ -12,6 +12,7 @@ wording plain and every number traceable to ECC's rules.
 - `scripts/build.js` writes `dist/direct-plus-limit-calculator.html` (the page body, as published at the claude.ai link) and `dist/standalone/...` (a full document that opens from disk). Never edit `dist/` by hand.
 - `tests/ecc_examples.test.js`: ECC's own worked examples (deck p.8 and p.10). **Must always pass.**
 - `tests/snapshot.js`: engine output for every business day in range, over 5 parameter sets, plus 3 sizing searches. A refactor must leave it unchanged. Only re-record (`--write`) after a change that is meant to change numbers, and say which numbers changed and why in the commit message.
+- `tests/markets.test.js`: market definitions against ECC's table, the markets form against the two-market form, and the cheapest split with three markets against every split.
 - `tests/ui_smoke.py`: headless check of the built page.
 - `tests/monday_readings.js`: prints the readings of the open Monday question. It's a diagnostic, not a test.
 - `reference/`: ECC and EPEX source material. `docs/model.md` explains the model; `docs/open-questions.md` lists what ECC has not confirmed.
@@ -32,7 +33,7 @@ Run `npm test` before and after every engine change.
 4. **Don't change what the page says about ECC timing without a source.** Say "around 18:00" and "best effort". Don't give 17:00 or 20:00 as fixed times.
 5. **The page must stay one self-contained HTML file.** It may load fonts from Google Fonts and nothing else. No build framework: plain JS keeps it portable into the claude.ai artifact.
 6. **No browser storage** (localStorage etc.) for anything that matters.
-7. **Keep the engine's public API stable** (`day`, `week`, `weekDays`, `solve`, `binding`, `cheapestKey`, `parse`, `iso`, `isBD`, `nextBD`, `prevBD`, `holidayName`), or update the page and the deck copy in the same change.
+7. **Keep the engine's public API stable** (`day`, `week`, `weekDays`, `solve`, `binding`, `cheapestKey`, `parse`, `iso`, `isBD`, `nextBD`, `prevBD`, `holidayName`, `MARKETS`), or update the page and the deck copy in the same change. Both parameter forms stay supported: the markets list and the original `cont` / `da` (see `docs/model.md`).
 
 ## Outside this repo
 
