@@ -56,6 +56,14 @@ with sync_playwright() as pw:
     total = pg.eval_on_selector('#purposes tbody tr.total', 'r => r.innerText')
     js = pg.evaluate('''() => { const a = WalletCalc.defaultAnswers('trader'); a.week = document.getElementById('week').value; const r = WalletCalc.compute(WalletCalc.fromAnswers(a)); return '€' + (Math.round(r.expected.total / 1000) * 1000).toLocaleString('en-GB'); }''')
     check(js in total, 'trader total equals the calculation for the same answers, rounded to €1,000: ' + js)
+    amount = lambda s: int(re.search(r'€([\d,]+)', s).group(1).replace(',', ''))
+    def see_step3(pg):
+        check(pg.is_visible('input#n-mixed:checked + label') or pg.eval_on_selector('#n-mixed', 'n => n.checked'), 'traders are asked how their trades run; mixed is the default')
+    h_flat = walk(pg, 'trader', tweak={3: lambda pg: (see_step3(pg), pg.click('label[for="n-flat"]'))})
+    check(amount(h_flat) < amount(h), 'many small trades, close to flat, needs less: ' + h_flat + ' against ' + h)
+    check('close to flat' in pg.inner_text('#answers'), 'the answer is listed with the estimate')
+    def no_netting(pg): check(pg.is_hidden('.q[data-type="trader"]'), 'asset owners are not asked the trader question')
+    walk(pg, 'asset', tweak={3: no_netting})
     # Top-ups: the table compares the three rhythms and marks the answer; the selector recomputes.
     rows = pg.eval_on_selector_all('#topups tbody tr', 'rs => rs.map(r => r.innerText)')
     check(len(rows) == 3 and any('(your answer)' in r for r in rows), 'top-ups: three rhythms, the answer marked')

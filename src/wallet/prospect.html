@@ -214,6 +214,14 @@
             <div class="num"><label for="aucSell">Auctions, day-ahead + intraday (MATS): sell</label><div class="in"><input type="number" id="aucSell" min="0" step="10" data-a="aucSell"><span class="unit">MWh a day</span></div></div>
           </div>
         </div>
+        <div class="q" data-type="trader"><span class="ql">How do your continuous (M7) trades run through the day?</span>
+          <p class="hint">ECC's limit is used by your position at its highest point, not by every trade. The more your buys and sells alternate, the less limit you need.</p>
+          <div class="choices">
+            <div class="choice"><input type="radio" name="netting" id="n-block" value="block"><label for="n-block"><b>I build a position, then close it</b><span>Most buying comes before the selling. We count all of the day's buys.</span></label></div>
+            <div class="choice"><input type="radio" name="netting" id="n-mixed" value="mixed"><label for="n-mixed"><b>Buys and sells are mixed</b><span>We assume a quarter of the day's buys are already sold again when your position is at its highest.</span></label></div>
+            <div class="choice"><input type="radio" name="netting" id="n-flat" value="flat"><label for="n-flat"><b>Many small trades, close to flat all day</b><span>We assume half of the day's buys are already sold again at the highest point.</span></label></div>
+          </div>
+        </div>
         <div class="q" data-type="aggregator"><span class="ql">Flexibility from your customers</span>
           <div class="nums">
             <div class="num"><label for="nominatedIn">Nominated in from other BRPs</label><div class="in"><input type="number" id="nominatedIn" min="0" step="10" data-a="nominatedIn"><span class="unit">MWh a day</span></div></div>
@@ -415,7 +423,7 @@
   function setRadio(name, v) { var r = form.querySelector('input[name="' + name + '"][value="' + v + '"]'); if (r) r.checked = true; }
   function fill() {
     setRadio('type', ans.type); setRadio('weekend', ans.weekend); setRadio('tough', ans.tough ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
-    setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('replenish', ans.replenish);
+    setRadio('carry', ans.carry); setRadio('netting', ans.netting); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('replenish', ans.replenish);
     Array.prototype.forEach.call(form.querySelectorAll('[data-a]'), function (i) { var v = ans[i.getAttribute('data-a')]; i.value = v == null ? '' : (i.hasAttribute('data-pct') ? Math.round(v * 1000) / 10 : v); });
     ASSET_KEYS.forEach(function (k) { $('a-' + k).checked = !!ans.portfolio[k]; });
     $('a-none').checked = !anyAsset();
@@ -679,6 +687,7 @@
     add('Weekends and holidays', { yes: 'Yes', no: 'No', both: 'Show me both' }[ans.weekend]);
     add('Continuous intraday, buy / sell', fmt.format(s.contBuy) + ' / ' + fmt.format(s.contSell) + ' MWh a day');
     add('Auctions (day-ahead + intraday), buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
+    if (ans.type === 'trader') add('Continuous trades through the day', { block: 'Build a position, then close it (all buys counted)', mixed: 'Buys and sells mixed (a quarter offset at the peak)', flat: 'Many small trades, close to flat (half offset at the peak)' }[ans.netting]);
     if (ans.type === 'aggregator') add('Nominated from other BRPs', fmt.format(s.nominatedIn) + ' MWh a day, ' + Math.round(s.nonDelivery * 100) + '% may not be delivered');
     if (ans.tough) add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh'); else add('Normal price', eurP(s.price) + ' per MWh');
     add('Tough week', ans.tough ? 'Shown' : 'Not shown');

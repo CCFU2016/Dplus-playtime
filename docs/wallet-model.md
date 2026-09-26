@@ -540,7 +540,7 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 | Typical / stress price | €80 / €250 per MWh | A normal day and a spike day |
 | Stress 2–3-month average | €120 | Security uses averages, which move less than spot |
 | Negative-price hours | 5%, at −€20 average | A few hundred negative hours a year |
-| s | 0 | The brief's cautious default |
+| s | 25% | Niki, 26 Sep 2026: a desk makes many small trades both ways, so a quarter of the day's buys are assumed already offset by sells when the position peaks (the brief's cautious default is 0) |
 | Resting orders over 16:00 / net buying 16:00–update | €2,500 / €1,250 | A few open orders and some trading while ECC recalculates |
 | Imbalance | 0.5% of traded volume, no bias, cv 0.5 | Only partial fills and slips at gate closure |
 | State-2 share / gap | 5% / €150 | Dual pricing is rare but expensive |
@@ -577,7 +577,7 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 ## 8. Worked example: financial trader, week of Monday 5 October 2026
 
 This uses a **larger desk** than the financial-trader preset above: 240 / 240 MWh a day continuous, 100 / 100 auctions,
-€10,000 resting and €5,000 evening (the preset before 26 Sep 2026), everything else as the preset. `tests/wallet/wallet.test.js`
+€10,000 resting and €5,000 evening and s = 0 (the preset before 26 Sep 2026), everything else as the preset. `tests/wallet/wallet.test.js`
 pins it as `LARGE_DESK`. It uses Direct+ marginal BRP collateral (section 4.4), everything as cash unless stated, and
 replenishment none. A throwaway script repeated each step with the engine, and every figure matches.
 
@@ -814,6 +814,7 @@ default answers the settings equal that type's preset exactly, and `tests/wallet
 | Weekends (no separate markets question) | Niki (26 Sep 2026): no markets question; 0 volume means a market isn't traded. Day-ahead and intraday auctions are one market (MATS, one ECC limit, `EPEX_AUCTION_EUR`, manual §3.10), continuous is the other (M7). Weekends: yes, no, or **show me both**, which runs the estimate twice (business days only and also at weekends) and shows them side by side |
 | Strategy | Fills the volumes. The type's own strategy keeps the preset; otherwise each market's total is split evenly (close positions), 10/90 (mainly sell) or 90/10 (mainly buy) |
 | Volumes | Buys and sells per market. Orders resting over 16:00 and evening buying scale with continuous buying (the preset's ratio) |
+| Traders: how continuous trades run through the day | `s`: build a position then close it 0; buys and sells mixed 25% (default); many small trades, close to flat 50% (Niki, 26 Sep 2026) |
 | Aggregators: nominated in, not delivered | `nominatedIn`, `nonDelivery` |
 | (not asked) Held over the 16:00 cut | Niki asked to drop this question to reduce complexity (26 Sep 2026). Every prospect is assumed to hold some positions over the cut: settlement float share 30%, listed under "What we assumed" |
 | Prices, tough week | Typical price. The **tough week is optional** (off by default); only when chosen is its price asked and shown. The stress two-to-three-month average is 1.5 × typical (ASSUMPTION) |

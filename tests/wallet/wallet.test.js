@@ -2,7 +2,7 @@
 const C = require('../../src/wallet/wallet.js');
 // The worked example (§8) is a larger desk than today's trader preset: the preset's volumes before it was resized to
 // about 150 MWh a day (26 Sep 2026). Everything else is the preset.
-const LARGE_DESK = { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, restingCont: 10000, eveningCont: 5000 };
+const LARGE_DESK = { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, restingCont: 10000, eveningCont: 5000, s: 0 };
 const desk = () => Object.assign(C.preset('trader'), LARGE_DESK);
 const T = require('./assert.js')('wallet');
 
@@ -112,6 +112,12 @@ T.money(C.compute(C.fromAnswers(a)).expected.settlement.float, 0, 'no positions 
 // The presets compare like with like: each moves about 150 MWh a day, and no wallet is an outlier.
 const vol = id => { const v = C.preset(id); return v.contBuy + v.contSell + v.aucBuy + v.aucSell; };
 T.eq(['trader', 'aggregator', 'asset'].map(vol), [150, 170, 130], 'presets: MWh a day traded');
+T.eq([C.preset('trader').s, C.preset('aggregator').s, C.preset('asset').s], [0.25, 0, 0], 'the trader assumes a quarter of its buys offset at the peak');
+const na = C.defaultAnswers('trader');
+T.eq([na.netting, C.fromAnswers(na).s], ['mixed', 0.25], 'trader answers: buys and sells mixed by default, a quarter offset');
+const nt = ['block', 'mixed', 'flat'].map(n => C.compute(C.fromAnswers(Object.assign(C.defaultAnswers('trader'), { netting: n }))).expected.total);
+T.ok(nt[0] > nt[1] && nt[1] > nt[2], 'more offsetting, less wallet: ' + nt.map(Math.round).join(' / '));
+T.eq(C.fromAnswers(Object.assign(C.defaultAnswers('asset'), { netting: 'flat' })).s, 0, 'the netting answer only applies to traders');
 const tot = ['trader', 'aggregator', 'asset'].map(id => C.compute(C.preset(id)).expected.total);
 T.ok(Math.max.apply(null, tot) <= 3 * Math.min.apply(null, tot), 'the three presets are within a factor of 3: ' + tot.map(Math.round).join(' / '));
 T.done();

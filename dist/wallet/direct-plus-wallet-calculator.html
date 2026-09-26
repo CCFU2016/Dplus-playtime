@@ -1179,6 +1179,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var PRESETS = {
     trader: { label: 'Financial trader', note: 'A small desk that ends each day flat.',
       values: { contBuy: 60, contSell: 60, aucBuy: 15, aucSell: 15, aucLimitPrice: 150, restingCont: 2500, eveningCont: 1250, carryShare: 0.3,
+                s: 0.25,   // a quarter of the day's buys already offset by sells at the peak: many small trades both ways (Direct+ decision, 26 Sep 2026)
                 imbShare: 0.005, imbBase: 'traded', bias: 0 } },
     aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
       values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000, carryShare: 0.3,
@@ -1202,6 +1203,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var BALANCE = { tight: 0.005, normal: 0.03, forecast: 0.05 };          // imbalance as a share of volume
   var LEAN = { neither: 0, short: 0.3, long: -0.2 };                      // bias
   var CARRY = { none: 0, some: 0.3, most: 0.7 };                          // purchases paid before their sale
+  var NETTING = { block: 0, mixed: 0.25, flat: 0.5 };                     // traders: share of buys offset by sells at the peak
   var RECONCILIATION_SD_PER_MW = 10;                                      // ASSUMPTION: € a month per MW connected
   var ASSETS = ['production', 'consumption'];                             // portfolio answers (Direct+ decision: production vs consumption)
   var NO_ASSETS = { production: false, consumption: false };
@@ -1231,7 +1233,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     return {
       type: type, markets: 'both', weekend: 'yes', tough: false, strategy: NATURAL[type],
       contBuy: vol.cont.buy, contSell: vol.cont.sell, aucBuy: vol.auc.buy, aucSell: vol.auc.sell,
-      carry: 'some', nominatedIn: v.nominatedIn || 0, nonDelivery: v.nonDelivery || 0,
+      carry: 'some', netting: type === 'trader' ? 'mixed' : null, nominatedIn: v.nominatedIn || 0, nonDelivery: v.nonDelivery || 0,
       price: BASE.price, stressPrice: BASE.stressPrice, aucLimitPrice: v.aucLimitPrice != null ? v.aucLimitPrice : BASE.aucLimitPrice,
       portfolio: type === 'asset' ? { production: true, consumption: true } : { production: false, consumption: false },
       capacityMW: type === 'asset' ? 30 : 0, sites: type === 'asset' ? 1 : 0,
@@ -1251,6 +1253,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     s.weekend = a.weekend === true || a.weekend === 'yes' || a.weekend === 'both'; s.aucLimitPrice = a.aucLimitPrice == null || a.aucLimitPrice === '' ? null : +a.aucLimitPrice;
     s.price = +a.price; s.stressPrice = +a.stressPrice; s.stressAvgPrice = 1.5 * s.price;   // ASSUMPTION: averages move less than spot
     s.carryShare = CARRY[a.carry] || 0;
+    if (a.type === 'trader' && a.netting in NETTING) s.s = NETTING[a.netting];
     s.nominatedIn = a.type === 'aggregator' ? +a.nominatedIn || 0 : 0; s.nonDelivery = a.type === 'aggregator' ? +a.nonDelivery || 0 : 0;
     s.imbShare = BALANCE[a.balance]; s.imbBase = IMB_BASE[a.type]; s.bias = LEAN[a.lean];
     // Portfolio: the capacity joining the Direct+ BRP, split over equal sites (ASSUMPTION), metered by telemetry or smart
@@ -1409,7 +1412,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     return out;
   }
 
-  return { GROUPS: GROUPS, BASE: BASE, PRESETS: PRESETS, SEGMENTS: SEGMENTS, preset: preset, scenario: scenario, compute: compute,
+  return { NETTING: NETTING, GROUPS: GROUPS, BASE: BASE, PRESETS: PRESETS, SEGMENTS: SEGMENTS, preset: preset, scenario: scenario, compute: compute,
            strategyVolumes: strategyVolumes, defaultAnswers: defaultAnswers, fromAnswers: fromAnswers, suggestBalance: suggestBalance };
 })(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
    typeof WalletBehaviour !== 'undefined' ? WalletBehaviour : require('./behaviour.js'),
