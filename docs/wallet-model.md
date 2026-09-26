@@ -370,7 +370,9 @@ S = max(3A + 4B + 6C + 6D, 96,000)
 
 **Ramp-up for a new BRP (a new member, section 4.4):**
 - **A:** 0 at the first calculation (no realised volume), then the realised two-month maximum.
-- **B:** the first imbalance invoice arrives about four weeks after delivery (ACM draft para 15: "Tussen het moment van levering en facturatie zitten vier weken"). Missing weeks count as €0, so B peaks at about 1.618 × its steady-state value with 7 of 10 real invoices (the maximum of p + 2√(p(1−p)) is at p = 0.724, exactly the golden ratio). For C and D the peak is about 1.055× at 11 of 12.
+- **B:** the first imbalance invoice arrives about four weeks after delivery (ACM draft para 15: "Tussen het moment van levering en facturatie zitten vier weken"). Missing weeks count as €0, so B can peak at about 1.618 × its steady-state value with 7 of 10 real invoices (the maximum of p + 2√(p(1−p)) is at p = 0.724, exactly the golden ratio). For C and D the peak is about 1.055× at 11 of 12.
+  - **Monthly recalculation doesn't necessarily hit that week.** With delivery starting on the 1st and TenneT recalculating at the start of each month (ASSUMPTION), the window holds 0, 0, 4, 9 and then 10 invoices in months 1–5. B's monthly peak is then **1.5×** (9 of 10), found in Phase 3 (`tests/wallet/brp.test.js`). The page shows the monthly series. The 1.618× is a weekly worst case, not the series maximum.
+  - Counted at a start-of-month recalculation, the first C invoice (paid in month 6) enters in month 7, and the first D (paid in month 7) enters in month 8.
 - **C:** month M's profile reconciliation is stated by the 10th working day of M+5 and paid the first Tuesday after (SC 2026 art. 10.26(4)–(5)). With delivery starting in month 1, **the first C invoice falls in month 6**.
 - **D:** month M's smart-meter and telemetry reconciliation is paid on "de eerste werkdag van de zesde maand na de reconciliatiemaand" (art. 10.27(13)). With delivery starting in month 1, **the first D invoice falls in month 7**.
 - The brief said months 5 and 6 (section 10).
