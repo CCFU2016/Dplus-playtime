@@ -255,8 +255,9 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var daily = st.collateralMode === 'daily';
     var peakC = daily ? maxOf(function () { return true; }) : split.C;
     var weekdayC = daily ? (maxOf(function (x) { return x.gap === 1; }) || peakC) : split.C;
-    // Direct+ accepts cash only, no bank guarantees (Direct+ decision, 26 Sep 2026): so no default-fund contribution either.
-    var form = L.form(peakC, false, num(st.cap));
+    // Direct+ accepts cash only (Direct+ decision, 26 Sep 2026): no bank guarantees, and the wallet holds no ECC default fund.
+    // A cap limit (ECC, optional) caps the collateral that counts for limits, so collateral needed above it is out of reach.
+    var cap = num(st.cap), overCap = cap != null && peakC > cap;
 
     // Part 3: BRP security on the member's own figures. Direct+ members put up their marginal collateral: no minimum and
     // no volume floors, which apply once to the Direct+ BRP (Direct+ decision, 26 Sep 2026). 'standalone' is the member as its own
@@ -306,7 +307,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       total: total, parts: parts, segments: seg,
       // With daily collateral: what the wallet needs Monday to Thursday, when only the weekday amount sits at ECC.
       weekdayTotal: total - peakC + weekdayC,
-      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, form: form, targets: tg, baseLimits: bl, binding: binding, windows: ws },
+      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, overCap: overCap, targets: tg, baseLimits: bl, binding: binding, windows: ws },
       settlement: { windows: ws, need: cash.need + carry, flows: cash.need, float: carry, path: cash.path },
       brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
       tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }

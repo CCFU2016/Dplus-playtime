@@ -215,32 +215,11 @@ fast enough for two markets.
 - On a Monday, OR covers three days.
 - The deck example needs **€502,986 at OR 0 and €602,986 at OR €100k**, both at 33/67. I checked both against the current engine on 26 Sep 2026.
 
-### 2.7 Collateral form, default fund, cap
+### 2.7 Collateral form and cap
 
-**Direct+ accepts cash only (Niki, 26 Sep 2026).** The wallet never uses a bank guarantee, so ECC's guarantee cap and
-the default-fund contribution below don't apply to Direct+ members. They stay documented here because they are ECC's
-rules for DCPs generally, and `ecc-link.js` (`form`) still implements them.
-
-**Source:** ECC risk page.
-- **Accepted collateral:** "Cash funds in EUR and GBP" and "Bank Guarantee in EUR and GBP".
-- **Guarantee cap:** "there is a bank-guarantee-only collateral limit of currently 40 million EUR … For trading limits exceeding 40 million EUR, the excess amount must be backed by a minimum of 50% in cash collateral."
-
-```
-guarantee_max = C                          if C ≤ 40,000,000
-              = 40,000,000 + 0.5 × (C − 40,000,000) otherwise
-cash_min      = C − guarantee_max
-```
-
-**Default fund (purpose 1b).** "A minimum default fund contribution is required of every DCP member … posting
-guarantees as collateral … 4% of the guarantee value." It is "cash only" and settled through the connected account
-(CBA p.3: "cash collaterals and clearing funds").
-
-```
-default_fund ≥ 0.04 × guarantee
-```
-
-Stress-test add-ons ("the amount of exceedance is allocated to the DCP member as an additional clearing fund
-contribution") are shown as a possible extra, never as a number.
+**Direct+ accepts cash only (Niki, 26 Sep 2026).** The wallet never uses a bank guarantee. ECC's rules for guarantees
+(the €40m guarantee-only limit, and the 4% default-fund contribution ECC asks of DCPs that post guarantees; ECC risk page)
+don't apply, and **the ECC default fund is not part of the wallet** (Niki, 26 Sep 2026): the calculator doesn't model it.
 
 **Cap limit.** The ECC risk page says it's set "as part of the KYC process and reassessed once a year"; deck p.4
 says "starting at 3 mio €". It's an optional input, off by default. Collateral above the cap doesn't raise limits.
@@ -271,7 +250,7 @@ says "starting at 3 mio €". It's an optional input, off by default. Collateral
 **Net amount (signed):**
 
 ```
-N(D) = Σ buys × price − Σ sells × price + fees + clearing-fund change + cash-collateral change
+N(D) = Σ buys × price − Σ sells × price + fees + cash-collateral change   (no clearing fund: not part of the wallet, §2.7)
 ```
 
 Negative prices flip the sign by themselves. Fees are inputs with no defaults (Q7).
@@ -642,7 +621,7 @@ replenishment none. A throwaway script repeated each step with the engine, and e
 - **Result:** free ≥ 3 × 46,875 / 0.48 = 292,968.75 at 52/48, so **C = €406,594**. Without the open risk it would be €402,344.
 
 **Form:**
-- All cash, as Direct+ requires, so there is no default-fund contribution. (With a guarantee, ECC would ask at least 4% of it, €5,029.80 to €16,263.76, in cash.)
+- All cash, as Direct+ requires.
 
 ### 8.2 Part 2: ECC settlement cash
 
@@ -699,7 +678,7 @@ Under the draft, the marginal ramp-up series builds to €7,973 by month 5: B ha
 
 ### 8.5 The total
 
-Direct+ marginal collateral, rule in force on 5 October 2026, all cash (Direct+ accepts no guarantees, so no default fund). Pinned by
+Direct+ marginal collateral, rule in force on 5 October 2026, all cash (Direct+ accepts no guarantees). Pinned by
 `tests/wallet/wallet.test.js` and shown on the page:
 
 | Purpose | Wallet segment | Form | Label | Expected | Stress |
@@ -788,6 +767,7 @@ Everything else the brief states, I found in the sources as described:
 4. **Imbalance and reconciliation:** each member pays its own, as if it were its own BRP. Part 4 uses the member's own invoices.
    - Same day, later: **no minimum for Direct+ members, only the marginal collateral.** BRP security is the rule on the member's own figures, without the €96,000 minimum or the 50 MW floors (section 4.4).
    - Same day: **Direct+ accepts cash only, no bank guarantees.** Every part of the wallet is cash, and there is no ECC default-fund contribution.
+   - Same day, later: **take the ECC default fund out of the wallet.** The guarantee and default-fund helper (`ecc-link.js` `form`) is removed; only the cap-limit flag remains (`ecc.overCap`).
 5. **Presets:** not approved; waiting for Niki. Phases 1–4 don't use them.
 
 ### 11.2 The original gate questions (from the brief)

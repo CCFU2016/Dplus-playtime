@@ -78,17 +78,6 @@ var WalletEccLink = (function (E) {
     return best;
   }
 
-  /* Collateral form (ECC DCP Risk Management page): "trading limits up to 40 million EUR can be covered by bank
-     guarantees only. For trading limits exceeding 40 million EUR, the excess amount must be backed by a minimum of 50%
-     in cash collateral." Default fund: "4% of the guarantee value", cash only. A cap limit (optional) caps the collateral
-     that counts for limits, so collateral needed above it is out of reach. */
-  var GUARANTEE_ONLY = 40000000, CASH_ABOVE = 0.5, DEFAULT_FUND = 0.04;
-  function form(C, useGuarantee, cap) {
-    var gMax = C <= GUARANTEE_ONLY ? C : GUARANTEE_ONLY + (1 - CASH_ABOVE) * (C - GUARANTEE_ONLY);
-    var g = useGuarantee ? gMax : 0;
-    return { collateral: C, guarantee: g, cash: C - g, defaultFund: DEFAULT_FUND * g, overCap: cap != null && C > cap };
-  }
-
-  return { baseLimits: baseLimits, targets: targets, meets: meets, solve: solve, cheapest: cheapest, form: form };
+  return { baseLimits: baseLimits, targets: targets, meets: meets, solve: solve, cheapest: cheapest };
 })(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'));
 if (typeof module !== 'undefined') module.exports = WalletEccLink;

@@ -68,14 +68,8 @@ T.eq(st.ws.map(w => w.net), [12750, 4250, 4250, 4250, 4250], 'stress: window amo
 T.money(st.cash, 29750, 'stress: settlement cash');
 T.eq(st.best, { key: 52, C: 406594 }, 'stress: €406,594 at 52/48');
 
-// 4. Collateral form (ECC DCP Risk Management page).
-let fm = L.form(50e6, true);
-T.money(fm.guarantee, 45e6, 'ECC\'s example: €50m with the most guarantee → €45m guarantee');
-T.money(fm.cash, 5e6, 'ECC\'s example: … and €5m cash');
-fm = L.form(125745, true);
-T.money(fm.defaultFund, 5029.8, 'default fund: 4% of the guarantee');
-T.eq([L.form(125745, false).guarantee, L.form(125745, false).defaultFund], [0, 0], 'all cash: no guarantee, no default fund');
-T.ok(L.form(4e6, false, 3e6).overCap && !L.form(2e6, false, 3e6).overCap, 'collateral above the cap limit is flagged');
+// 4. Direct+ is cash only: no guarantee split and no default fund in the wallet.
+T.ok(!('form' in L), 'no collateral-form (guarantee, default fund) helper');
 // Base limits: the update hour stretches the evening buying (§2.4); overrides win.
 const bl = L.baseLimits({ restingCont: 10000, eveningCont: 5000, updateHour: 19, restingAuc: 2000, override: { da: { nbd: 7000 } } });
 T.eq(bl, { cont: { bd: 17500, nbd: 0 }, da: { bd: 2000, nbd: 7000 } }, 'base limits from behaviour, with an override');

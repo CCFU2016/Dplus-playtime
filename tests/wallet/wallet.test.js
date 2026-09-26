@@ -18,6 +18,8 @@ T.eq([ft.expected.ecc.key, ft.expected.ecc.binding.date], [53, '2026-10-09'], 'f
 T.eq([ft.expected.brp.rule, ft.expected.brp.basis], ['current', 'marginal'], 'October 2026: the rule in force, marginal collateral');
 T.money(ft.expected.brp.draft.security, 7973, 'financial trader: under the draft, 4B = 4 × 1,993.25 and no minimum');
 T.money(ft.expected.segments.trading + ft.expected.segments.brp + ft.expected.segments.available, ft.expected.total, 'segments add up to the total');
+T.ok(!ft.expected.ecc.overCap && C.compute(Object.assign(C.preset('trader'), { cap: 100000 })).expected.ecc.overCap, 'collateral above the cap limit is flagged');
+T.ok(!JSON.stringify(ft).includes('efaultFund') && !JSON.stringify(ft).includes('guarantee'), 'no default fund or guarantee in the result');
 
 // On your own as a BRP (for comparison): the minimum and the 50 MW floors apply.
 let s = C.preset('trader'); s.brpBasis = 'standalone';

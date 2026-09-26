@@ -21,7 +21,7 @@ var WalletSettlement = (function (E) {
   }
 
   /* Windows closing on each of closeDays, with their amounts. flowOf(isoDay) → { net } for one trading day: what its
-     trades cost (WalletBehaviour.dayFlows); extras(window) → fees, clearing-fund and cash-collateral items (optional).
+     trades cost (WalletBehaviour.dayFlows); extras(window) → fees and cash-collateral items (optional).
      OR(D) = max(net of the window's trades, 0): purchases not yet paid, for the engine's evening calculation. Fees and
      collateral items are paid in the same collection but are not open risk. */
   function windows(closeDays, flowOf, extras) {

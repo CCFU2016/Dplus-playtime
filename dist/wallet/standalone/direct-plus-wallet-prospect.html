@@ -732,7 +732,7 @@ var WalletSettlement = (function (E) {
   }
 
   /* Windows closing on each of closeDays, with their amounts. flowOf(isoDay) → { net } for one trading day: what its
-     trades cost (WalletBehaviour.dayFlows); extras(window) → fees, clearing-fund and cash-collateral items (optional).
+     trades cost (WalletBehaviour.dayFlows); extras(window) → fees and cash-collateral items (optional).
      OR(D) = max(net of the window's trades, 0): purchases not yet paid, for the engine's evening calculation. Fees and
      collateral items are paid in the same collection but are not open risk. */
   function windows(closeDays, flowOf, extras) {
@@ -861,18 +861,7 @@ var WalletEccLink = (function (E) {
     return best;
   }
 
-  /* Collateral form (ECC DCP Risk Management page): "trading limits up to 40 million EUR can be covered by bank
-     guarantees only. For trading limits exceeding 40 million EUR, the excess amount must be backed by a minimum of 50%
-     in cash collateral." Default fund: "4% of the guarantee value", cash only. A cap limit (optional) caps the collateral
-     that counts for limits, so collateral needed above it is out of reach. */
-  var GUARANTEE_ONLY = 40000000, CASH_ABOVE = 0.5, DEFAULT_FUND = 0.04;
-  function form(C, useGuarantee, cap) {
-    var gMax = C <= GUARANTEE_ONLY ? C : GUARANTEE_ONLY + (1 - CASH_ABOVE) * (C - GUARANTEE_ONLY);
-    var g = useGuarantee ? gMax : 0;
-    return { collateral: C, guarantee: g, cash: C - g, defaultFund: DEFAULT_FUND * g, overCap: cap != null && C > cap };
-  }
-
-  return { baseLimits: baseLimits, targets: targets, meets: meets, solve: solve, cheapest: cheapest, form: form };
+  return { baseLimits: baseLimits, targets: targets, meets: meets, solve: solve, cheapest: cheapest };
 })(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'));
 /* Direct+ wallet: BRP security for TenneT, art. 10.8 in force and as drafted (docs/wallet-model.md §4).
    Each member is treated as its own BRP (Direct+ decision, 26 Sep 2026; wallet-model §4.4).
@@ -1463,8 +1452,9 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var daily = st.collateralMode === 'daily';
     var peakC = daily ? maxOf(function () { return true; }) : split.C;
     var weekdayC = daily ? (maxOf(function (x) { return x.gap === 1; }) || peakC) : split.C;
-    // Direct+ accepts cash only, no bank guarantees (Direct+ decision, 26 Sep 2026): so no default-fund contribution either.
-    var form = L.form(peakC, false, num(st.cap));
+    // Direct+ accepts cash only (Direct+ decision, 26 Sep 2026): no bank guarantees, and the wallet holds no ECC default fund.
+    // A cap limit (ECC, optional) caps the collateral that counts for limits, so collateral needed above it is out of reach.
+    var cap = num(st.cap), overCap = cap != null && peakC > cap;
 
     // Part 3: BRP security on the member's own figures. Direct+ members put up their marginal collateral: no minimum and
     // no volume floors, which apply once to the Direct+ BRP (Direct+ decision, 26 Sep 2026). 'standalone' is the member as its own
@@ -1514,7 +1504,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       total: total, parts: parts, segments: seg,
       // With daily collateral: what the wallet needs Monday to Thursday, when only the weekday amount sits at ECC.
       weekdayTotal: total - peakC + weekdayC,
-      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, form: form, targets: tg, baseLimits: bl, binding: binding, windows: ws },
+      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, overCap: overCap, targets: tg, baseLimits: bl, binding: binding, windows: ws },
       settlement: { windows: ws, need: cash.need + carry, flows: cash.need, float: carry, path: cash.path },
       brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
       tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }
