@@ -462,8 +462,10 @@
     }
     var b = x.ecc.binding;
     card('var(--p-ecc)', 'ECC trading collateral', x.ecc.C, y.ecc.C,
-      'Set by the calculation on ' + dLabel(b.date) + (b.gap > 1 ? ', whose limit has to last ' + b.gap + ' days until the next business day,' : '') + ' at a ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ' split between continuous and auctions.',
-      b.gap > 1 && st.weekend ? [['weekend', 'Weekend trading'], ['s', 'Buys offset by sells']] : [['contBuy', 'Continuous buying'], ['aucLimitPrice', 'Auction bid prices']]);
+      x.ecc.mode === 'daily'
+        ? 'Optimised by day: ' + eur(x.ecc.weekday) + ' on normal weekdays, ' + eur(x.ecc.peak) + ' at the highest (the calculation before a weekend or holiday), each day with its own split. Static would be one amount all week.'
+        : 'Set by the calculation on ' + dLabel(b.date) + (b.gap > 1 ? ', whose limit has to last ' + b.gap + ' days until the next business day,' : '') + ' at a ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ' split between continuous and auctions.',
+      b.gap > 1 && st.weekend ? [['collateralMode', 'Collateral optimised by day'], ['weekend', 'Weekend trading']] : [['contBuy', 'Continuous buying'], ['aucLimitPrice', 'Auction bid prices']]);
     var se = x.settlement, seText = 'ECC settles each business day\'s trades from the wallet as one net payment. ';
     if (se.float > 0.5) seText += 'Purchases you sell only after the 16:00 cut are paid one collection before the sale comes back, so about ' + eur(se.float) + ' stays in the wallet as a float.' + (se.flows < 0.5 ? ' Otherwise your buys and sells net to about zero.' : ' On top of that come the week\'s net purchases, ' + eur(se.flows) + '.');
     else if (se.flows < 0.5) seText += 'Yours net to about zero or to money coming in, so apart from fees nothing has to wait in the wallet.';
@@ -610,7 +612,7 @@
     last = r;
     $('hero-label').textContent = 'Money needed in your Direct+ wallet, week of ' + dLabel(state.week, true);
     var hv = clear($('hero-value')); hv.appendChild(document.createTextNode(eur(r.expected.total) + ' ')); hv.appendChild(el('span', 'to', 'to')); hv.appendChild(document.createTextNode(' ' + eur(r.stress.total)));
-    $('hero-sub').textContent = 'Expected to stress. All of it is cash: Direct+ does not accept bank guarantees.';
+    $('hero-sub').textContent = 'Expected to stress. All of it is cash: Direct+ does not accept bank guarantees.' + (r.expected.ecc.mode === 'daily' ? ' With collateral optimised by day, the wallet needs about ' + eur(r.expected.weekdayTotal) + ' on normal weekdays; the full amount from the evening calculation before a weekend or holiday until after it.' : '');
     renderBars(r); renderPurposeTable(r); renderParts(r); renderTimeline(r); renderBrp(r); renderSens(r); renderAssumptions(r);
   }
   var timer = null;

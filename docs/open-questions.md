@@ -31,7 +31,7 @@ Settings page, tagged "Assumed", "Interpretation" or "ECC setting", with its sou
 | W1 | Does ECC's DCP auction limit cover intraday auctions like the exchange limit does (same as question 4)? | ECC | Yes |
 | W2 | Does a sell trade in an auction credit the auction limit? | ECC | No credit |
 | W3 | The realistic price range, the market maximum and the market minimum used for orders without a limit price. Can a DCP set the range, or only a clearing member? | ECC / Niki | Not set (orders need a limit price) |
-| W4 | Do ECC's O09 timing and any per-change fee apply to settings changed in the Direct+ platform? | Direct+ | Not modelled |
+| W4 | Do ECC's O09 timing and any per-change fee apply to settings changed in the Direct+ platform? And how fast does a collateral change (O10) count, since "optimised by day" collateral assumes it counts in that day's evening calculation? | Direct+ / ECC | Not modelled; static collateral is the default |
 | W5 | ECC, EPEX and Direct+ fees. | Niki | €0, marked "not set" |
 | W6 | Aggregators: does the wallet also fund the bilateral (non-exchange) leg? | Niki | No; ECC settles only the exchange leg |
 | W7 | TenneT's weekly invoicing calendar: the debit day of imbalance invoices, and the Dutch working-day list it uses (the page uses the Algemene termijnenwet holidays). | TenneT | Four weeks after the delivery week, first working day |

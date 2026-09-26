@@ -64,6 +64,11 @@ with sync_playwright() as pw:
     walk(pg, 'trader', {2: lambda p: p.click('label[for="w-yes"]'), 5: production})
     brp = [r for r in pg.eval_on_selector_all('#purposes tbody tr', 'rs => rs.map(r => r.innerText)') if r.startswith('BRP collateral')]
     check(brp and '€21,000' in brp[0], 'production adds BRP collateral: ' + (brp[0].split('\t')[-1] if brp else 'none'))
+    # Collateral adjusted every business day: the headline shows the weekday and the weekend amount; the selector switches.
+    h = walk(pg, 'trader', {7: lambda p: p.click('label[for="k-daily"]')})
+    check('during the week' in h and 'around the weekend' in h, 'daily collateral: weekday and weekend amounts: ' + h)
+    pg.select_option('#cmode', 'static'); pg.wait_for_timeout(1500)
+    check('during the week' not in pg.inner_text('#hero-value'), 'the collateral selector switches back to static: ' + pg.inner_text('#hero-value'))
     # Validation: with a tough week, a tough-week price below the normal price is refused.
     pg.click('#edit'); pg.wait_for_timeout(200)
     for step in range(1, 4): pg.click('#next'); pg.wait_for_timeout(100)

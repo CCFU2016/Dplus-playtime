@@ -14,7 +14,14 @@ with sync_playwright() as pw:
     pg.click('label[for=mode-inv]'); pg.wait_for_timeout(300)
     pg.click('label:has(#scope-week)'); pg.click('label:has(#key-cheapest)'); pg.wait_for_timeout(400)
     tile = pg.eval_on_selector_all('.tile', 'ts => ts.map(t => t.innerText.replace(/\\n/g, " / "))')[0]
+    # Optimised by day: each day on its own with its own cheapest split (Fri €580,282 at 29/71, Mon-Wed €350,323,
+    # Thu €390,323), the static amount for comparison, and the average held weighted by calendar days.
+    pg.click('label:has(#cmode-daily)'); pg.wait_for_timeout(500)
+    tiles = pg.eval_on_selector_all('.tile', 'ts => ts.map(t => t.innerText.replace(/\\n/g, " / "))')
+    week = pg.inner_text('#week-table')
     b.close()
-ok = not errs and '602,986' in tile
+daily_ok = len(tiles) == 3 and '580,282' in tiles[0] and '350,323' in tiles[0] and '390,323' in tiles[0] and '602,986' in tiles[1] and '454,591' in tiles[2] and 'COLLATERAL THAT DAY' in week.upper()
+print('optimised by day:', tiles, '| week table has the column:', 'COLLATERAL THAT DAY' in week.upper())
+ok = not errs and '602,986' in tile and daily_ok
 print('first tile:', tile); print('errors:', errs or 'none')
 print('UI smoke test', 'passed' if ok else 'FAILED'); sys.exit(0 if ok else 1)

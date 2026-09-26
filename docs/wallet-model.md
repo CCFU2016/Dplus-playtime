@@ -819,6 +819,7 @@ it, the answers, the assumptions and the sources. It can be printed or saved as 
 
 - **Calculation:** the same as the calculator (`WalletCalc.compute`).
 - **What it leaves out:** internal references, tags and the "on your own as a BRP" comparison (W11).
+- **Collateral:** static (the same all week) or adjusted every business day. The estimate then shows what the wallet needs during the week and around the weekend.
 - **Rounding:** every amount is shown to the nearest €1,000 (on the calculator page too): these are estimates, not exact figures (Niki, 26 Sep 2026).
 
 Answers map onto settings in `wallet.js` (`defaultAnswers`, `strategyVolumes`, `fromAnswers`). With each type's
@@ -839,3 +840,18 @@ default answers the settings equal that type's preset exactly, and `tests/wallet
 | Top-ups | Top-up rhythm (Direct+ accepts cash only, so there is no question about guarantees). The estimate also compares all three rhythms (not during the week, every Monday, every business day) and has a top-up selector, so a prospect sees what topping up more often changes |
 
 Everything else stays at the preset. The page lists it under "What we assumed".
+
+## 13. Static or daily-optimised ECC collateral (Niki, 26 Sep 2026)
+
+Setting `collateralMode` (calculator: Settings; questionnaire: question 7 and a selector in the estimate).
+
+- **Static** (default): one amount all week, from the week solve (section 2.6).
+- **Optimised by day:** each calculation day is solved on its own with the engine's public `solve` / `cheapestKey` on that single day. For one day, open risk and targets are constant, so this equals the wallet's own solver (`tests/wallet/ecc-link.test.js` checks that equivalence).
+  - The ECC part is the highest day (the peak, usually the calculation before a weekend or holiday).
+  - `weekdayTotal` replaces it with the highest normal weekday (one-day gap).
+- **The peak isn't lower.** Optimising by day means less money sits at ECC from Monday to Thursday; the wallet still needs the peak by the evening calculation before a weekend.
+- **ASSUMPTION:** changes are in place by that day's evening calculation (W4).
+
+Financial trader, week of 5 Oct 2026:
+- ECC collateral: €58,681 Monday to Thursday (47/53), €125,745 on Friday (53/47).
+- Wallet: about €67,000 during the week, €134,000 around the weekend.

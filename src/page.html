@@ -179,6 +179,7 @@
   tbody td { border-bottom: 1px solid var(--rule); font-size: 14px; }
   tbody tr.sel td { background: var(--surface-2); }
   td.low { font-weight: 600; }
+  .small-split { font-size: 11.5px; color: var(--muted); font-weight: 400; }
   .gl { border-left: 1px solid var(--rule); }
   .pill { display: inline-block; font-size: 11.5px; font-weight: 500; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
   .pill.crit { background: var(--critical-bg); color: var(--critical); border: 1px solid var(--critical); }
@@ -276,6 +277,13 @@
           <label class="check"><input type="checkbox" id="t-da-nonbd" checked> Also at weekend and holiday auctions</label>
         </div>
         <div class="field">
+          <span class="label">Collateral</span>
+          <div class="radio-row" role="radiogroup" aria-label="Collateral: static or optimised by day">
+            <label><input type="radio" name="cmode" id="cmode-static" value="static" checked> Static: the same amount all week, sized for its hardest day</label>
+            <label><input type="radio" name="cmode" id="cmode-daily" value="daily"> Optimised by day: changed every business day, less during the week and more before weekends and holidays</label>
+          </div>
+        </div>
+        <div class="field" id="scope-field">
           <span class="label">Size for</span>
           <div class="radio-row" role="radiogroup" aria-label="Which days to size for">
             <label><input type="radio" name="scope" id="scope-weekend" value="weekend" checked> The weekend only: the calculation before the next weekend or holiday, as in the deck</label>
@@ -356,6 +364,7 @@
         <h2>Your settings for the Direct+ platform</h2>
         <p class="sub">You set these per market in the Direct+ platform. Base limits are optional; the two splits add up to 100%.</p>
         <div class="table-wrap"><table id="o09-table"></table></div>
+        <p class="hint" id="o09-note" hidden>Your collateral and split change by day: see the week table above. These are the settings for the day that needs the most collateral.</p>
         <div class="copy-row"><button type="button" class="btn" id="copy-o09">Copy as table</button><span class="copy-state" id="copy-state" aria-live="polite"></span></div>
       </section>
     </section>
@@ -390,6 +399,7 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
           <li>After a weekend or holiday, the next business day's auction is back at the full limit, as in ECC's client deck (ECC's simulation tool shows only one day's share there). ECC's worked example fits two readings: the unused weekend or holiday limit carried over, or the normal weekday level. With both markets and weekend base limits they differ by a few thousand euros; the calculator shows the lower one, assuming those auctions went unused.</li>
           <li>When collateral does not cover the reserved base limits, ECC's tool flags the setup as invalid. Adjust base limits or collateral.</li>
           <li>ECC business days for 2026–2027 from ECC's calendar. Base limits are used as entered (ECC's tool rounds them up to the next €10).</li>
+          <li>"Optimised by day" sizes each business day's calculation on its own and assumes you change your collateral (and split) every business day, in time for that day's evening calculation. Collateral changes run through ECC's daily payment cycle, so check the timing with ECC or in the Direct+ platform before relying on it.</li>
           <li>EUR only. GB markets (GBP, FX, delivery risk) are out of scope.</li>
         </ul>
       </div>
@@ -452,6 +462,7 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
       tCont: num('t-cont'), tContMeasure: document.querySelector('input[name="t-cont-when"]:checked').value,
       tDa: num('t-da'), tDaNonBD: $('t-da-nonbd').checked,
       keyMode: document.querySelector('input[name="keymode"]:checked').value,
+      cmode: document.querySelector('input[name="cmode"]:checked').value,
       scope: document.querySelector('input[name="scope"]:checked').value
     };
   }
@@ -475,13 +486,28 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
       if (s.keyMode === 'cheapest') { if (best) { key = best.key; C = best.C; } else C = null; }
       else C = mine;
       inv.C = C; inv.key = key;
-      if (C !== null) {
+      if (s.cmode === 'daily') {
+        // Optimised by day: each calculation day on its own, with its own split when the cheapest split is chosen.
+        var one = function (d) { return s.keyMode === 'cheapest' ? E.cheapestKey([d], base, tgt) : { key: s.split, C: E.solve([d], base, tgt) }; };
+        inv.daily = days.map(one);
+        inv.staticWeek = s.keyMode === 'cheapest' ? E.cheapestKey(days, base, tgt) : { key: s.split, C: E.solve(days, base, tgt) };
+        if (inv.daily.some(function (x) { return !x || x.C === null; })) { inv.daily = null; C = null; inv.C = null; }
+        else {
+          var peak = inv.daily.reduce(function (m, x) { return !m || x.C > m.C ? x : m; }, null);
+          C = peak.C; key = peak.key; inv.C = C; inv.key = key; inv.binding = null;
+        }
+      }
+      if (C !== null && !inv.daily) {
         var q = { OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: key }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - key } };
         inv.binding = E.binding(C, solveDays, q, tgt);
       }
     }
     var p = { C: C === null ? 0 : C, OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: key }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - key } };
-    var rows = days.map(function (d) { return E.day(d, p); });
+    var rows = days.map(function (d, i) {
+      var pi = p;
+      if (inv && inv.daily) pi = { C: inv.daily[i].C, OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: inv.daily[i].key }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - inv.daily[i].key } };
+      var r = E.day(d, pi); r.p = pi; return r;
+    });
     return { s: s, days: days, rows: rows, p: p, key: key, C: C, inv: inv };
   }
 
@@ -510,6 +536,17 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
       var inv = res.inv;
       if (inv.C === null) {
         box.appendChild(tile('Collateral needed', 'Not reachable', 'A market with a 0% split cannot get above its base limit. Change the split or the target.', { hero: true }));
+        return;
+      }
+      if (inv.daily) {
+        var rowsD = res.rows, pk = maxBy(rowsD, function (r) { return r.p.C; }), others = rowsD.filter(function (r) { return r !== pk; });
+        var lo = minBy(others, function (r) { return r.p.C; }), hi2 = maxBy(others, function (r) { return r.p.C; });
+        var held = 0, daysHeld = 0;
+        rowsD.forEach(function (r) { held += r.p.C * r.gap1; daysHeld += r.gap1; });
+        box.appendChild(tile('Collateral, optimised by day', eur(pk.p.C), 'highest for ' + dLabel(pk.date) + '\'s calculation' + (pk.gap1 > 1 ? ' (covers ' + pk.gap1 + ' days)' : '') + (lo ? ' · other days ' + eur(lo.p.C) + (Math.round(hi2.p.C) !== Math.round(lo.p.C) ? ' to ' + eur(hi2.p.C) : '') : ''), { hero: true }));
+        var sw = inv.staticWeek;
+        box.appendChild(tile('Static, for comparison', sw && sw.C !== null ? eur(sw.C) : 'Not reachable', sw && sw.C !== null ? 'one amount all week, split ' + sw.key + ' / ' + (100 - sw.key) : ''));
+        box.appendChild(tile('Average held over the week', eur(held / daysHeld), 'weighted by the calendar days each amount is in place'));
         return;
       }
       var splitTxt = inv.key + ' / ' + (100 - inv.key);
@@ -607,7 +644,7 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
     var mk = el('div', 'mk'); mk.appendChild(el('span', 'swatch sw-cont')); mk.appendChild(document.createTextNode('Continuous')); box.appendChild(mk);
     box.appendChild(cell('', eur(r.cont.l16), r.gap1 > 1 ? 'Covers ' + r.gap1 + ' days, until ' + dShort(r.nextBD) + ' 16:00' : 'Until the dynamic limit arrives'));
     box.appendChild(cell('', eur(r.cont.l18), r.gap1 > 1 ? 'Must last until ' + dShort(r.nextBD) + ' morning' : 'Until settlement'));
-    box.appendChild(cell('', eur(r.cont.l09), '+ ' + eur(r.refill * res.p.cont.key / 100) + ' settled, until 16:00'));
+    box.appendChild(cell('', eur(r.cont.l09), '+ ' + eur(r.refill * r.p.cont.key / 100) + ' settled, until 16:00'));
 
     var mk2 = el('div', 'mk'); mk2.appendChild(el('span', 'swatch sw-da')); mk2.appendChild(document.createTextNode('Day-ahead')); box.appendChild(mk2);
     box.appendChild(cell('', eur(r.da.l16), r.gap1 > 1 ? 'Per auction day (max of BD, NBD)' : 'Base limit'));
@@ -643,9 +680,9 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
     var bar = $('alloc-bar'), leg = $('alloc-legend');
     bar.textContent = ''; leg.textContent = '';
     $('alloc-title').textContent = 'Where your collateral goes on ' + dLabel(r.date);
-    var C = res.p.C;
+    var C = r.p.C;
     var parts = [
-      { v: res.p.OR, cls: 'sw-owed', label: 'Unsettled purchases (open risk)' },
+      { v: r.p.OR, cls: 'sw-owed', label: 'Unsettled purchases (open risk)' },
       { v: r.blrC, cls: 'sw-cont-res', label: 'Continuous: reserved for base limits' },
       { v: r.shareC, cls: 'sw-cont', label: 'Continuous: share of excess' },
       { v: r.blrA, cls: 'sw-da-res', label: 'Day-ahead: reserved for base limits' },
@@ -673,13 +710,16 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
   function renderWeek(res) {
     var t = $('week-table'); t.textContent = '';
     var thead = el('thead'), g = el('tr', 'grp');
-    g.appendChild(el('th', null, '')); g.appendChild(el('th', null, '')); g.appendChild(el('th', null, ''));
+    var daily = res.inv && res.inv.daily;
+    g.appendChild(el('th', null, '')); if (daily) g.appendChild(el('th', null, '')); g.appendChild(el('th', null, '')); g.appendChild(el('th', null, ''));
     var gc = el('th', 'gl'); gc.colSpan = 3; var sc = el('span'); sc.appendChild(el('span', 'swatch sw-cont')); sc.appendChild(document.createTextNode('Continuous')); gc.appendChild(sc); gc.style.textAlign = 'left'; g.appendChild(gc);
     var ga = el('th', 'gl'); ga.colSpan = 2; var sa = el('span'); sa.appendChild(el('span', 'swatch sw-da')); sa.appendChild(document.createTextNode('Day-ahead')); ga.appendChild(sa); ga.style.textAlign = 'left'; g.appendChild(ga);
     thead.appendChild(g);
     var h = el('tr');
-    ['Calculation day', 'Reserved for base limits', 'Excess collateral', '16:00', 'From 18:00', 'After settlement', 'Per auction from 18:00', 'Next business day\'s auction'].forEach(function (x, i) {
-      var th = el('th', (i === 3 || i === 6) ? 'gl' : null, x); th.scope = 'col'; h.appendChild(th);
+    var cols = ['Calculation day'].concat(daily ? ['Collateral that day'] : []).concat(['Reserved for base limits', 'Excess collateral', '16:00', 'From 18:00', 'After settlement', 'Per auction from 18:00', 'Next business day\'s auction']);
+    var off = daily ? 1 : 0;
+    cols.forEach(function (x, i) {
+      var th = el('th', (i === 3 + off || i === 6 + off) ? 'gl' : null, x); th.scope = 'col'; h.appendChild(th);
     });
     thead.appendChild(h); t.appendChild(thead);
     var tb = el('tbody');
@@ -691,6 +731,7 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
       if (r.gap1 > 1) d.appendChild(el('span', 'pill info', r.gap1 + '-day gap'));
       if (r.excess < 0) d.appendChild(el('span', 'pill crit', 'Shortfall'));
       tr.appendChild(d);
+      if (daily) { var cc = el('td', null, eur(r.p.C)); cc.appendChild(el('div', 'small-split', r.p.cont.key + ' / ' + r.p.da.key)); tr.appendChild(cc); }
       tr.appendChild(el('td', null, eur(r.blr)));
       tr.appendChild(el('td', r.excess < 0 ? 'neg' : null, eur(r.excess)));
       tr.appendChild(el('td', 'gl', eur(r.cont.l16)));
@@ -761,6 +802,7 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
     ];
   }
   function renderO09(res) {
+    $('o09-note').hidden = !(res.inv && res.inv.daily);
     var t = $('o09-table'); t.textContent = '';
     var thead = el('thead'), h = el('tr');
     [['Market', ''], ['Base limit, business day', 'r'], ['Base limit, non-business day', 'r'], ['Split of excess collateral', 'r']].forEach(function (x) { var th = el('th', x[1], x[0]); th.scope = 'col'; h.appendChild(th); });
@@ -790,6 +832,7 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
   function syncForm(s) {
     $('fwd-fields').hidden = s.mode !== 'fwd';
     $('inv-fields').hidden = s.mode !== 'inv';
+    $('scope-field').hidden = s.cmode === 'daily';
     $('split').style.setProperty('--split', s.split + '%');
     $('split-c').textContent = s.split + '%'; $('split-a').textContent = (100 - s.split) + '%';
     $('split-label').textContent = s.mode === 'inv' && s.keyMode === 'cheapest' ? 'Your current split (for comparison)' : 'Your split of excess collateral';

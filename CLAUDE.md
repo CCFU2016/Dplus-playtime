@@ -53,5 +53,5 @@ A second page in the same repo: how much money a Direct+ member needs, in which 
 
 ## Outside this repo
 
-- The published calculator lives at a claude.ai artifact link and is republished from a Claude chat, not from here. Hand over `dist/direct-plus-limit-calculator.html`. The wallet calculator's equivalents are `dist/wallet/direct-plus-wallet-calculator.html` and, for prospects, `dist/wallet/direct-plus-wallet-prospect.html` (not published yet).
+- The published calculator lives at a claude.ai artifact link and is republished from a Claude chat, not from here. Hand over `dist/direct-plus-limit-calculator.html`. It changed on 26 Sep 2026 (the static vs daily-optimised collateral option), so the published link needs republishing. The wallet calculator's equivalents are `dist/wallet/direct-plus-wallet-calculator.html` and, for prospects, `dist/wallet/direct-plus-wallet-prospect.html` (not published yet).
 - The member slide deck (a claude.ai Slides artifact) holds a **copy** of `src/engine.js` to generate its example numbers. After an engine change that alters numbers, say so, so the deck copy can be synced.

@@ -42,6 +42,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('measure', 'Limit that must hold the continuous target', '', 'select', 'ASSUMPTION', 'The evening limit applies until settlement (by 10:45 next business day, ECC deck p.3)', { options: [['l18', 'Evening limit (cautious)'], ['l09', 'Limit after settlement']] }),
       f('splitMode', 'Split between continuous and auctions', '', 'select', 'input', 'Set in the Direct+ platform', { options: [['cheapest', 'The split that needs the least collateral'], ['mine', 'My split']] }),
       f('key', 'My split: continuous share', '%', 'number', 'input', 'Auctions get the rest'),
+      f('collateralMode', 'Collateral at ECC', '', 'select', 'input', 'Keep one amount all week (sized for the weekend), or change it every business day: less during the week, more before weekends and holidays. Assumed to be in place by that day\'s evening calculation; how fast the Direct+ platform applies changes is open (W4)', { options: [['static', 'Static: the same all week'], ['daily', 'Optimised by day']] }),
       f('cap', 'Cap limit', '€', 'optional', 'ECC setting', 'Set by ECC at KYC, reviewed yearly (ECC DCP risk page); collateral above it does not raise limits'),
       f('aucMaxPrice', 'Market maximum price (orders without a limit price)', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10; no built-in value (Q9)'),
       f('aucMinPrice', 'Market minimum price (sells without a limit price)', '€/MWh', 'optional', 'ECC setting', 'INTERPRETATION of ECC manual §3.10 (Q9)'),
@@ -89,7 +90,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     contBuy: 0, contSell: 0, aucBuy: 0, aucSell: 0, aucLimitPrice: 150, nominatedIn: 0, nonDelivery: 0, weekend: true,
     price: 80, stressPrice: 250, stressAvgPrice: 120, negShare: 0.05, negPrice: -20,
     s: 0, restingCont: 0, eveningCont: 0, restingAuc: 0, restingAucWeekend: 0, updateHour: 18, stressUpdateHour: 19,
-    measure: 'l18', splitMode: 'cheapest', key: 60, cap: null,
+    measure: 'l18', splitMode: 'cheapest', key: 60, collateralMode: 'static', cap: null,
     aucMaxPrice: null, aucMinPrice: null, realMin: null, realMax: null,
     carryShare: 0, lossShare: 0.05, replenish: 'none', feesPerWindow: 0,
     imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
@@ -159,7 +160,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       capacityMW: type === 'asset' ? 30 : 0, sites: type === 'asset' ? 1 : 0,
       balance: type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast',
       lean: type === 'aggregator' ? 'short' : type === 'asset' ? 'long' : 'neither',
-      replenish: 'none', week: BASE.week
+      replenish: 'none', collateral: 'static', week: BASE.week
     };
   }
   function fromAnswers(a) {
@@ -184,7 +185,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     s.connectionsMW = sites.join(', ');
     s.profileMean = 0; s.smartMean = 0; s.profileSd = 0; s.smartSd = RECONCILIATION_SD_PER_MW * cap;
     s.shiftShare = pf.production && pf.consumption ? 1 : 0;
-    s.replenish = a.replenish;
+    s.replenish = a.replenish; s.collateralMode = a.collateral === 'daily' ? 'daily' : 'static';
     if (a.week) s.week = a.week;
     return s;
   }
@@ -237,8 +238,25 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       var c = L.solve(one, split.key);
       if (!binding || c > binding.C) binding = { date: E.iso(d), C: c, gap: E.day(d, { C: 0, OR: 0, cont: { bd: 0, nbd: 0, key: 0 }, da: { bd: 0, nbd: 0, key: 0 } }).gap1 };
     });
+    // Collateral by calculation day, each day on its own (with its own cheapest split when that is the choice). With
+    // 'daily' collateral the member changes it every business day (Niki, 26 Sep 2026): less during the week, more before
+    // weekends and holidays. ASSUMPTION: a change is in place by that day's evening calculation; how fast the Direct+
+    // platform applies it is open (W4). For one day the engine's own search gives the same answer as ecc-link.js.
+    var perDay = days.map(function (d) {
+      var iso = E.iso(d), nb = E.nextBD(d), tAuc = 0;
+      for (var x = new Date(d.getTime() + 864e5); x <= nb; x = new Date(x.getTime() + 864e5)) tAuc = Math.max(tAuc, tg.auc[E.iso(x)] || 0);
+      var p1 = { OR: OR[iso], cont: { bd: bl.cont.bd, nbd: bl.cont.nbd, key: +st.key }, da: { bd: bl.da.bd, nbd: bl.da.nbd, key: 100 - (+st.key) } };
+      var t1 = { cont: tg.cont[iso], contMeasure: st.measure || 'l18', da: tAuc, daNonBD: !!st.weekend };
+      var r = st.splitMode === 'mine' ? { key: +st.key, C: E.solve([d], p1, t1) } : E.cheapestKey([d], p1, t1);
+      return { date: iso, gap: Math.round((nb - d) / 864e5), key: r ? r.key : null, C: r ? r.C : null };
+    });
+    if (perDay.some(function (x) { return x.C === null; })) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
+    var maxOf = function (f) { var xs = perDay.filter(f).map(function (x) { return x.C; }); return xs.length ? Math.max.apply(null, xs) : null; };
+    var daily = st.collateralMode === 'daily';
+    var peakC = daily ? maxOf(function () { return true; }) : split.C;
+    var weekdayC = daily ? (maxOf(function (x) { return x.gap === 1; }) || peakC) : split.C;
     // Direct+ accepts cash only, no bank guarantees (Niki, 26 Sep 2026): so no default-fund contribution either.
-    var form = L.form(split.C, false, num(st.cap));
+    var form = L.form(peakC, false, num(st.cap));
 
     // Part 3: BRP security on the member's own figures. Direct+ members put up their marginal collateral: no minimum and
     // no volume floors, which apply once to the Direct+ BRP (Niki, 26 Sep 2026). 'standalone' is the member as its own
@@ -277,7 +295,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var account = W.accountNeed([{ date: debit, amount: invoice }], security, 0, ruleId === 'current' ? 'current' : undefined);
 
     var parts = [
-      { id: 'ecc', label: 'ECC trading collateral', segment: 'trading', value: split.C, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
+      { id: 'ecc', label: 'ECC trading collateral', segment: 'trading', value: peakC, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
       { id: 'settlement', label: 'ECC settlement', segment: 'available', value: cash.need + carry, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
       { id: 'brp', label: marginal ? 'BRP collateral (marginal)' : 'BRP security (TenneT)', segment: 'brp', value: security, form: 'Cash', formRule: 'Cash only', confidence: (ruleId === 'current' ? 'TenneT rule' : 'Draft rule') + ' · Direct+ contract' },
       { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate' }
@@ -286,7 +304,9 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     parts.forEach(function (p) { total += p.value; seg[p.segment] = (seg[p.segment] || 0) + p.value; });
     return {
       total: total, parts: parts, segments: seg,
-      ecc: { key: split.key, C: split.C, form: form, targets: tg, baseLimits: bl, binding: binding, windows: ws },
+      // With daily collateral: what the wallet needs Monday to Thursday, when only the weekday amount sits at ECC.
+      weekdayTotal: total - peakC + weekdayC,
+      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, form: form, targets: tg, baseLimits: bl, binding: binding, windows: ws },
       settlement: { windows: ws, need: cash.need + carry, flows: cash.need, float: carry, path: cash.path },
       brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
       tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }

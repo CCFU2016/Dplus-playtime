@@ -66,6 +66,17 @@ T.eq(Object.keys(C.BASE).filter(k => k !== 'week' && !keys.has(k)), [], 'every s
 Object.keys(C.PRESETS).forEach(id => T.eq(Object.keys(C.PRESETS[id].values).filter(k => !(k in C.BASE)), [], id + ': preset uses known settings only'));
 T.ok(ft.assumptions.length > 30 && ft.assumptions.every(a => a.src && a.tag !== 'input'), 'assumptions list: every non-input setting with a source');
 
+// Static vs daily-optimised collateral (Niki, 26 Sep 2026). Static: one amount all week, set by the Friday calculation.
+// Daily: each calculation day on its own, with its own cheapest split; the wallet needs the peak only around the weekend.
+T.eq([ft.expected.ecc.mode, ft.expected.weekdayTotal], ['static', ft.expected.total], 'static collateral: one amount all week');
+s = C.preset('trader'); s.collateralMode = 'daily';
+const dl = C.compute(s).expected;
+T.eq(dl.ecc.perDay.map(x => [x.date.slice(5), x.C, x.key]), [['10-05', 58681, 47], ['10-06', 58681, 47], ['10-07', 58681, 47], ['10-08', 58681, 47], ['10-09', 125745, 53]], 'daily collateral: €58,681 Monday to Thursday, €125,745 on Friday');
+T.eq([dl.ecc.weekday, dl.ecc.peak], [58681, 125745], 'daily collateral: weekday level and weekend peak');
+T.money(dl.weekdayTotal, 58681 + 8160 + 89.25, 'daily collateral: the wallet needs €66,930 during the week');
+T.money(dl.total, ft.expected.total, 'daily collateral: the peak around the weekend is the static amount here');
+T.ok(dl.ecc.perDay.every(x => x.C <= ft.expected.ecc.C), 'no day needs more than the static amount');
+
 // The prospect questionnaire: default answers give exactly each preset; answers move the right settings.
 Object.keys(C.PRESETS).forEach(id => {
   const s = C.fromAnswers(C.defaultAnswers(id)), p = C.preset(id);
