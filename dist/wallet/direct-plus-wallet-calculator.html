@@ -1191,10 +1191,10 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       values: { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, aucLimitPrice: 150, restingCont: 10000, eveningCont: 5000, carryShare: 0.3,
                 imbShare: 0.005, imbBase: 'traded', bias: 0 } },
     aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
-      values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000,
+      values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000, carryShare: 0.3,
                 imbShare: 0.03, imbBase: 'nominated', bias: 0.3 } },
     asset: { label: 'Asset-controlling party', note: 'A 30 MW solar park with a 10 MW battery.',
-      values: { contBuy: 20, contSell: 20, aucBuy: 0, aucSell: 90, restingCont: 2000, eveningCont: 1000, connectionsMW: '30',
+      values: { contBuy: 20, contSell: 20, aucBuy: 0, aucSell: 90, restingCont: 2000, eveningCont: 1000, carryShare: 0.3, connectionsMW: '30',
                 imbShare: 0.05, imbBase: 'production', bias: -0.2, shiftShare: 1, smartMean: 0, smartSd: 300 } }
   };
   function preset(id) {
@@ -1241,7 +1241,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     return {
       type: type, markets: 'both', weekend: 'yes', tough: false, strategy: NATURAL[type],
       contBuy: vol.cont.buy, contSell: vol.cont.sell, aucBuy: vol.auc.buy, aucSell: vol.auc.sell,
-      carry: type === 'trader' ? 'some' : 'none', nominatedIn: v.nominatedIn || 0, nonDelivery: v.nonDelivery || 0,
+      carry: 'some', nominatedIn: v.nominatedIn || 0, nonDelivery: v.nonDelivery || 0,
       price: BASE.price, stressPrice: BASE.stressPrice, aucLimitPrice: v.aucLimitPrice != null ? v.aucLimitPrice : BASE.aucLimitPrice,
       portfolio: type === 'asset' ? { production: true, consumption: true } : { production: false, consumption: false },
       capacityMW: type === 'asset' ? 30 : 0, sites: type === 'asset' ? 1 : 0,

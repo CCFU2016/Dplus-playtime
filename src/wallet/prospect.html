@@ -213,14 +213,6 @@
             <div class="num"><label for="nonDelivery">Share that may not be delivered</label><div class="in"><input type="number" id="nonDelivery" min="0" max="100" step="1" data-a="nonDelivery" data-pct="1"><span class="unit">%</span></div></div>
           </div>
         </div>
-        <div class="q"><span class="ql">Do you hold positions over ECC's 16:00 booking cut?</span>
-          <p class="hint">For example, buying day-ahead and selling intraday the next day. ECC collects the purchase one business day before the sale comes back, so that money has to wait in your wallet.</p>
-          <div class="choices cols">
-            <div class="choice"><input type="radio" name="carry" id="c-none" value="none"><label for="c-none"><b>No</b><span>I sell what I buy before 16:00 the same day.</span></label></div>
-            <div class="choice"><input type="radio" name="carry" id="c-some" value="some"><label for="c-some"><b>Some</b><span>About a third of my buys.</span></label></div>
-            <div class="choice"><input type="radio" name="carry" id="c-most" value="most"><label for="c-most"><b>Most</b><span>About two thirds of my buys.</span></label></div>
-          </div>
-        </div>
       </fieldset>
 
       <fieldset class="step" data-step="4" hidden>
@@ -648,7 +640,6 @@
     if (ans.markets !== 'auctions') add('Continuous, buy / sell', fmt.format(s.contBuy) + ' / ' + fmt.format(s.contSell) + ' MWh a day');
     if (ans.markets !== 'continuous') add('Auctions, buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
     if (ans.type === 'aggregator') add('Nominated from other BRPs', fmt.format(s.nominatedIn) + ' MWh a day, ' + Math.round(s.nonDelivery * 100) + '% may not be delivered');
-    add('Held over the 16:00 cut', { none: 'No', some: 'About a third of buys', most: 'About two thirds of buys' }[ans.carry]);
     if (ans.tough) add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh'); else add('Normal price', eurP(s.price) + ' per MWh');
     add('Tough week', ans.tough ? 'Shown' : 'Not shown');
     if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eurP(s.aucLimitPrice) + '/MWh');
@@ -663,6 +654,7 @@
     var rule = x.brp.rule === 'current' ? 'TenneT\'s rule in force (Systeemcode elektriciteit 2026, article 10.8)' : 'ACM\'s draft rule for 2027 (not yet final)';
     add('Your split between continuous and auctions is the one that needs the least collateral: ' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions. You set it in the Direct+ platform.');
     add('ECC updates limits around 18:00 on a best-effort basis' + (ans.tough ? '; a tough week assumes around 19:00' : '') + '. Open orders over 16:00 and trading until the update, ' + eur(s.restingCont) + ' and ' + eur(s.eveningCont) + ', are covered by your base limit.');
+    add('You hold some positions over ECC\'s 16:00 booking cut, about a third of a day\'s buys (for example bought day-ahead, sold intraday the next day). ECC collects those purchases a business day before the sale comes back, so that money waits in your wallet.');
     add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
     add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum.');
     add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions.' + (ans.tough ? ' A tough week takes a high but not extreme imbalance week.' : ''));

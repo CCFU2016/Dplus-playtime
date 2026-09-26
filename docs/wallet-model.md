@@ -303,8 +303,8 @@ receives the previous ones, so this amount stays in the wallet all the time:
 float = c × (gross MWh bought in a trading day) × price
 ```
 
-`c` is the share of a day's buys that is carried: an **ASSUMPTION**, 30% for the financial-trader preset (about its
-day-ahead buying) and 0 for the sellers. The float counts in the settlement need, in both the expected and the stress
+`c` is the share of a day's buys that is carried: an **ASSUMPTION**, 30% for every preset (about the trader's
+day-ahead buying). Niki: assume everyone holds some positions over 16:00. The float counts in the settlement need, in both the expected and the stress
 case. It doesn't change `OR`, because ECC's exposure nets buys and sells (deck p.4).
 
 The first model left this out, so a flat trader showed €0 in the expected case. Niki pointed out on 26 Sep 2026 that
@@ -565,7 +565,7 @@ release; I haven't verified them against market data.
 | Imbalance | 0.5% of traded volume, no bias, cv 0.5 | Only partial fills and slips at gate closure |
 | State-2 share / gap | 5% / €150 | Dual pricing is rare but expensive |
 | Settlement stress share x | 5% | A bad week for a flat desk |
-| Purchases paid before their sale | 30% of a day's buys | Roughly the day-ahead buying, sold intraday the next day |
+| Purchases paid before their sale | 30% of a day's buys (all three presets) | Roughly the day-ahead buying, sold intraday the next day; everyone is assumed to hold some positions over 16:00 |
 | Connections | none | |
 
 **Aggregator** (flexibility held in other BRPs' portfolios, as in the aggregator video)
@@ -832,7 +832,7 @@ default answers the settings equal that type's preset exactly, and `tests/wallet
 | Strategy | Fills the volumes. The type's own strategy keeps the preset; otherwise each market's total is split evenly (close positions), 10/90 (mainly sell) or 90/10 (mainly buy) |
 | Volumes | Buys and sells per market. Orders resting over 16:00 and evening buying scale with continuous buying (the preset's ratio) |
 | Aggregators: nominated in, not delivered | `nominatedIn`, `nonDelivery` |
-| Held over the 16:00 cut | Settlement float share: none 0, some 30%, most 70% |
+| (not asked) Held over the 16:00 cut | Niki asked to drop this question to reduce complexity (26 Sep 2026). Every prospect is assumed to hold some positions over the cut: settlement float share 30%, listed under "What we assumed" |
 | Prices, tough week | Typical price. The **tough week is optional** (off by default); only when chosen is its price asked and shown. The stress two-to-three-month average is 1.5 × typical (ASSUMPTION) |
 | Highest auction bid | `aucLimitPrice` (required when buying in auctions) |
 | Portfolio: production, consumption or none; total capacity; number of sites | Niki: "production vs consumption". Capacity is split over equal sites (ASSUMPTION) for the current rule's B. Reconciliation spread is €10 per MW a month (ASSUMPTION), in D: telemetry or smart meter, no profile metering (Q15). Production together with consumption (e.g. solar with a battery) means buying and selling in different periods (`shiftShare` 1). Production pre-selects "depends on a forecast" on the next question, consumption only "normal" (`suggestBalance`); the prospect can change it |
