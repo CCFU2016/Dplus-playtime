@@ -1,0 +1,829 @@
+<title>Direct+ Limit Calculator</title>
+<meta name="description" content="Collateral to trading limit and back, for EPEX continuous and day-ahead under ECC direct clearing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #f3f5f8;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink: #121a24;
+    --ink-2: #445061;
+    --muted: #6b7686;
+    --rule: #dbe0e7;
+    --rule-strong: #b7c0cc;
+    --owed: #5f6b7a;
+    --cont-res: #a9c9f3;
+    --cont: #2a78d6;
+    --da-res: #f5bea3;
+    --da: #eb6834;
+    --band: #f1f3f6;
+    --critical: #c3362c;
+    --critical-bg: #fbeceb;
+    --notice-ink: #7a5200;
+    --notice-bg: #fff5da;
+    --focus: #2a78d6;
+    --select-bg: #121a24;
+    --select-ink: #ffffff;
+    --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4;
+      --muted: #8f9aa7; --rule: #27313c; --rule-strong: #3b4755; --owed: #8b95a3; --cont-res: #1f4f8f;
+      --cont: #3987e5; --da-res: #7c3417; --da: #d95926; --band: #182029; --critical: #ef6b61;
+      --critical-bg: #3a1614; --notice-ink: #f4c35a; --notice-bg: #30260b; --focus: #6fa8f0;
+      --select-bg: #eef2f6; --select-ink: #0d1116;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4;
+    --muted: #8f9aa7; --rule: #27313c; --rule-strong: #3b4755; --owed: #8b95a3; --cont-res: #1f4f8f;
+    --cont: #3987e5; --da-res: #7c3417; --da: #d95926; --band: #182029; --critical: #ef6b61;
+    --critical-bg: #3a1614; --notice-ink: #f4c35a; --notice-bg: #30260b; --focus: #6fa8f0;
+    --select-bg: #eef2f6; --select-ink: #0d1116;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+  .page { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 24px; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Masthead */
+  .masthead { display: grid; gap: 8px; max-width: 780px; }
+  .eyebrow { font-family: var(--font-cond); font-weight: 600; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: clamp(28px, 3.6vw, 38px); line-height: 1.12; font-weight: 600; letter-spacing: -0.01em; }
+  .lede { font-size: 16.5px; color: var(--ink-2); max-width: 64ch; }
+  .fine { font-size: 12.5px; color: var(--muted); max-width: 90ch; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: minmax(290px, 350px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 920px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; }
+
+  /* Setup form */
+  .setup { padding: 18px; display: grid; gap: 18px; }
+  @media (min-width: 921px) { .setup { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); max-height: calc(100vh - 32px); overflow: auto; } }
+  .setup h2 { font-size: 15px; font-weight: 600; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; }
+  .field { display: grid; gap: 6px; }
+  .field > label, .label { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .hint { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .money { display: flex; align-items: center; border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--surface); }
+  .money:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .money span { padding-left: 10px; color: var(--muted); }
+  .money input { border: 0; background: transparent; width: 100%; min-width: 0; padding: 8px 10px 8px 6px; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .money input:focus-visible { outline: none; }
+  input[type="date"] { border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--surface); padding: 7px 10px; width: 100%; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule-strong); border-radius: 7px; padding: 3px; gap: 3px; background: var(--surface-2); }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label { text-align: center; font-size: 13px; font-weight: 500; padding: 7px 6px; border-radius: 5px; cursor: pointer; line-height: 1.3; }
+  .seg input:checked + label { background: var(--select-bg); color: var(--select-ink); }
+  .seg input:focus-visible + label { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-btn { border: 1px solid var(--rule-strong); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
+  .chip-btn:hover { background: var(--surface-2); }
+  .radio-row { display: grid; gap: 4px; }
+  .radio-row label, .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--ink-2); cursor: pointer; }
+  .radio-row input, .check input { margin-top: 3px; accent-color: var(--ink); }
+  .market { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--rule); }
+  .market legend { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; float: left; width: 100%; }
+  .market legend + * { clear: both; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+  .sw-cont { background: var(--cont); } .sw-da { background: var(--da); } .sw-owed { background: var(--owed); }
+  .sw-cont-res { background: var(--cont-res); } .sw-da-res { background: var(--da-res); }
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; border-radius: 5px; margin: 8px 0 2px;
+    background: linear-gradient(to right, var(--cont) 0 var(--split, 60%), var(--da) var(--split, 60%) 100%); }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); cursor: pointer; }
+  input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); cursor: pointer; }
+  input[type="range"]:disabled { opacity: .45; }
+  .split-read { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); }
+  .split-read b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Results */
+  .results { display: grid; gap: 20px; min-width: 0; }
+  .card { padding: 18px 20px 20px; display: grid; gap: 14px; min-width: 0; }
+  .card h2 { font-size: 17px; font-weight: 600; }
+  .card .sub { font-size: 13.5px; color: var(--ink-2); max-width: 75ch; }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 640px) { .tiles { grid-template-columns: minmax(0, 1fr); } }
+  .tile { padding: 16px 20px; display: grid; gap: 4px; align-content: start; border-left: 1px solid var(--rule); }
+  .tile:first-child { border-left: 0; }
+  @media (max-width: 640px) { .tile { border-left: 0; border-top: 1px solid var(--rule); } .tile:first-child { border-top: 0; } }
+  .tile .t-label { font-size: 13px; color: var(--ink-2); display: flex; align-items: center; gap: 7px; }
+  .tile .t-value { font-size: 30px; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
+  .tile.hero .t-value { font-size: 38px; }
+  .tile .t-sub { font-size: 12.5px; color: var(--muted); }
+  .alert { border-radius: 8px; padding: 12px 16px; font-size: 14px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert.critical { background: var(--critical-bg); color: var(--ink); border: 1px solid var(--critical); }
+  .alert .tag { font-family: var(--font-cond); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--critical); white-space: nowrap; padding-top: 1px; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tab { border: 1px solid var(--rule-strong); background: var(--surface); border-radius: 6px; padding: 5px 11px; font-size: 13px; cursor: pointer; display: grid; line-height: 1.25; text-align: left; }
+  .tab small { font-size: 11.5px; color: var(--muted); }
+  .tab[aria-selected="true"] { background: var(--select-bg); color: var(--select-ink); border-color: var(--select-bg); }
+  .tab[aria-selected="true"] small { color: inherit; opacity: .8; }
+  .card-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+
+  /* Daily cycle */
+  .cycle-wrap { overflow-x: auto; }
+  .cycle { display: grid; grid-template-columns: minmax(118px, .8fr) repeat(3, minmax(150px, 1fr)); min-width: 600px; }
+  .cycle > div { padding: 10px 12px; border-top: 1px solid var(--rule); }
+  .cycle .h { border-top: 0; padding-top: 0; display: grid; gap: 2px; align-content: end; }
+  .cycle .h .time { font-family: var(--font-cond); font-weight: 600; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink); }
+  .cycle .h .what { font-size: 12.5px; color: var(--muted); }
+  .cycle .mk { font-weight: 600; font-size: 14px; display: flex; gap: 8px; align-items: center; }
+  .cycle .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cycle .n { font-size: 12.5px; color: var(--muted); }
+  .cycle .step { position: relative; }
+  .cycle .step:not(.h) { border-left: 1px solid var(--rule); }
+
+  /* Allocation bar */
+  .alloc { display: grid; gap: 10px; }
+  .alloc h3 { font-size: 14px; font-weight: 600; }
+  .bar { display: flex; gap: 2px; height: 22px; position: relative; }
+  .bar .seg-b { height: 100%; min-width: 2px; cursor: default; }
+  .bar .seg-b:first-child { border-radius: 4px 0 0 4px; }
+  .bar .seg-b:last-child { border-radius: 0 4px 4px 0; }
+  .bar .seg-b:only-child { border-radius: 4px; }
+  .bar .seg-b:hover, .bar .seg-b:focus-visible { filter: brightness(1.08); }
+  .bar .marker { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--ink); }
+  .bar .marker span { position: absolute; top: -20px; transform: translateX(-50%); font-size: 12px; white-space: nowrap; color: var(--ink); }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 22px; font-size: 13px; }
+  .legend .li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; color: var(--ink-2); }
+  .legend .li b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .legend .total { border-top: 1px solid var(--rule); padding-top: 6px; grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--ink-2); }
+  .legend .total b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* Week table */
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 8px; text-align: right; }
+  td { white-space: nowrap; }
+  thead th { white-space: normal; min-width: 62px; line-height: 1.3; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-family: var(--font-cond); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); vertical-align: bottom; }
+  thead tr.grp th { font-size: 12.5px; color: var(--ink-2); padding-bottom: 2px; }
+  thead tr.grp th span { display: inline-flex; align-items: center; gap: 6px; }
+  thead tr:last-child th { border-bottom: 1px solid var(--rule-strong); }
+  tbody td { border-bottom: 1px solid var(--rule); font-size: 14px; }
+  tbody tr.sel td { background: var(--surface-2); }
+  td.low { font-weight: 600; }
+  .gl { border-left: 1px solid var(--rule); }
+  .pill { display: inline-block; font-size: 11.5px; font-weight: 500; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
+  .pill.crit { background: var(--critical-bg); color: var(--critical); border: 1px solid var(--critical); }
+  .pill.info { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--rule-strong); }
+  .neg { color: var(--critical); }
+
+  /* Auction chart */
+  .chart { width: 100%; min-height: 240px; }
+  .chart svg { display: block; overflow: visible; }
+  .chart text { font-family: var(--font); fill: var(--ink-2); }
+  .chart .tick { fill: var(--muted); font-size: 11.5px; }
+  .chart .xl { fill: var(--ink); font-size: 12.5px; font-weight: 500; }
+  .chart .xv { fill: var(--ink-2); font-size: 12px; }
+  .chart .dl { fill: var(--ink); font-size: 12.5px; font-weight: 600; }
+  .chart .hit { fill: transparent; cursor: default; }
+  .chart .hit:focus-visible { outline: none; stroke: var(--focus); stroke-width: 2px; }
+  .chart-key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); }
+  .chart-key span { display: inline-flex; align-items: center; gap: 6px; }
+  .band-key { width: 14px; height: 12px; background: var(--band); border: 1px solid var(--rule); border-radius: 2px; }
+  .line-key { width: 16px; height: 2px; background: var(--ink); }
+
+  /* O09 */
+  .o09 table { min-width: 560px; }
+  .o09 td, .o09 th { text-align: left; }
+  .o09 td.r, .o09 th.r { text-align: right; }
+  .code { font-family: var(--font-mono); font-size: 13px; }
+  .copy-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .btn { border: 1px solid var(--ink); background: var(--ink); color: var(--surface); border-radius: 6px; padding: 7px 14px; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .btn:hover { opacity: .9; }
+  .copy-state { font-size: 13px; color: var(--muted); }
+
+  /* Method */
+  .method { padding: 20px 22px; display: grid; gap: 16px; }
+  .method h2 { font-size: 17px; font-weight: 600; }
+  .method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  @media (max-width: 860px) { .method-grid { grid-template-columns: minmax(0, 1fr); } }
+  .method ol, .method ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; color: var(--ink-2); }
+  .method li b { color: var(--ink); font-weight: 600; }
+  .formula { font-family: var(--font-mono); font-size: 13px; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; color: var(--ink); overflow-x: auto; white-space: pre; line-height: 1.6; }
+  .method h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+
+  #tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12); max-width: 260px; }
+  #tip .tv { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #tip .tl { color: var(--ink-2); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">ECC direct clearing · EPEX continuous &amp; day-ahead · Netherlands, EUR</p>
+    <h1>Direct+ Limit Calculator</h1>
+    <p class="lede">See what trading limit your collateral gives you, or how much collateral a target limit needs. It applies ECC's dynamic limit rules day by day, including weekends and holidays.</p>
+    <p class="fine">Unofficial tool built on ECC's public DCP client materials (July 2025) and ECC's DCP Simulation Tool v1.3.5. Figures are indicative; ECC's own calculation always prevails.</p>
+  </header>
+
+  <main class="layout">
+    <form id="setup" class="setup panel" autocomplete="off" novalidate>
+      <fieldset>
+        <legend class="label" style="margin-bottom:8px">What do you want to work out?</legend>
+        <div class="seg">
+          <input type="radio" name="mode" id="mode-fwd" value="fwd" checked><label for="mode-fwd">Limits from my collateral</label>
+          <input type="radio" name="mode" id="mode-inv" value="inv"><label for="mode-inv">Collateral for a target limit</label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="week">Week</label>
+        <input type="date" id="week">
+        <div class="presets" id="presets">
+          <button type="button" class="chip-btn" data-week="next">Next week</button>
+          <button type="button" class="chip-btn" data-week="2026-12-21">Christmas 2026</button>
+          <button type="button" class="chip-btn" data-week="2026-12-28">New Year 2027</button>
+          <button type="button" class="chip-btn" data-week="2027-03-22">Easter 2027</button>
+        </div>
+      </div>
+
+      <div class="field" id="fwd-fields">
+        <label for="collateral">Collateral posted</label>
+        <div class="money"><span>€</span><input id="collateral" type="number" min="0" step="10000" value="500000" inputmode="decimal"></div>
+      </div>
+
+      <div id="inv-fields" class="field" hidden style="gap:14px">
+        <div class="field">
+          <label for="t-cont">Continuous limit you need</label>
+          <div class="money"><span>€</span><input id="t-cont" type="number" min="0" step="10000" value="150000" inputmode="decimal"></div>
+          <div class="radio-row" role="radiogroup" aria-label="When the continuous limit must be available">
+            <label><input type="radio" name="t-cont-when" id="t-cont-18" value="l18" checked> From around 18:00, before the next morning's settlement</label>
+            <label><input type="radio" name="t-cont-when" id="t-cont-09" value="l09"> After the next morning's settlement</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="t-da">Day-ahead limit per auction</label>
+          <div class="money"><span>€</span><input id="t-da" type="number" min="0" step="10000" value="100000" inputmode="decimal"></div>
+          <label class="check"><input type="checkbox" id="t-da-nonbd" checked> Also at weekend and holiday auctions</label>
+        </div>
+        <div class="field">
+          <span class="label">Size for</span>
+          <div class="radio-row" role="radiogroup" aria-label="Which days to size for">
+            <label><input type="radio" name="scope" id="scope-weekend" value="weekend" checked> The weekend only: the calculation before the next weekend or holiday, as in the deck</label>
+            <label><input type="radio" name="scope" id="scope-week" value="week"> The whole week, with one split for every day</label>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Split of excess collateral</span>
+          <div class="radio-row" role="radiogroup" aria-label="Split of excess collateral">
+            <label><input type="radio" name="keymode" id="key-cheapest" value="cheapest" checked> Find the split that needs the least collateral</label>
+            <label><input type="radio" name="keymode" id="key-mine" value="mine"> Use my split below</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="open-risk">Unsettled net purchases (open risk)</label>
+        <div class="money"><span>€</span><input id="open-risk" type="number" min="0" step="10000" value="100000" inputmode="decimal"></div>
+        <p class="hint">What you bought in the last trading day (volume × price, sales netted), paid the next morning. It never goes below zero.</p>
+      </div>
+
+      <fieldset class="market">
+        <legend><span class="swatch sw-cont"></span>Continuous</legend>
+        <div class="pair">
+          <div class="field"><label for="c-bd">Base limit, business day</label><div class="money"><span>€</span><input id="c-bd" type="number" min="0" step="5000" value="20000" inputmode="decimal"></div></div>
+          <div class="field"><label for="c-nbd">Base limit, non-business day</label><div class="money"><span>€</span><input id="c-nbd" type="number" min="0" step="5000" value="10000" inputmode="decimal"></div></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="market">
+        <legend><span class="swatch sw-da"></span>Day-ahead auction</legend>
+        <div class="pair">
+          <div class="field"><label for="a-bd">Base limit, business day</label><div class="money"><span>€</span><input id="a-bd" type="number" min="0" step="5000" value="10000" inputmode="decimal"></div></div>
+          <div class="field"><label for="a-nbd">Base limit, non-business day</label><div class="money"><span>€</span><input id="a-nbd" type="number" min="0" step="5000" value="10000" inputmode="decimal"></div></div>
+        </div>
+      </fieldset>
+
+      <p class="hint">Base limits carry you from 16:00 until the evening update around 18:00, which is best effort, so size them for that gap and for any orders you keep in the system over 16:00. Each €1 reserves about €2 of collateral. Day-ahead has no auction in that window.</p>
+
+      <div class="field market">
+        <label for="split" id="split-label">Your split of excess collateral</label>
+        <input type="range" id="split" min="0" max="100" step="1" value="60" aria-describedby="split-read">
+        <div class="split-read" id="split-read"><span>Continuous <b id="split-c">60%</b></span><span>Day-ahead <b id="split-a">40%</b></span></div>
+      </div>
+    </form>
+
+    <section class="results" aria-label="Results">
+      <div class="panel tiles" id="tiles" aria-live="polite"></div>
+      <div class="alert critical" id="alert" hidden></div>
+
+      <section class="panel card">
+        <div class="card-head">
+          <h2 id="day-title">Your limits through the day</h2>
+          <div class="tabs" role="tablist" id="day-tabs" aria-label="Calculation day"></div>
+        </div>
+        <div class="cycle-wrap"><div class="cycle" id="cycle"></div></div>
+        <div class="alloc">
+          <h3 id="alloc-title">Where your collateral goes</h3>
+          <div class="bar" id="alloc-bar"></div>
+          <div class="legend" id="alloc-legend"></div>
+        </div>
+      </section>
+
+      <section class="panel card">
+        <h2>This week, day by day</h2>
+        <p class="sub">Each row is one of ECC's evening calculations. "After settlement" is the limit once the previous day's purchases have been paid, by 10:45 on the next business day.</p>
+        <div class="table-wrap"><table id="week-table"></table></div>
+      </section>
+
+      <section class="panel card">
+        <h2>Day-ahead limit at each auction</h2>
+        <p class="sub">Weekday auctions run at 12:00, after the morning settlement. Weekend and holiday auctions get an equal share of the calculation made on the business day before, with no settlement in between. The next business day's auction is back at the full limit if they went unused.</p>
+        <div class="chart" id="auction-chart" role="img" aria-label="Day-ahead limit per auction"></div>
+        <div class="chart-key" id="auction-key"></div>
+      </section>
+
+      <section class="panel card o09">
+        <h2>Your settings for the Direct+ platform</h2>
+        <p class="sub">You set these per market in the Direct+ platform. Base limits are optional; the two splits add up to 100%.</p>
+        <div class="table-wrap"><table id="o09-table"></table></div>
+        <div class="copy-row"><button type="button" class="btn" id="copy-o09">Copy as table</button><span class="copy-state" id="copy-state" aria-live="polite"></span></div>
+      </section>
+    </section>
+  </main>
+
+  <section class="panel method" aria-labelledby="method-title">
+    <h2 id="method-title">How the calculation works</h2>
+    <div class="method-grid">
+      <div>
+        <div class="formula">Reserved = base limit today + base limit next business day
+Excess   = Collateral − Reserved − Open risk
+Dynamic  = max(Excess, 0) × split ÷ reset days
+From 18:00       = base limit today + Dynamic
+After settlement = From 18:00 + settled purchases × split
+After a weekend  = next auction back at the full limit (lower of two readings)</div>
+        <ol style="margin-top:14px">
+          <li><b>16:00:</b> each market's limit resets to its base limit, the fixed amount you set to bridge the time until the evening update. Resting orders above it, including bids for future auctions, are deleted.</li>
+          <li><b>Reserved for base limits:</b> ECC holds back today's base limit and the one it will hand out at 16:00 on the next business day, for both markets, because that one goes live before the next calculation can see today's trades.</li>
+          <li><b>Continuous</b> does not reset on weekends or holidays: the base limit before them is BD + NBD per non-business day, and the evening limit must last until the next business morning. Reset days are always 1.</li>
+          <li><b>Day-ahead</b> resets every calendar day. Before a weekend or holiday each auction day gets max(BD, NBD) as base limit and an equal share of the dynamic limit (÷ 3 on a Friday). On the next business day, the auction is back at the full limit if those auctions went unused.</li>
+          <li><b>Around 18:00 (best effort, no guaranteed time):</b> the dynamic limit is added to what is left of the base limit.</li>
+          <li><b>By 10:45 next business day:</b> once yesterday's purchases are paid, that amount comes back, split by your key. If collateral was short, this calculator assumes the payment first refills the reserve; ECC's materials do not say.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>Assumptions and limits</h3>
+        <ul>
+          <li>Formulas follow ECC's DCP Simulation Tool v1.3.5 and ECC's client deck (July 2025). ECC's production system may differ in detail; ECC's calculation always prevails.</li>
+          <li>Limits are shown before any new trades. Trading uses them up; only net buying counts (volume × price), so a sale at a negative price adds to what you owe.</li>
+          <li>Unsettled purchases are assumed to be paid in full the next morning.</li>
+          <li>"Size for the weekend only" solves the calculation before the weekend or holiday, as the deck does; the other days are shown with the same split, so their continuous limit can fall below your target, and the tile says what they need with a split of their own. "The whole week" finds one split that meets the targets every day.</li>
+          <li>After a weekend or holiday, the next business day's auction is back at the full limit, as in ECC's client deck (ECC's simulation tool shows only one day's share there). ECC's worked example fits two readings: the unused weekend or holiday limit carried over, or the normal weekday level. With both markets and weekend base limits they differ by a few thousand euros; the calculator shows the lower one, assuming those auctions went unused.</li>
+          <li>When collateral does not cover the reserved base limits, ECC's tool flags the setup as invalid. Adjust base limits or collateral.</li>
+          <li>ECC business days for 2026–2027 from ECC's calendar. Base limits are used as entered (ECC's tool rounds them up to the next €10).</li>
+          <li>EUR only. GB markets (GBP, FX, delivery risk) are out of scope.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+
+<script>
+/*__ENGINE__*/
+(function () {
+  'use strict';
+  var E = LimitEngine;
+  var $ = function (id) { return document.getElementById(id); };
+  var fmtInt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
+  function eur(v) { return (v < 0 ? '−€' : '€') + fmtInt.format(Math.abs(Math.round(v))); }
+  function eurShort(v) {
+    var a = Math.abs(v), s = v < 0 ? '−€' : '€';
+    if (a >= 1e6) return s + (a / 1e6).toFixed(a >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'm';
+    if (a >= 1e4) return s + Math.round(a / 1e3) + 'k';
+    if (a >= 1e3) return s + (a / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+    return s + Math.round(a);
+  }
+  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function dLabel(iso, withYear) {
+    var d = E.parse(iso);
+    return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (withYear ? ' ' + d.getUTCFullYear() : '');
+  }
+  function dShort(iso) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate(); }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function num(id) { var v = parseFloat($(id).value); return isFinite(v) && v > 0 ? v : 0; }
+
+  // ---------- default week: next Monday within the calendar range ----------
+  function clampWeek(iso) {
+    if (iso < E.MIN_DATE) return E.MIN_DATE;
+    if (iso > E.MAX_DATE) return '2027-12-20';
+    return iso;
+  }
+  function nextMondayIso() {
+    var now = new Date(), t = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    var w = t.getUTCDay(), add = ((8 - w) % 7) || 7;
+    return clampWeek(E.iso(new Date(t.getTime() + add * 864e5)));
+  }
+  $('week').min = E.MIN_DATE; $('week').max = E.MAX_DATE;
+  $('week').value = nextMondayIso();
+
+  var selected = null; // selected calc day (iso)
+
+  function readState() {
+    var mode = document.querySelector('input[name="mode"]:checked').value;
+    var split = Math.max(0, Math.min(100, parseInt($('split').value, 10) || 0));
+    return {
+      mode: mode,
+      week: clampWeek($('week').value || nextMondayIso()),
+      C: num('collateral'), OR: num('open-risk'),
+      cont: { bd: num('c-bd'), nbd: num('c-nbd') },
+      da: { bd: num('a-bd'), nbd: num('a-nbd') },
+      split: split,
+      tCont: num('t-cont'), tContMeasure: document.querySelector('input[name="t-cont-when"]:checked').value,
+      tDa: num('t-da'), tDaNonBD: $('t-da-nonbd').checked,
+      keyMode: document.querySelector('input[name="keymode"]:checked').value,
+      scope: document.querySelector('input[name="scope"]:checked').value
+    };
+  }
+
+  function compute(s) {
+    var days = E.weekDays(s.week);
+    var base = { OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: s.split }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - s.split } };
+    var C = s.C, key = s.split, inv = null;
+    if (s.mode === 'inv') {
+      var tgt = { cont: s.tCont, contMeasure: s.tContMeasure, da: s.tDa, daNonBD: s.tDaNonBD };
+      var gapOf = function (d) { return E.day(d, base).gap1; };
+      var solveDays = s.scope === 'weekend' ? days.filter(function (d) { return gapOf(d) > 1; }) : days;
+      if (!solveDays.length) solveDays = days;
+      var mine = E.solve(solveDays, base, tgt);
+      var best = E.cheapestKey(solveDays, base, tgt);
+      inv = { tgt: tgt, mine: mine, best: best, days: solveDays, rest: null };
+      if (s.scope === 'weekend' && solveDays.length < days.length) {
+        var restDays = days.filter(function (d) { return gapOf(d) === 1; });
+        inv.rest = { days: restDays, mine: E.solve(restDays, base, tgt), best: E.cheapestKey(restDays, base, tgt) };
+      }
+      if (s.keyMode === 'cheapest') { if (best) { key = best.key; C = best.C; } else C = null; }
+      else C = mine;
+      inv.C = C; inv.key = key;
+      if (C !== null) {
+        var q = { OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: key }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - key } };
+        inv.binding = E.binding(C, solveDays, q, tgt);
+      }
+    }
+    var p = { C: C === null ? 0 : C, OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: key }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - key } };
+    var rows = days.map(function (d) { return E.day(d, p); });
+    return { s: s, days: days, rows: rows, p: p, key: key, C: C, inv: inv };
+  }
+
+  // ---------- tiles ----------
+  function tile(label, value, sub, opts) {
+    var t = el('div', 'tile' + (opts && opts.hero ? ' hero' : ''));
+    var l = el('div', 't-label');
+    if (opts && opts.swatch) l.appendChild(el('span', 'swatch ' + opts.swatch));
+    l.appendChild(document.createTextNode(label));
+    t.appendChild(l);
+    t.appendChild(el('div', 't-value', value));
+    if (sub) t.appendChild(el('div', 't-sub', sub));
+    return t;
+  }
+  function allAuctions(rows) {
+    var out = [];
+    rows.forEach(function (r) { r.da.auctions.forEach(function (a) { out.push({ date: a.date, limit: a.limit, settled: a.settled, rollover: a.rollover, bd: a.bd, note: a.note, calc: r.date, resetDays: r.da.resetDays }); }); });
+    return out;
+  }
+  function minBy(arr, f) { return arr.reduce(function (m, x) { return (m === null || f(x) < f(m)) ? x : m; }, null); }
+  function maxBy(arr, f) { return arr.reduce(function (m, x) { return (m === null || f(x) > f(m)) ? x : m; }, null); }
+
+  function renderTiles(res) {
+    var box = $('tiles'); box.textContent = '';
+    if (res.s.mode === 'inv') {
+      var inv = res.inv;
+      if (inv.C === null) {
+        box.appendChild(tile('Collateral needed', 'Not reachable', 'A market with a 0% split cannot get above its base limit. Change the split or the target.', { hero: true }));
+        return;
+      }
+      var splitTxt = inv.key + ' / ' + (100 - inv.key);
+      var scopeTxt = res.s.scope === 'weekend' && inv.days.length < res.days.length
+        ? 'for ' + inv.days.map(function (d) { return dShort(E.iso(d)); }).join(' and ') + '\'s calculation, which covers the weekend'
+        : 'for every day this week';
+      var restTxt = '';
+      if (inv.rest) {
+        var rb = res.s.keyMode === 'cheapest' ? inv.rest.best : null, rm = inv.rest.mine;
+        if (rb) restTxt = ' · the other days need about ' + eur(rb.C) + ' at ' + rb.key + ' / ' + (100 - rb.key);
+        else if (rm !== null) restTxt = ' · the other days need ' + eur(rm) + ' with this split';
+      }
+      box.appendChild(tile('Collateral needed', eur(inv.C), scopeTxt + ', continuous / day-ahead split ' + splitTxt + (res.s.keyMode === 'cheapest' ? ' (least collateral)' : '') + restTxt, { hero: true }));
+      if (res.s.keyMode === 'cheapest') {
+        var m = inv.mine;
+        box.appendChild(tile('With your split (' + res.s.split + ' / ' + (100 - res.s.split) + ')', m === null ? 'Not reachable' : eur(m), m === null ? '' : (m - inv.C > 0.5 ? eur(m - inv.C) + ' more than the cheapest split' : 'already the cheapest split')));
+      } else {
+        var b = inv.best;
+        box.appendChild(tile('Cheapest split' + (b ? ' (' + b.key + ' / ' + (100 - b.key) + ')' : ''), b ? eur(b.C) : 'Not reachable', b ? (inv.C - b.C > 0.5 ? 'saves ' + eur(inv.C - b.C) : 'your split is already the cheapest') : ''));
+      }
+      box.appendChild(tile('What sets the amount', bindingText(inv.binding), bindingSub(inv.binding)));
+      return;
+    }
+    var rows = res.rows;
+    var lowC = minBy(rows, function (r) { return r.cont.l18; }), highC = maxBy(rows, function (r) { return r.cont.l18; });
+    var auc = allAuctions(rows);
+    var lowA = minBy(auc, function (a) { return a.limit; }), highA = maxBy(auc, function (a) { return a.limit; });
+    var hiR = maxBy(rows, function (r) { return r.blr; }), loR = minBy(rows, function (r) { return r.blr; });
+    box.appendChild(tile('Continuous, from 18:00', eurShort(lowC.cont.l18), 'lowest, ' + dLabel(lowC.date) + ' · highest ' + eurShort(highC.cont.l18), { swatch: 'sw-cont' }));
+    box.appendChild(tile('Day-ahead, per auction', eurShort(lowA.limit), 'lowest, ' + dLabel(lowA.date) + (lowA.note ? ' (' + lowA.note.toLowerCase() + ')' : '') + ' · highest ' + eurShort(highA.limit), { swatch: 'sw-da' }));
+    box.appendChild(tile('Reserved for base limits', eurShort(hiR.blr), 'peak, ' + dLabel(hiR.date) + (loR.blr < hiR.blr ? ' · lowest ' + eurShort(loR.blr) : ''), null));
+  }
+  function bindingText(b) {
+    if (!b) return '–';
+    if (b.market === 'base') return 'Base limits';
+    if (b.market === 'cont') return 'Continuous, ' + dShort(b.date);
+    return 'Day-ahead, ' + dShort(b.date);
+  }
+  function bindingSub(b) {
+    if (!b) return '';
+    if (b.market === 'base') return 'Collateral must at least cover the reserved base limits on ' + dLabel(b.date);
+    if (b.market === 'cont') return 'the evening calculation on ' + dLabel(b.date) + ' is the tightest';
+    var nm = E.holidayName(E.parse(b.date));
+    return 'auction on ' + dLabel(b.date) + (nm ? ' (' + nm.toLowerCase() + ', share of ' + dShort(b.calc) + '\'s calculation)' : '');
+  }
+
+  // ---------- alert ----------
+  function renderAlert(res) {
+    var box = $('alert'); box.textContent = '';
+    var uncovered = res.rows.filter(function (r) { return r.baseUncovered; });
+    var short = res.rows.filter(function (r) { return !r.baseUncovered && r.excess < 0; });
+    if (!uncovered.length && !short.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.appendChild(el('span', 'tag', 'Shortfall'));
+    var msg;
+    if (uncovered.length) {
+      var w = maxBy(uncovered, function (r) { return r.blr; });
+      msg = 'Your reserved base limits (' + eur(w.blr) + ' on ' + dLabel(w.date) + ') exceed your collateral on ' + uncovered.map(function (r) { return dShort(r.date); }).join(', ') + '. ECC\'s tool flags this setup as invalid: lower the base limits or add collateral.';
+    } else {
+      var w2 = minBy(short, function (r) { return r.excess; });
+      msg = 'On ' + short.map(function (r) { return dShort(r.date); }).join(', ') + ' unsettled purchases and reserved base limits exceed your collateral by up to ' + eur(-w2.excess) + '. No dynamic limit is added those evenings; you keep only your base limits until settlement.';
+    }
+    box.appendChild(el('span', null, msg));
+  }
+
+  // ---------- day tabs + cycle + allocation ----------
+  function pickDefaultDay(rows) {
+    var best = null;
+    rows.forEach(function (r) { if (!best || r.excess < best.excess - 0.5 || (Math.abs(r.excess - best.excess) <= 0.5 && r.gap1 > best.gap1)) best = r; });
+    return best ? best.date : null;
+  }
+  function renderTabs(res) {
+    var box = $('day-tabs'); box.textContent = '';
+    var dates = res.rows.map(function (r) { return r.date; });
+    if (dates.indexOf(selected) < 0) selected = pickDefaultDay(res.rows);
+    res.rows.forEach(function (r) {
+      var b = el('button', 'tab'); b.type = 'button'; b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', r.date === selected ? 'true' : 'false');
+      b.appendChild(document.createTextNode(dShort(r.date)));
+      b.appendChild(el('small', null, r.gap1 > 1 ? 'to ' + dShort(r.nextBD) : MO[E.parse(r.date).getUTCMonth()]));
+      b.addEventListener('click', function () { selected = r.date; render(); });
+      box.appendChild(b);
+    });
+  }
+  function cell(cls, v, n) { var c = el('div', 'step ' + (cls || '')); if (v != null) c.appendChild(el('div', 'v', v)); if (n) c.appendChild(el('div', 'n', n)); return c; }
+  function renderCycle(res, r) {
+    var box = $('cycle'); box.textContent = '';
+    $('day-title').textContent = 'Your limits after the calculation on ' + dLabel(r.date, true);
+    var nxt = dLabel(r.nextBD);
+    var h0 = el('div', 'h'); box.appendChild(h0);
+    var h1 = el('div', 'h step'); h1.appendChild(el('span', 'time', '16:00')); h1.appendChild(el('span', 'what', 'Limit resets to the base limit')); box.appendChild(h1);
+    var h2 = el('div', 'h step'); h2.appendChild(el('span', 'time', 'From ~18:00 (best effort)')); h2.appendChild(el('span', 'what', 'Dynamic limit added, until ' + (r.gap1 > 1 ? nxt + ' morning' : 'the next morning'))); box.appendChild(h2);
+    var h3 = el('div', 'h step'); h3.appendChild(el('span', 'time', 'By 10:45, ' + nxt)); h3.appendChild(el('span', 'what', 'Settled purchases added back')); box.appendChild(h3);
+
+    var mk = el('div', 'mk'); mk.appendChild(el('span', 'swatch sw-cont')); mk.appendChild(document.createTextNode('Continuous')); box.appendChild(mk);
+    box.appendChild(cell('', eur(r.cont.l16), r.gap1 > 1 ? 'Covers ' + r.gap1 + ' days, until ' + dShort(r.nextBD) + ' 16:00' : 'Until the dynamic limit arrives'));
+    box.appendChild(cell('', eur(r.cont.l18), r.gap1 > 1 ? 'Must last until ' + dShort(r.nextBD) + ' morning' : 'Until settlement'));
+    box.appendChild(cell('', eur(r.cont.l09), '+ ' + eur(r.refill * res.p.cont.key / 100) + ' settled, until 16:00'));
+
+    var mk2 = el('div', 'mk'); mk2.appendChild(el('span', 'swatch sw-da')); mk2.appendChild(document.createTextNode('Day-ahead')); box.appendChild(mk2);
+    box.appendChild(cell('', eur(r.da.l16), r.gap1 > 1 ? 'Per auction day (max of BD, NBD)' : 'Base limit'));
+    var aucDays = r.da.auctions.map(function (a) { return dShort(a.date); }).join(', ');
+    box.appendChild(cell('', eur(r.da.l18), r.gap1 > 1 ? 'Per auction: ' + aucDays + ' (÷ ' + r.gap1 + ')' : 'Per auction'));
+    box.appendChild(cell('', eur(r.da.l09), 'At ' + dShort(r.nextBD) + '\'s 12:00 auction' + (r.gap1 > 1 ? ', full limit again if the weekend auctions went unused' : '')));
+  }
+
+  var tip = $('tip');
+  function showTip(evt, value, label) {
+    tip.textContent = '';
+    tip.appendChild(el('div', 'tv', value)); tip.appendChild(el('div', 'tl', label));
+    tip.hidden = false;
+    var x, y;
+    if (evt && evt.clientX != null && evt.type.indexOf('pointer') === 0) { x = evt.clientX; y = evt.clientY; }
+    else { var b = evt.target.getBoundingClientRect(); x = b.left + b.width / 2; y = b.top; }
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    var left = Math.min(Math.max(8, x + 12), window.innerWidth - w - 8);
+    var top = y - h - 12; if (top < 8) top = y + 16;
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function hideTip() { tip.hidden = true; }
+  function hoverable(node, value, label) {
+    node.tabIndex = 0;
+    node.setAttribute('aria-label', label + ': ' + value);
+    node.addEventListener('pointermove', function (e) { showTip(e, value, label); });
+    node.addEventListener('pointerleave', hideTip);
+    node.addEventListener('focus', function (e) { showTip(e, value, label); });
+    node.addEventListener('blur', hideTip);
+  }
+
+  function renderAlloc(res, r) {
+    var bar = $('alloc-bar'), leg = $('alloc-legend');
+    bar.textContent = ''; leg.textContent = '';
+    $('alloc-title').textContent = 'Where your collateral goes on ' + dLabel(r.date);
+    var C = res.p.C;
+    var parts = [
+      { v: res.p.OR, cls: 'sw-owed', label: 'Unsettled purchases (open risk)' },
+      { v: r.blrC, cls: 'sw-cont-res', label: 'Continuous: reserved for base limits' },
+      { v: r.shareC, cls: 'sw-cont', label: 'Continuous: share of excess' },
+      { v: r.blrA, cls: 'sw-da-res', label: 'Day-ahead: reserved for base limits' },
+      { v: r.shareA, cls: 'sw-da', label: 'Day-ahead: share of excess' }
+    ];
+    var total = Math.max(C, parts.reduce(function (s, x) { return s + x.v; }, 0));
+    parts.forEach(function (x) {
+      if (x.v <= 0 || total <= 0) return;
+      var seg = el('div', 'seg-b ' + x.cls); seg.style.flex = x.v + ' 0 0';
+      hoverable(seg, eur(x.v), x.label); bar.appendChild(seg);
+    });
+    if (total > C + 0.5 && total > 0) {
+      var m = el('div', 'marker'); m.style.left = (C / total * 100) + '%';
+      m.appendChild(el('span', null, 'Collateral ' + eurShort(C))); bar.appendChild(m);
+    }
+    parts.forEach(function (x) {
+      var li = el('div', 'li'); li.appendChild(el('span', 'swatch ' + x.cls));
+      li.appendChild(el('span', null, x.label)); li.appendChild(el('b', null, eur(x.v))); leg.appendChild(li);
+    });
+    var tot = el('div', 'total'); tot.appendChild(el('span', null, 'Collateral' + (r.excess < 0 ? ' (short by ' + eur(-r.excess) + ')' : '')));
+    tot.appendChild(el('b', null, eur(C))); leg.appendChild(tot);
+  }
+
+  // ---------- week table ----------
+  function renderWeek(res) {
+    var t = $('week-table'); t.textContent = '';
+    var thead = el('thead'), g = el('tr', 'grp');
+    g.appendChild(el('th', null, '')); g.appendChild(el('th', null, '')); g.appendChild(el('th', null, ''));
+    var gc = el('th', 'gl'); gc.colSpan = 3; var sc = el('span'); sc.appendChild(el('span', 'swatch sw-cont')); sc.appendChild(document.createTextNode('Continuous')); gc.appendChild(sc); gc.style.textAlign = 'left'; g.appendChild(gc);
+    var ga = el('th', 'gl'); ga.colSpan = 2; var sa = el('span'); sa.appendChild(el('span', 'swatch sw-da')); sa.appendChild(document.createTextNode('Day-ahead')); ga.appendChild(sa); ga.style.textAlign = 'left'; g.appendChild(ga);
+    thead.appendChild(g);
+    var h = el('tr');
+    ['Calculation day', 'Reserved for base limits', 'Excess collateral', '16:00', 'From 18:00', 'After settlement', 'Per auction from 18:00', 'Next business day\'s auction'].forEach(function (x, i) {
+      var th = el('th', (i === 3 || i === 6) ? 'gl' : null, x); th.scope = 'col'; h.appendChild(th);
+    });
+    thead.appendChild(h); t.appendChild(thead);
+    var tb = el('tbody');
+    var lowC = minBy(res.rows, function (r) { return r.cont.l18; });
+    var lowA = minBy(res.rows, function (r) { return r.da.l18; });
+    res.rows.forEach(function (r) {
+      var tr = el('tr', r.date === selected ? 'sel' : null);
+      var d = el('td'); d.appendChild(document.createTextNode(dLabel(r.date)));
+      if (r.gap1 > 1) d.appendChild(el('span', 'pill info', r.gap1 + '-day gap'));
+      if (r.excess < 0) d.appendChild(el('span', 'pill crit', 'Shortfall'));
+      tr.appendChild(d);
+      tr.appendChild(el('td', null, eur(r.blr)));
+      tr.appendChild(el('td', r.excess < 0 ? 'neg' : null, eur(r.excess)));
+      tr.appendChild(el('td', 'gl', eur(r.cont.l16)));
+      tr.appendChild(el('td', r === lowC ? 'low' : null, eur(r.cont.l18)));
+      tr.appendChild(el('td', null, eur(r.cont.l09)));
+      var a18 = el('td', 'gl' + (r === lowA ? ' low' : ''), eur(r.da.l18) + (r.gap1 > 1 ? ' × ' + r.gap1 : ''));
+      tr.appendChild(a18);
+      tr.appendChild(el('td', null, eur(r.da.l09)));
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+  }
+
+  // ---------- auction chart ----------
+  function niceStep(max, count) {
+    var raw = max / count, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+    var nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+    return nf * mag;
+  }
+  function renderAuctions(res) {
+    var box = $('auction-chart'); box.textContent = '';
+    var items = allAuctions(res.rows);
+    var target = res.s.mode === 'inv' && res.inv && res.inv.C !== null ? res.s.tDa : 0;
+    var W = Math.max(300, box.clientWidth || 600), H = 250;
+    var m = { l: 52, r: 12, t: 22, b: 46 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var vmax = Math.max(target, maxBy(items, function (a) { return a.limit; }).limit) || 1;
+    var step = niceStep(vmax, 4), top = Math.ceil(vmax / step) * step;
+    var y = function (v) { return m.t + ph - (v / top) * ph; };
+    var NS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    function s(tag, attrs, text) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; svg.appendChild(n); return n; }
+    var slot = pw / items.length;
+    // weekend / holiday bands
+    items.forEach(function (a, i) { if (!a.bd) s('rect', { x: m.l + i * slot, y: m.t, width: slot, height: ph, fill: 'var(--band)' }); });
+    for (var v = 0; v <= top + 1e-9; v += step) {
+      s('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: v === 0 ? 'var(--rule-strong)' : 'var(--rule)', 'stroke-width': 1 });
+      s('text', { x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'tick' }, eurShort(v));
+    }
+    var lo = minBy(items, function (a) { return a.limit; }), hi = maxBy(items, function (a) { return a.limit; });
+    var bw = Math.min(24, slot * 0.5);
+    items.forEach(function (a, i) {
+      var cx = m.l + i * slot + slot / 2, x0 = cx - bw / 2, y0 = y(a.limit), yb = y(0), r = Math.min(4, (yb - y0) / 2);
+      if (yb - y0 > 0.5) s('path', { d: 'M' + x0 + ',' + yb + 'V' + (y0 + r) + 'Q' + x0 + ',' + y0 + ' ' + (x0 + r) + ',' + y0 + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + y0 + ' ' + (x0 + bw) + ',' + (y0 + r) + 'V' + yb + 'Z', fill: 'var(--da)' });
+      s('text', { x: cx, y: H - m.b + 18, 'text-anchor': 'middle', class: 'xl' }, dShort(a.date));
+      s('text', { x: cx, y: H - m.b + 34, 'text-anchor': 'middle', class: 'xv' }, eurShort(a.limit));
+      if (a === lo || a === hi) s('text', { x: cx, y: y0 - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(a.limit));
+      var hit = s('rect', { x: m.l + i * slot, y: m.t, width: slot, height: ph, class: 'hit' });
+      var label = dLabel(a.date) + ' auction · ' + (a.settled ? (a.rollover ? 'after settlement, full limit again if the weekend or holiday auctions went unused' : 'after settlement') : (a.note ? a.note.toLowerCase() + ', ' : '') + 'share of ' + dShort(a.calc) + '\'s calculation');
+      hoverable(hit, eur(a.limit), label);
+    });
+    if (target > 0) {
+      s('line', { x1: m.l, x2: W - m.r, y1: y(target), y2: y(target), stroke: 'var(--ink)', 'stroke-width': 1.5 });
+      s('text', { x: W - m.r, y: y(target) - 6, 'text-anchor': 'end', class: 'dl' }, 'Target ' + eurShort(target));
+    }
+    box.appendChild(svg);
+    var key = $('auction-key'); key.textContent = '';
+    var k1 = el('span'); k1.appendChild(el('span', 'swatch sw-da')); k1.appendChild(document.createTextNode('Day-ahead limit at the auction')); key.appendChild(k1);
+    if (items.some(function (a) { return !a.bd; })) { var k2 = el('span'); k2.appendChild(el('span', 'band-key')); k2.appendChild(document.createTextNode('Weekend or holiday auction, no settlement before it')); key.appendChild(k2); }
+    if (target > 0) { var k3 = el('span'); k3.appendChild(el('span', 'line-key')); k3.appendChild(document.createTextNode('Your target')); key.appendChild(k3); }
+  }
+
+  // ---------- O09 ----------
+  function o09Rows(res) {
+    return [
+      ['Continuous', res.p.cont.bd, res.p.cont.nbd, res.p.cont.key],
+      ['Day-ahead', res.p.da.bd, res.p.da.nbd, res.p.da.key]
+    ];
+  }
+  function renderO09(res) {
+    var t = $('o09-table'); t.textContent = '';
+    var thead = el('thead'), h = el('tr');
+    [['Market', ''], ['Base limit, business day', 'r'], ['Base limit, non-business day', 'r'], ['Split of excess collateral', 'r']].forEach(function (x) { var th = el('th', x[1], x[0]); th.scope = 'col'; h.appendChild(th); });
+    thead.appendChild(h); t.appendChild(thead);
+    var tb = el('tbody');
+    o09Rows(res).forEach(function (r) {
+      var tr = el('tr');
+      tr.appendChild(el('td', null, r[0]));
+      tr.appendChild(el('td', 'r', eur(r[1]))); tr.appendChild(el('td', 'r', eur(r[2]))); tr.appendChild(el('td', 'r', r[3] + '%'));
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+  }
+  var lastRes = null;
+  $('copy-o09').addEventListener('click', function () {
+    if (!lastRes) return;
+    var lines = ['Market\tBase limit, business day\tBase limit, non-business day\tSplit %'];
+    o09Rows(lastRes).forEach(function (r) { lines.push([r[0], Math.round(r[1]), Math.round(r[2]), r[3]].join('\t')); });
+    var text = lines.join('\n');
+    var state = $('copy-state');
+    try {
+      navigator.clipboard.writeText(text).then(function () { state.textContent = 'Copied.'; }, function () { state.textContent = 'Copy blocked here. Select the table and copy it instead.'; });
+    } catch (e) { state.textContent = 'Copy blocked here. Select the table and copy it instead.'; }
+  });
+
+  // ---------- main render ----------
+  function syncForm(s) {
+    $('fwd-fields').hidden = s.mode !== 'fwd';
+    $('inv-fields').hidden = s.mode !== 'inv';
+    $('split').style.setProperty('--split', s.split + '%');
+    $('split-c').textContent = s.split + '%'; $('split-a').textContent = (100 - s.split) + '%';
+    $('split-label').textContent = s.mode === 'inv' && s.keyMode === 'cheapest' ? 'Your current split (for comparison)' : 'Your split of excess collateral';
+  }
+  function render() {
+    var s = readState();
+    syncForm(s);
+    var res = compute(s); lastRes = res;
+    renderTiles(res);
+    renderAlert(res);
+    renderTabs(res);
+    var r = res.rows.filter(function (x) { return x.date === selected; })[0] || res.rows[0];
+    renderCycle(res, r);
+    renderAlloc(res, r);
+    renderWeek(res);
+    renderAuctions(res);
+    renderO09(res);
+  }
+
+  var timer = null;
+  function schedule() { clearTimeout(timer); timer = setTimeout(render, 60); }
+  $('setup').addEventListener('input', schedule);
+  $('setup').addEventListener('change', schedule);
+  $('setup').addEventListener('submit', function (e) { e.preventDefault(); });
+  Array.prototype.forEach.call(document.querySelectorAll('#presets button'), function (b) {
+    b.addEventListener('click', function () {
+      var w = b.getAttribute('data-week');
+      $('week').value = w === 'next' ? nextMondayIso() : w;
+      selected = null; render();
+    });
+  });
+  $('week').addEventListener('change', function () { selected = null; });
+  var ro = null;
+  if (window.ResizeObserver) { ro = new ResizeObserver(function () { if (lastRes) renderAuctions(lastRes); }); ro.observe($('auction-chart')); }
+  render();
+})();
+</script>

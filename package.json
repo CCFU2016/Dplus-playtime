@@ -1,0 +1,10 @@
+{
+  "name": "direct-plus-limits",
+  "private": true,
+  "description": "Direct+ limit calculator: ECC direct clearing (DCP) collateral to trading limit and back",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node tests/ecc_examples.test.js && node tests/snapshot.js",
+    "test:ui": "node scripts/build.js && python3 tests/ui_smoke.py"
+  }
+}
