@@ -1,0 +1,1748 @@
+<title>Direct+ Wallet Estimate</title>
+<meta name="description" content="Answer a few questions about how you plan to trade, and see how much money your Direct+ wallet needs, what it is for and when.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #f3f5f8; --surface: #ffffff; --surface-2: #eef1f5; --ink: #121a24; --ink-2: #445061; --muted: #6b7686;
+    --rule: #dbe0e7; --rule-strong: #b7c0cc; --critical: #c3362c; --critical-bg: #fbeceb; --focus: #2a78d6;
+    --select-bg: #121a24; --select-ink: #ffffff; --accent-bg: #eaf2fc;
+    /* wallet segments: validated categorical slots (light, on #ffffff) */
+    --s-trading: #2a78d6; --s-available: #1baf7a; --s-brp: #eda100;
+    --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
+      --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --focus: #6fa8f0;
+      --select-bg: #eef2f6; --select-ink: #0d1116; --accent-bg: #16263a;
+      --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
+    --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --focus: #6fa8f0;
+    --select-bg: #eef2f6; --select-ink: #0d1116; --accent-bg: #16263a;
+    --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+  .page { max-width: 920px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 22px; }
+  .page > *, .card > * { min-width: 0; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .masthead { display: grid; gap: 8px; }
+  .eyebrow { font-family: var(--font-cond); font-weight: 600; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: clamp(28px, 4vw, 38px); line-height: 1.12; font-weight: 600; letter-spacing: -0.01em; }
+  .lede { font-size: 16.5px; color: var(--ink-2); max-width: 62ch; }
+  .fine { font-size: 12.5px; color: var(--muted); max-width: 80ch; }
+
+  .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+  .btn { border: 1px solid var(--ink); background: var(--ink); color: var(--surface); border-radius: 7px; padding: 9px 18px; font-size: 14.5px; font-weight: 500; cursor: pointer; }
+  .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--rule-strong); }
+  .btn[hidden] { display: none; }
+
+  /* questionnaire */
+  .wizard { padding: 22px 24px 20px; display: grid; gap: 20px; }
+  .progress { display: grid; gap: 8px; }
+  .progress .pl { font-size: 13px; color: var(--muted); }
+  .track { height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+  .track div { height: 100%; background: var(--ink); width: 0; transition: width .2s; }
+  .step { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 18px; }
+  .step[hidden] { display: none; }
+  .step h2 { font-size: 21px; font-weight: 600; }
+  .step .why { font-size: 14px; color: var(--ink-2); max-width: 66ch; }
+  .q { display: grid; gap: 8px; }
+  .q > .ql { font-size: 14.5px; font-weight: 600; }
+  .q .hint { font-size: 13px; color: var(--muted); max-width: 66ch; }
+  .choices { display: grid; gap: 8px; }
+  .choices.cols { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .choice { position: relative; }
+  .choice input { position: absolute; opacity: 0; pointer-events: none; }
+  .choice label { display: grid; gap: 3px; padding: 12px 14px; border: 1px solid var(--rule-strong); border-radius: 8px; cursor: pointer; background: var(--surface); height: 100%; box-sizing: border-box; }
+  .choice label b { font-weight: 600; font-size: 14.5px; }
+  .choice label span { font-size: 13px; color: var(--ink-2); }
+  .choice input:checked + label { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--accent-bg); }
+  .choice input:focus-visible + label { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 18px; }
+  .num { display: grid; gap: 5px; }
+  .num label { font-size: 13.5px; font-weight: 500; }
+  .num .in { display: flex; align-items: center; gap: 8px; }
+  .num input { border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); padding: 8px 10px; width: 110px; min-width: 0; font-variant-numeric: tabular-nums; }
+  .num .unit { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .note { font-size: 13px; color: var(--ink-2); background: var(--surface-2); border-radius: 7px; padding: 8px 12px; }
+  .note[hidden] { display: none; }
+  .error { font-size: 13.5px; color: var(--critical); }
+  .conn { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  .conn select { border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); padding: 8px 10px; }
+  .linkbtn { border: 0; background: none; padding: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13.5px; color: var(--ink); text-align: left; }
+  .nav { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--rule); padding-top: 16px; }
+
+  /* results */
+  .results { display: grid; gap: 20px; }
+  .results[hidden] { display: none; }
+  .bar-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; justify-content: space-between; }
+  .bar-head h2 { font-size: 22px; font-weight: 600; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  .controls label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); display: grid; gap: 4px; }
+  .controls select { border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); padding: 8px 10px; max-width: 100%; }
+  .card { padding: 18px 20px 20px; display: grid; gap: 14px; }
+  .card h3 { font-size: 16.5px; font-weight: 600; }
+  .card .sub { font-size: 13.5px; color: var(--ink-2); max-width: 70ch; }
+  .hero { padding: 22px 24px; display: grid; gap: 6px; }
+  .hero .h-label { font-size: 14px; color: var(--ink-2); }
+  .hero .h-value { font-size: clamp(30px, 6vw, 48px); font-weight: 600; line-height: 1.1; letter-spacing: -0.015em; }
+  .hero .h-value .to { color: var(--muted); font-weight: 500; font-size: .6em; }
+  .hero .h-sub { font-size: 13.5px; color: var(--muted); }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 9px 8px; text-align: left; vertical-align: top; }
+  td.r, th.r { text-align: right; white-space: nowrap; }
+  thead th { font-family: var(--font-cond); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--rule-strong); vertical-align: bottom; }
+  tbody td { border-bottom: 1px solid var(--rule); font-size: 14px; }
+  tbody tr.total td { font-weight: 600; border-bottom: 0; }
+  td .what { display: block; font-size: 12.5px; color: var(--muted); max-width: 52ch; margin-top: 2px; }
+  .bars { display: grid; gap: 12px; }
+  .bar-row { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 12px; align-items: center; }
+  .bar-row .rl { font-size: 13px; color: var(--ink-2); }
+  .bar-track { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .bar { display: flex; gap: 2px; height: 26px; min-width: 2px; }
+  .bar .sg { height: 100%; min-width: 2px; display: flex; align-items: center; justify-content: center; }
+  .bar .sg:last-child { border-radius: 0 4px 4px 0; }
+  .bar .sg span { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; padding: 0 4px; }
+  .bar .sg.light-ink span { color: #121a24; }
+  .bar .sg:hover, .bar .sg:focus-visible { filter: brightness(1.08); }
+  .bar-total { font-size: 13.5px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+  .when { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  .when li { display: grid; grid-template-columns: minmax(130px, 190px) minmax(0, 1fr); gap: 4px 16px; font-size: 14px; }
+  .when li b { font-weight: 600; }
+  .when li span { color: var(--ink-2); }
+  @media (max-width: 560px) { .when li { grid-template-columns: minmax(0, 1fr); } }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  @media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; font-size: 13.5px; }
+  dt { color: var(--ink-2); }
+  dd { margin: 0; font-weight: 500; text-align: right; }
+  ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; color: var(--ink-2); }
+  .disclaimer { font-size: 12.5px; color: var(--muted); }
+
+  #tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12); max-width: 260px; }
+  #tip .tv { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #tip .tl { color: var(--ink-2); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media print {
+    :root { color-scheme: light; }
+    body { background: #fff; }
+    .no-print, #wizard, #tip { display: none !important; }
+    .panel { break-inside: avoid; border-color: #ccc; }
+  }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">Direct+ · Netherlands · EUR</p>
+    <h1>Your Direct+ wallet estimate</h1>
+    <p class="lede">Answer a few questions about how you plan to trade. You'll see roughly how much money your Direct+ wallet needs, what it is for, and when you need it. It takes about two minutes.</p>
+    <p class="fine">Indicative only: not an offer and not advice. The estimate applies ECC's published rules and TenneT's rules to your answers and to the assumptions listed with the result. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
+  </header>
+
+  <section id="wizard" class="panel wizard" aria-label="Questions">
+    <div class="progress"><span class="pl" id="step-label"></span><div class="track"><div id="progress"></div></div></div>
+    <form id="q" novalidate>
+
+      <fieldset class="step" data-step="1">
+        <legend><h2>Which describes you best?</h2></legend>
+        <p class="why">We'll fill in typical answers for your type. You can change every one of them on the next pages.</p>
+        <div class="choices">
+          <div class="choice"><input type="radio" name="type" id="t-trader" value="trader"><label for="t-trader"><b>Trader</b><span>You trade for your own account and close your positions. You have no assets of your own.</span></label></div>
+          <div class="choice"><input type="radio" name="type" id="t-aggregator" value="aggregator"><label for="t-aggregator"><b>Aggregator</b><span>You sell flexibility from customers' assets that stay with their own balance responsible party.</span></label></div>
+          <div class="choice"><input type="radio" name="type" id="t-asset" value="asset"><label for="t-asset"><b>Asset owner</b><span>You own or control production, storage or consumption that joins the Direct+ balance responsible party.</span></label></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-step="2" hidden>
+        <legend><h2>Where will you trade?</h2></legend>
+        <div class="q"><span class="ql">Markets on EPEX SPOT (Netherlands)</span>
+          <div class="choices">
+            <div class="choice"><input type="radio" name="markets" id="m-both" value="both"><label for="m-both"><b>Continuous intraday and auctions</b><span>Trading on the intraday order book as well as in the day-ahead and intraday auctions.</span></label></div>
+            <div class="choice"><input type="radio" name="markets" id="m-cont" value="continuous"><label for="m-cont"><b>Continuous intraday only</b></label></div>
+            <div class="choice"><input type="radio" name="markets" id="m-auc" value="auctions"><label for="m-auc"><b>Auctions only</b><span>Day-ahead and intraday auctions.</span></label></div>
+          </div>
+        </div>
+        <div class="q"><span class="ql">Will you also trade at weekends and on public holidays?</span>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="weekend" id="w-yes" value="yes"><label for="w-yes"><b>Yes</b></label></div>
+            <div class="choice"><input type="radio" name="weekend" id="w-no" value="no"><label for="w-no"><b>No, business days only</b></label></div>
+          </div>
+          <p class="hint">ECC doesn't process payments at weekends, so a Friday limit has to last until Monday.</p>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-step="3" hidden>
+        <legend><h2>How do you trade, and how much?</h2></legend>
+        <div class="q"><span class="ql">Your trading strategy</span>
+          <div class="choices">
+            <div class="choice"><input type="radio" name="strategy" id="s-flat" value="flat"><label for="s-flat"><b>I close my positions</b><span>I buy and sell about the same volume.</span></label></div>
+            <div class="choice"><input type="radio" name="strategy" id="s-seller" value="seller"><label for="s-seller"><b>I mainly sell</b><span>Production or flexibility.</span></label></div>
+            <div class="choice"><input type="radio" name="strategy" id="s-buyer" value="buyer"><label for="s-buyer"><b>I mainly buy</b><span>For consumption.</span></label></div>
+          </div>
+          <p class="note" id="vol-note" hidden></p>
+        </div>
+        <div class="q"><span class="ql">Your volumes on a normal day</span>
+          <div class="nums">
+            <div class="num" data-market="continuous"><label for="contBuy">Continuous: buy</label><div class="in"><input type="number" id="contBuy" min="0" step="10" data-a="contBuy"><span class="unit">MWh a day</span></div></div>
+            <div class="num" data-market="continuous"><label for="contSell">Continuous: sell</label><div class="in"><input type="number" id="contSell" min="0" step="10" data-a="contSell"><span class="unit">MWh a day</span></div></div>
+            <div class="num" data-market="auctions"><label for="aucBuy">Auctions: buy</label><div class="in"><input type="number" id="aucBuy" min="0" step="10" data-a="aucBuy"><span class="unit">MWh a day</span></div></div>
+            <div class="num" data-market="auctions"><label for="aucSell">Auctions: sell</label><div class="in"><input type="number" id="aucSell" min="0" step="10" data-a="aucSell"><span class="unit">MWh a day</span></div></div>
+          </div>
+        </div>
+        <div class="q" data-type="aggregator"><span class="ql">Flexibility from your customers</span>
+          <div class="nums">
+            <div class="num"><label for="nominatedIn">Nominated in from other BRPs</label><div class="in"><input type="number" id="nominatedIn" min="0" step="10" data-a="nominatedIn"><span class="unit">MWh a day</span></div></div>
+            <div class="num"><label for="nonDelivery">Share that may not be delivered</label><div class="in"><input type="number" id="nonDelivery" min="0" max="100" step="1" data-a="nonDelivery" data-pct="1"><span class="unit">%</span></div></div>
+          </div>
+        </div>
+        <div class="q"><span class="ql">Do you hold positions over ECC's 16:00 booking cut?</span>
+          <p class="hint">For example, buying day-ahead and selling intraday the next day. ECC collects the purchase one business day before the sale comes back, so that money has to wait in your wallet.</p>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="carry" id="c-none" value="none"><label for="c-none"><b>No</b><span>I sell what I buy before 16:00 the same day.</span></label></div>
+            <div class="choice"><input type="radio" name="carry" id="c-some" value="some"><label for="c-some"><b>Some</b><span>About a third of my buys.</span></label></div>
+            <div class="choice"><input type="radio" name="carry" id="c-most" value="most"><label for="c-most"><b>Most</b><span>About two thirds of my buys.</span></label></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-step="4" hidden>
+        <legend><h2>Which prices do you plan with?</h2></legend>
+        <div class="nums">
+          <div class="num"><label for="price">A normal price</label><div class="in"><input type="number" id="price" min="1" step="5" data-a="price"><span class="unit">€/MWh</span></div></div>
+          <div class="num"><label for="stressPrice">A price in a tough week</label><div class="in"><input type="number" id="stressPrice" min="1" step="10" data-a="stressPrice"><span class="unit">€/MWh</span></div></div>
+          <div class="num" data-market="auctions"><label for="aucLimitPrice">The highest price you'd bid in auctions</label><div class="in"><input type="number" id="aucLimitPrice" min="1" step="10" data-a="aucLimitPrice"><span class="unit">€/MWh</span></div></div>
+        </div>
+        <p class="hint">Your trading limits grow with prices, so the estimate is shown for a normal week and a tough week. In auctions, ECC counts each buy order at its highest price × quantity.</p>
+      </fieldset>
+
+      <fieldset class="step" data-step="5" hidden>
+        <legend><h2>Will you connect assets to the Direct+ BRP?</h2></legend>
+        <p class="why">Large connections count towards the BRP collateral under TenneT's rules, and metered volumes are reconciled months later.</p>
+        <div id="conns" class="q"></div>
+        <div><button type="button" class="linkbtn" id="add-conn">Add a connection</button></div>
+        <p class="hint">Leave this empty if you have no assets in the Direct+ BRP. Under TenneT's rule in force, connections below 2 MW don't count.</p>
+      </fieldset>
+
+      <fieldset class="step" data-step="6" hidden>
+        <legend><h2>How closely do you match your positions?</h2></legend>
+        <p class="why">Whatever you don't match, TenneT settles as imbalance: invoiced weekly, about four weeks later.</p>
+        <div class="q"><span class="ql">How far off you usually end up</span>
+          <div class="choices">
+            <div class="choice"><input type="radio" name="balance" id="b-tight" value="tight"><label for="b-tight"><b>Very close</b><span>About 0.5% of volume.</span></label></div>
+            <div class="choice"><input type="radio" name="balance" id="b-normal" value="normal"><label for="b-normal"><b>Normal</b><span>About 3% of volume.</span></label></div>
+            <div class="choice"><input type="radio" name="balance" id="b-forecast" value="forecast"><label for="b-forecast"><b>Depends on a forecast</b><span>About 5% of volume, for example solar or wind output.</span></label></div>
+          </div>
+        </div>
+        <div class="q"><span class="ql">When you're off, which way?</span>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="lean" id="l-neither" value="neither"><label for="l-neither"><b>Either way</b></label></div>
+            <div class="choice"><input type="radio" name="lean" id="l-short" value="short"><label for="l-short"><b>Usually short</b><span>Less delivered or more used than planned.</span></label></div>
+            <div class="choice"><input type="radio" name="lean" id="l-long" value="long"><label for="l-long"><b>Usually long</b><span>More produced than sold.</span></label></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-step="7" hidden>
+        <legend><h2>How will you fund it?</h2></legend>
+        <div class="q"><span class="ql">Trading collateral at ECC</span>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="eccForm" id="e-cash" value="cash"><label for="e-cash"><b>Cash</b></label></div>
+            <div class="choice"><input type="radio" name="eccForm" id="e-guarantee" value="guarantee"><label for="e-guarantee"><b>Bank guarantee</b><span>ECC then asks at least 4% of it in cash for its default fund.</span></label></div>
+          </div>
+        </div>
+        <div class="q"><span class="ql">BRP collateral</span>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="brpForm" id="p-guarantee" value="guarantee"><label for="p-guarantee"><b>Bank guarantee</b></label></div>
+            <div class="choice"><input type="radio" name="brpForm" id="p-cash" value="deposit"><label for="p-cash"><b>Cash</b></label></div>
+          </div>
+        </div>
+        <div class="q"><span class="ql">How often will you top up your wallet?</span>
+          <div class="choices">
+            <div class="choice"><input type="radio" name="replenish" id="r-none" value="none"><label for="r-none"><b>Not during the week</b><span>The wallet holds enough for the whole week.</span></label></div>
+            <div class="choice"><input type="radio" name="replenish" id="r-daily" value="daily"><label for="r-daily"><b>Every business day</b><span>You replace each day's collection.</span></label></div>
+            <div class="choice"><input type="radio" name="replenish" id="r-weekly" value="weekly"><label for="r-weekly"><b>Every Monday</b></label></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <p class="error" id="step-error" role="alert" hidden></p>
+    </form>
+    <div class="nav">
+      <button type="button" class="btn ghost" id="back">Back</button>
+      <button type="button" class="btn" id="next">Next</button>
+    </div>
+  </section>
+
+  <section id="results" class="results" aria-live="polite" hidden>
+    <div class="bar-head">
+      <h2>Your estimate</h2>
+      <div class="controls no-print">
+        <label>Week shown<select id="week"></select></label>
+        <button type="button" class="btn ghost" id="edit">Change my answers</button>
+        <button type="button" class="btn ghost" id="print">Print or save as PDF</button>
+      </div>
+    </div>
+
+    <div class="panel hero">
+      <div class="h-label" id="hero-label"></div>
+      <div class="h-value" id="hero-value"></div>
+      <div class="h-sub" id="hero-sub"></div>
+    </div>
+
+    <div class="panel card">
+      <h3>What the money is for</h3>
+      <div class="table-wrap"><table id="purposes"></table></div>
+    </div>
+
+    <div class="panel card">
+      <h3>Where it sits in your wallet</h3>
+      <div class="bars" id="bars"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel card">
+      <h3>When you need it</h3>
+      <ul class="when" id="when"></ul>
+    </div>
+
+    <div class="panel card">
+      <h3>What moves the estimate</h3>
+      <p class="sub">The normal-week estimate with one thing changed.</p>
+      <div class="table-wrap"><table id="sens"></table></div>
+    </div>
+
+    <div class="two">
+      <div class="panel card"><h3>Your answers</h3><dl id="answers"></dl><div class="no-print"><button type="button" class="linkbtn" id="edit2">Change my answers</button></div></div>
+      <div class="panel card"><h3>What we assumed</h3><ul class="plain" id="assumed"></ul></div>
+    </div>
+
+    <div class="panel card">
+      <h3>Sources</h3>
+      <ul class="plain">
+        <li>ECC: DCP Risk Management and DCP Payments pages; Risk Management Services Manual, release 056 (§3.10 auctions, §3.11 continuous); DCP client presentation (July 2025); Linking a Connected Bank Settlement Account with ECC (2025/2026).</li>
+        <li>TenneT BRP rules: Systeemcode elektriciteit 2026, articles 10.8, 10.26, 10.27 and 10.29 (wetten.overheid.nl).</li>
+        <li>From 1 January 2027: ACM draft decision ACM/25/196985 of 25 August 2026 on BRP security (not yet final).</li>
+      </ul>
+      <p class="disclaimer">Indicative only: not an offer and not advice. Fees (ECC, EPEX SPOT, Direct+) and VAT are not included. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
+    </div>
+  </section>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+
+<script>
+/* Direct+ limit engine — ECC direct clearing (DCP) dynamic limit rules, per market.
+   Implemented: EPEX continuous (EPEX_CONTINUOUS_EUR) and day-ahead (EPEX_AUCTION_EUR).
+   Ported from ECC's DCP Simulation Tool v1.3.5 (clsCalcForMarket, Output.bas)
+   and checked against ECC's client deck (July 2025). One deliberate difference
+   from the tool: after a weekend or holiday, the next business day's auction is back
+   at the full limit, as in ECC's client deck (the lower of two readings, see calc()). */
+var LimitEngine = (function () {
+  'use strict';
+  // Weekday non-business days in ECC's calendar (weekends are never business days).
+  var HOLIDAYS = {
+    '2026-01-01': "New Year's Day", '2026-04-03': 'Good Friday', '2026-04-06': 'Easter Monday',
+    '2026-05-01': 'Labour Day', '2026-12-25': 'Christmas Day',
+    '2027-01-01': "New Year's Day", '2027-03-26': 'Good Friday', '2027-03-29': 'Easter Monday'
+  };
+  var MIN_DATE = '2026-01-01', MAX_DATE = '2027-12-24';
+  var DAY = 86400000;
+
+  /* Market definitions, copied from ECC's market table (reference/ecc/markets_table.csv;
+     tests/markets.test.js checks them against it).
+       reset        'business day': one limit period per business day, running over weekends and holidays;
+                    'day': the limit resets every calendar day.
+       auction      the table's Auction Flag.
+       ownCalendar  the market has its own trading-day calendar (the table's "separate TD calendar").
+     A market's rules follow from these fields; only the markets listed here are implemented. */
+  var MARKETS = {
+    EPEX_CONTINUOUS_EUR: { reset: 'business day', auction: 0, ownCalendar: false, currency: 'EUR' },
+    EPEX_AUCTION_EUR:    { reset: 'day',          auction: 0, ownCalendar: false, currency: 'EUR' }
+  };
+  // The two markets of the original two-market API (p.cont, p.da).
+  var CONT = 'EPEX_CONTINUOUS_EUR', DA = 'EPEX_AUCTION_EUR';
+
+  function parse(iso) { var p = iso.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
+  function iso(d) { return d.toISOString().slice(0, 10); }
+  function add(d, n) { return new Date(d.getTime() + n * DAY); }
+  function isBD(d) { var w = d.getUTCDay(); return w !== 0 && w !== 6 && !HOLIDAYS[iso(d)]; }
+  function nextBD(d) { var x = add(d, 1); while (!isBD(x)) x = add(x, 1); return x; }
+  function prevBD(d) { var x = add(d, -1); while (!isBD(x)) x = add(x, -1); return x; }
+  function gap(a, b) { return Math.round((b - a) / DAY); }
+  function holidayName(d) {
+    if (HOLIDAYS[iso(d)]) return HOLIDAYS[iso(d)];
+    var w = d.getUTCDay(); return (w === 0 || w === 6) ? 'Weekend' : '';
+  }
+
+  /* Base limit from one business day's 16:00 to the next, g calendar days later:
+     bl(g) is the limit that goes live at 16:00, res(g) what ECC reserves for the period. */
+  function baseRule(def, s) {
+    if (def.reset === 'business day') {
+      // No reset on non-business days, so the 16:00 base limit must last g days.
+      var bl = function (g) { return s.bd + (g - 1) * s.nbd; };
+      return { bl: bl, res: bl };
+    }
+    // Resets every calendar day; multi-day gaps use max(BD, NBD) per day.
+    var mx = Math.max(s.bd, s.nbd);
+    return { bl: function (g) { return g === 1 ? s.bd : mx; }, res: function (g) { return g === 1 ? s.bd : g * mx; } };
+  }
+  function resolve(list) {
+    var seen = {};
+    return list.map(function (s) {
+      var def = MARKETS[s.id];
+      if (!def) throw new Error('Market not implemented: ' + s.id);
+      if (seen[s.id]) throw new Error('Market listed twice: ' + s.id);
+      seen[s.id] = true;
+      return { id: s.id, def: def, bd: s.bd, k: s.key / 100, rule: baseRule(def, s) };
+    });
+  }
+  // Base limit requirement at calculation day d, all markets.
+  function reserveAt(d, ms) {
+    var n1 = nextBD(d), n2 = nextBD(n1), x = gap(d, n1), y = gap(n1, n2), sum = 0;
+    ms.forEach(function (m) { sum += m.rule.res(x) + m.rule.res(y); });
+    return sum;
+  }
+
+  /* One calculation day t (an ECC business day), any list of markets.
+     p = { C, OR, markets: [{ id, bd, nbd, key }] }  (keys in %, summing to 100) */
+  function calc(t, p) {
+    var ms = resolve(p.markets);
+    var nb1 = nextBD(t), nb2 = nextBD(nb1);
+    var g1 = gap(t, nb1), g2 = gap(nb1, nb2);
+    // Base limit requirement: today's base limit + the one granted at the next business day's 16:00.
+    var blr = 0;
+    ms.forEach(function (m) { m.blr = m.rule.res(g1) + m.rule.res(g2); blr += m.blr; });
+    var excess = p.C - blr - p.OR;          // can be negative (shortfall)
+    var free = Math.max(excess, 0);         // floored at zero as in ECC's deck (p.8); ECC's tool does not floor it, see docs/open-questions.md
+    // Next morning: yesterday's settled purchases come back; a shortfall is refilled first.
+    var refill = Math.max(p.OR - Math.max(-excess, 0), 0);
+    var out = {};
+    ms.forEach(function (m) {
+      var l16 = m.rule.bl(g1), r = { blr: m.blr, share: free * m.k, l16: l16 };
+      if (m.def.reset === 'business day') {
+        r.l18 = l16 + free * m.k; r.l09 = r.l18 + refill * m.k; r.resetDays = 1;
+      } else {
+        var l18 = l16 + free * m.k / g1, l09 = l18 + refill * m.k, carry = null, level = null;
+        if (g1 > 1) {
+          // Next business day's auction after a weekend or holiday (shown with those auctions unused).
+          // ECC's client deck puts it back at the full limit, where the simulation tool gives only
+          // the one-day share. ECC's example (one market) fits two readings, which differ slightly
+          // with two markets and weekend base limits; we show the lower one:
+          //  carry: the unused weekend/holiday limit, base limits included, comes back
+          //  level: the normal weekday level (next business day's reserve, nothing unpaid)
+          carry = l18 * g1 + refill * m.k;
+          level = m.bd + Math.max(p.C - reserveAt(nb1, ms), 0) * m.k;
+          l09 = Math.min(carry, level);
+        }
+        // Auctions covered by this calculation: days t+1 .. nb1.
+        var auctions = [];
+        for (var i = 1; i <= g1; i++) {
+          var d = add(t, i), settled = (i === g1);
+          auctions.push({ date: iso(d), limit: settled ? l09 : l18, settled: settled, bd: isBD(d), note: holidayName(d),
+                          rollover: settled && g1 > 1, carry: settled ? carry : null, level: settled ? level : null });
+        }
+        r.l18 = l18; r.l09 = l09; r.resetDays = g1; r.auctions = auctions;
+      }
+      out[m.id] = r;
+    });
+    return {
+      date: iso(t), nextBD: iso(nb1), secondBD: iso(nb2), gap1: g1, gap2: g2,
+      blr: blr, excess: excess, free: free, refill: refill,
+      markets: out, baseUncovered: p.C < blr
+    };
+  }
+
+  // Two-market API: p = { C, OR, cont: {bd, nbd, key}, da: {bd, nbd, key} }, as before calc().
+  function fromLegacy(p) {
+    return { C: p.C, OR: p.OR, markets: [{ id: CONT, bd: p.cont.bd, nbd: p.cont.nbd, key: p.cont.key },
+                                         { id: DA, bd: p.da.bd, nbd: p.da.nbd, key: p.da.key }] };
+  }
+  function tgtFromLegacy(tgt) {
+    var t = {};
+    t[CONT] = { limit: tgt.cont, measure: tgt.contMeasure };
+    t[DA] = { limit: tgt.da, nonBD: tgt.daNonBD };
+    return t;
+  }
+  function toLegacy(r) {
+    var c = r.markets[CONT], a = r.markets[DA];
+    return {
+      date: r.date, nextBD: r.nextBD, secondBD: r.secondBD, gap1: r.gap1, gap2: r.gap2,
+      blrC: c.blr, blrA: a.blr, blr: r.blr, excess: r.excess, free: r.free, refill: r.refill,
+      shareC: c.share, shareA: a.share,
+      cont: { l16: c.l16, l18: c.l18, l09: c.l09 },
+      da: { l16: a.l16, l18: a.l18, l09: a.l09, resetDays: a.resetDays, auctions: a.auctions },
+      baseUncovered: r.baseUncovered
+    };
+  }
+
+  // p with `markets` returns calc()'s result; p with `cont`/`da` returns the two-market result.
+  function day(t, p) { return p.markets ? calc(t, p) : toLegacy(calc(t, fromLegacy(p))); }
+
+  function weekDays(anchorIso) {
+    var a = parse(anchorIso), w = a.getUTCDay(), mon = add(a, -((w + 6) % 7)), out = [];
+    for (var i = 0; i < 5; i++) { var d = add(mon, i); if (isBD(d)) out.push(d); }
+    return out;
+  }
+  function snapToBD(isoDate) { var d = parse(isoDate); return isBD(d) ? d : nextBD(d); }
+
+  function week(anchorIso, p) { return weekDays(anchorIso).map(function (d) { return day(d, p); }); }
+
+  /* Sizing. Targets per market id:
+       tgt = { <id>: { limit: €, measure: 'l18'|'l09' } }   business-day markets (limit in that evening/morning)
+       tgt = { <id>: { limit: €, nonBD: bool } }            day markets (limit at every auction; nonBD: weekend/holiday ones too)
+     The two-market API takes tgt = { cont: €, contMeasure: 'l18'|'l09', da: €, daNonBD: bool }.
+     A market's limits depend only on collateral and its own key, never on other markets' keys. */
+  function targetChecks(r, id, tg, visit) {
+    var rm = r.markets[id];
+    if (!rm.auctions) { visit(rm[tg.measure], r.date); return; }
+    rm.auctions.forEach(function (au) { if (tg.nonBD || au.bd) visit(au.limit, au.date); });
+  }
+  function meetsN(C, days, p, tgt) {
+    var q = { C: C, OR: p.OR, markets: p.markets };
+    for (var i = 0; i < days.length; i++) {
+      var r = calc(days[i], q), ok = !r.baseUncovered;
+      for (var id in tgt) {
+        if (!ok) break;
+        var lim = tgt[id].limit;
+        if (lim > 0 && r.markets[id]) targetChecks(r, id, tgt[id], function (v) { if (v < lim - 1e-6) ok = false; });
+      }
+      if (!ok) return false;
+    }
+    return true;
+  }
+  // Smallest collateral (whole €) meeting the targets on every day in `days`; null if unreachable.
+  function solve(days, p, tgt) {
+    if (!p.markets) { p = fromLegacy(p); tgt = tgtFromLegacy(tgt); }
+    var hi = 1e6;
+    while (!meetsN(hi, days, p, tgt)) { hi *= 2; if (hi > 1e13) return null; }
+    var lo = 0;
+    if (meetsN(0, days, p, tgt)) return 0;
+    while (hi - lo > 0.5) { var mid = (lo + hi) / 2; if (meetsN(mid, days, p, tgt)) hi = mid; else lo = mid; }
+    var r = Math.round(hi);
+    return meetsN(r, days, p, tgt) ? r : Math.ceil(hi);
+  }
+  // Which day/market is binding at collateral C (smallest headroom vs target).
+  // market is the market id, or 'base' (with the two-market API: 'cont', 'da' or 'base').
+  function binding(C, days, p, tgt) {
+    var legacy = !p.markets;
+    if (legacy) { p = fromLegacy(p); tgt = tgtFromLegacy(tgt); }
+    var q = { C: C, OR: p.OR, markets: p.markets }, best = null;
+    days.forEach(function (d) {
+      var r = calc(d, q);
+      p.markets.forEach(function (s) {
+        var tg = tgt[s.id];
+        if (!tg || !(tg.limit > 0)) return;
+        var name = legacy ? (s.id === CONT ? 'cont' : 'da') : s.id;
+        targetChecks(r, s.id, tg, function (v, date) {
+          var h = v - tg.limit;
+          if (!best || h < best.h) best = r.markets[s.id].auctions ? { h: h, market: name, date: date, calc: r.date } : { h: h, market: name, date: date };
+        });
+      });
+      var hb = C - r.blr;
+      if (!best || hb < best.h) best = { h: hb, market: 'base', date: r.date };
+    });
+    return best;
+  }
+  // Smallest whole-% key with which market `id` meets its target at collateral C (Infinity if 100% is not enough).
+  function minKey(C, days, p, tgt, id) {
+    if (!tgt[id] || !(tgt[id].limit > 0)) return 0;
+    var t = {}; t[id] = tgt[id];
+    var at = function (k) {
+      return meetsN(C, days, { OR: p.OR, markets: p.markets.map(function (s) { return s.id === id ? { id: s.id, bd: s.bd, nbd: s.nbd, key: k } : s; }) }, t);
+    };
+    if (!at(100)) return Infinity;
+    if (at(0)) return 0;
+    var lo = 0, hi = 100;
+    while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (at(mid)) hi = mid; else lo = mid; }
+    return hi;
+  }
+  /* Split (whole %) that needs the least collateral, and that collateral; null if unreachable.
+     Because each market's limits depend only on its own key, collateral C works with some split exactly
+     when the markets' minimum keys at C add up to 100% or less. Bisect on C, then place the leftover %
+     as close to the member's current split (p's keys) as possible.
+     Returns { keys: { <id>: % }, C }, or { key: continuous %, C } with the two-market API. */
+  function cheapestKey(days, p, tgt) {
+    var legacy = !p.markets;
+    if (legacy) { p = fromLegacy(p); p.markets[1].key = 100 - p.markets[0].key; tgt = tgtFromLegacy(tgt); }
+    var u = p.markets.map(function (s) { return s.key; });
+    if (u.reduce(function (a, b) { return a + b; }, 0) !== 100) throw new Error('Keys must add up to 100');
+    var need = function (C) {
+      if (!meetsN(C, days, p, {})) return null;   // base limits not covered
+      var ks = p.markets.map(function (s) { return minKey(C, days, p, tgt, s.id); });
+      return ks.reduce(function (a, b) { return a + b; }, 0) <= 100 ? ks : null;
+    };
+    var hi = 1e6;
+    while (!need(hi)) { hi *= 2; if (hi > 1e13) return null; }
+    var C = 0;
+    if (!need(0)) {
+      var lo = 0;
+      while (hi - lo > 1) { var mid = Math.floor((lo + hi) / 2); if (need(mid)) hi = mid; else lo = mid; }
+      C = hi;
+    }
+    // Raise markets below their minimum; the others give it back in proportion to their spare share
+    // (largest remainder, ties to the earlier market). With two markets this is the nearest split.
+    var kmin = need(C), k = u.map(function (x, i) { return Math.max(x, kmin[i]); });
+    var spare = k.map(function (x, i) { return x - kmin[i]; }), tot = spare.reduce(function (a, b) { return a + b; }, 0);
+    var excess = k.reduce(function (a, b) { return a + b; }, 0) - 100;
+    if (excess > 0) {
+      var raw = spare.map(function (s) { return s * excess / tot; }), take = raw.map(Math.floor);
+      var left = excess - take.reduce(function (a, b) { return a + b; }, 0);
+      raw.map(function (r, i) { return i; })
+        .sort(function (a, b) { return (raw[b] - take[b]) - (raw[a] - take[a]) || a - b; })
+        .forEach(function (i) { if (left > 0 && take[i] < spare[i]) { take[i]++; left--; } });
+      k = k.map(function (x, i) { return x - take[i]; });
+    }
+    if (legacy) return { key: k[0], C: C };
+    var keys = {};
+    p.markets.forEach(function (s, i) { keys[s.id] = k[i]; });
+    return { keys: keys, C: C };
+  }
+
+  return { day: day, week: week, weekDays: weekDays, snapToBD: snapToBD, solve: solve, binding: binding,
+           cheapestKey: cheapestKey, parse: parse, iso: iso, isBD: isBD, nextBD: nextBD, prevBD: prevBD,
+           holidayName: holidayName, HOLIDAYS: HOLIDAYS, MARKETS: MARKETS, MIN_DATE: MIN_DATE, MAX_DATE: MAX_DATE };
+})();
+/* Direct+ wallet: trading behaviour → per-day flows, auction order exposure, continuous target.
+   Sources: ECC Risk Management Services Manual v056, §3.10 (auctions) and §3.11 (continuous).
+   Formulas and their sources: docs/wallet-model.md §2.2, §2.3 and §6. No DOM, no engine. */
+var WalletBehaviour = (function () {
+  'use strict';
+  function clamp(p, lo, hi) { return Math.min(Math.max(p, lo), hi); }
+
+  /* Continuous target for one limit period, from its trades in time order (wallet-model §2.2).
+     trades: [{ mwh: + buy / − sell, price }]. Manual §3.11: buys at positive and sells at negative prices use limit,
+     the others give it back.
+       G = risk-bearing value, P = running peak of the cumulative net position,
+       T = max(G × (1 − s), P) + resting   (s: ASSUMPTION, default 0) */
+  function contTarget(trades, s, resting) {
+    var G = 0, pos = 0, P = 0;
+    trades.forEach(function (t) {
+      var v = t.mwh * t.price;              // what the trade costs the member; negative when it pays the member
+      if (v > 0) G += v;
+      pos += v;
+      if (pos > P) P = pos;
+    });
+    return { G: G, P: P, T: Math.max(G * (1 - (s || 0)), P) + (resting || 0) };
+  }
+
+  /* Exposure of one auction order (Manual §3.10, p.24): "the maximum value of (price*quantity) for the complete order.
+     Only orders with a positive exposure are applied against the limit."
+     curve: [{ mwh: + buy / − sell, price }]; price null means no limit price.
+     px: { maxMarket, minMarket, minReal, maxReal }. The Realistic Price Range (p.25) applies only when both minReal and
+     maxReal are set; it caps prices to [minReal, maxReal]. No built-in values (Q9).
+     INTERPRETATION: a sell without a limit price counts at the minimum price; the manual only mentions the maximum. */
+  function orderExposure(curve, px) {
+    var range = px.minReal != null && px.maxReal != null, best = 0;
+    if (range && !(px.minReal < px.maxReal)) throw new Error('Realistic price range: the minimum must be below the maximum');
+    curve.forEach(function (c) {
+      var p = c.price;
+      if (p == null) {
+        p = c.mwh > 0 ? (range ? px.maxReal : px.maxMarket) : (range ? px.minReal : px.minMarket);
+        if (p == null) throw new Error('Set the market ' + (c.mwh > 0 ? 'maximum' : 'minimum') + ' price for orders without a limit price (Q9)');
+      }
+      if (range) p = clamp(p, px.minReal, px.maxReal);
+      var e = p * c.mwh;
+      if (e > best) best = e;
+    });
+    return best;
+  }
+
+  /* Parametric flows for one trading day (16:00 the day before to 16:00), wallet-model §6.1.
+     b = { weekend, price, negShare, negPrice, cont: { buy, sell }, auc: { buy, sell, limitPrice }, lossShare }
+       volumes in MWh a day, prices in €/MWh; limitPrice null means no limit price (priced by px as in orderExposure).
+     f multiplies every price (1 = expected; stress price ÷ typical price = stress). traded: an ECC business day, or
+     weekend and holiday trading is on.
+     Returns values in €: cont.risk (risk-bearing value for the continuous target), auc.exposure (auction target),
+     tradeNet (buys − sells at one price per market) and net (what settlement collects for the day's trades: tradeNet
+     plus the stress loss share, wallet-model §3; a loss is buying that has not been sold back at the same price). */
+  function dayFlows(b, f, traded, px) {
+    var z = { traded: false, cont: { buyValue: 0, sellValue: 0, risk: 0 }, auc: { buyValue: 0, sellValue: 0, exposure: 0 }, tradeNet: 0, net: 0 };
+    if (!traded) return z;
+    var p = b.price * f, pn = (b.negPrice || 0) * f, sh = b.negShare || 0;
+    var avg = (1 - sh) * p + sh * pn;                          // average price over positive and negative hours
+    var c = b.cont || { buy: 0, sell: 0 }, a = b.auc || { buy: 0, sell: 0, limitPrice: null };
+    var cont = { buyValue: c.buy * avg, sellValue: c.sell * avg, risk: c.buy * (1 - sh) * p + c.sell * sh * Math.abs(pn) };
+    var lim = a.limitPrice == null ? null : a.limitPrice * f;
+    var auc = { buyValue: a.buy * avg, sellValue: a.sell * avg, exposure: a.buy > 0 ? orderExposure([{ mwh: a.buy, price: lim }], px || {}) : 0 };
+    var tradeNet = cont.buyValue - cont.sellValue + auc.buyValue - auc.sellValue;
+    return { traded: true, cont: cont, auc: auc, tradeNet: tradeNet, net: tradeNet + (b.lossShare || 0) * (c.buy + a.buy) * p };
+  }
+
+  return { contTarget: contTarget, orderExposure: orderExposure, dayFlows: dayFlows };
+})();
+/* Direct+ wallet: ECC settlement through the connected account (docs/wallet-model.md §3).
+   Sources: ECC, "Linking a Connected Bank Settlement Account with ECC" 2025/2026, p.3: "all trades conducted before
+   4 PM CET are settled in the next morning", one MT101 "at the end of the business day (6 PM CET) with value date the
+   next business day", received "before 8 AM (EUR)"; ECC DCP Payments page: one net payment per DCP member.
+   Business days come from the engine's ECC (T2) calendar. */
+var WalletSettlement = (function (E) {
+  'use strict';
+  var DAY = 86400000;
+  function add(d, n) { return new Date(d.getTime() + n * DAY); }
+  function toDate(d) { return typeof d === 'string' ? E.parse(d) : d; }
+
+  /* Booking window closing on business day D at 16:00. It holds the trading days (each 16:00 to 16:00, labelled by
+     the day it ends) after the previous business day, up to and including D. */
+  function bookingWindow(D) {
+    D = toDate(D);
+    if (!E.isBD(D)) throw new Error(E.iso(D) + ' is not an ECC business day');
+    var from = E.prevBD(D), days = [];
+    for (var x = add(from, 1); x <= D; x = add(x, 1)) days.push(E.iso(x));
+    var value = E.iso(E.nextBD(D));
+    return { close: E.iso(D), from: E.iso(from), days: days, fundBy: E.iso(D) + ' 18:00', valueDate: value, receivedBy: value + ' 08:00' };
+  }
+
+  /* Windows closing on each of closeDays, with their amounts. flowOf(isoDay) → { net } for one trading day: what its
+     trades cost (WalletBehaviour.dayFlows); extras(window) → fees, clearing-fund and cash-collateral items (optional).
+     OR(D) = max(net of the window's trades, 0): purchases not yet paid, for the engine's evening calculation. Fees and
+     collateral items are paid in the same collection but are not open risk. */
+  function windows(closeDays, flowOf, extras) {
+    return closeDays.map(function (D) {
+      var w = bookingWindow(D), trade = 0;
+      w.days.forEach(function (d) { trade += flowOf(d).net; });
+      w.tradeNet = trade;
+      w.net = trade + (extras ? extras(w) : 0);
+      w.OR = Math.max(trade, 0);
+      return w;
+    });
+  }
+
+  /* Cash the member must have in the connected account (wallet-model §3): the peak, over the horizon, of what has been
+     funded minus what came back and what the member topped up. Positive nets must be in the account at their D 18:00
+     deadline; credits (negative nets) arrive on their value date. replenish (ASSUMPTION, default 'none'):
+       'daily'  each morning's collection is topped up the same business day;
+       'weekly' collections are topped up on the first business day of each week. */
+  function cashPath(ws, replenish) {
+    var ev = [];
+    ws.forEach(function (w) {
+      if (w.net > 0) {
+        ev.push({ at: w.close + ' 18:00', kind: 'fund', amount: w.net, window: w.close });
+        ev.push({ at: w.valueDate + ' 08:00', kind: 'collect', amount: w.net, window: w.close });
+      } else if (w.net < 0) ev.push({ at: w.valueDate + ' 08:00', kind: 'credit', amount: -w.net, window: w.close });
+    });
+    ev.sort(function (a, b) { return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
+    var need = 0, level = 0, sinceTopUp = 0, lastWeek = null, path = [];
+    ev.forEach(function (e) {
+      var day = e.at.slice(0, 10);
+      if (replenish === 'weekly') {
+        var d = E.parse(day), mon = E.iso(add(d, -((d.getUTCDay() + 6) % 7)));
+        if (lastWeek !== null && mon !== lastWeek && sinceTopUp > 0) { path.push({ at: day + ' 12:00', kind: 'top-up', amount: sinceTopUp, level: level -= sinceTopUp }); sinceTopUp = 0; }
+        lastWeek = mon;
+      }
+      if (e.kind === 'fund') { level += e.amount; need = Math.max(need, level); }
+      else if (e.kind === 'credit') level -= e.amount;
+      else if (e.kind === 'collect') {
+        sinceTopUp += e.amount;
+        if (replenish === 'daily') { path.push({ at: e.at, kind: 'collect', amount: e.amount, level: level }); path.push({ at: day + ' 12:00', kind: 'top-up', amount: e.amount, level: level -= e.amount }); sinceTopUp = 0; return; }
+      }
+      path.push({ at: e.at, kind: e.kind, amount: e.amount, level: level });
+    });
+    return { need: need, path: path };
+  }
+
+  return { bookingWindow: bookingWindow, windows: windows, cashPath: cashPath };
+})(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'));
+/* Direct+ wallet: from behaviour to ECC collateral (docs/wallet-model.md §2).
+   Uses only the engine's public API (day, nextBD, iso, parse). The engine's own solve() holds open risk and targets
+   constant for all days; this solver takes both per calculation day. */
+var WalletEccLink = (function (E) {
+  'use strict';
+  var DAY = 86400000;
+  function add(d, n) { return new Date(d.getTime() + n * DAY); }
+
+  /* Base limits (wallet-model §2.4; ECC deck p.2 and p.4). o = { restingCont, eveningCont, updateHour, restingAuc,
+     restingAucWeekend, override }. eveningCont is the net buying expected between 16:00 and an 18:00 update; the update
+     hour is an ASSUMPTION (18, stress 19). Continuous has no weekend reset, so its non-business-day base limit is 0. */
+  function baseLimits(o) {
+    var bl = {
+      cont: { bd: (o.restingCont || 0) + (o.eveningCont || 0) * ((o.updateHour || 18) - 16) / 2, nbd: 0 },
+      da: { bd: o.restingAuc || 0, nbd: o.restingAucWeekend || 0 }
+    };
+    var ov = o.override || {};
+    ['cont', 'da'].forEach(function (m) { if (ov[m]) { if (ov[m].bd != null) bl[m].bd = ov[m].bd; if (ov[m].nbd != null) bl[m].nbd = ov[m].nbd; } });
+    return bl;
+  }
+
+  /* Targets per calculation day (wallet-model §2.2, §2.3). The limit set on calculation day D serves the trading days
+     after D up to and including nextBD(D) (each 16:00 to 16:00). flowOf(isoDay) → WalletBehaviour.dayFlows result.
+       continuous: max(G × (1 − s), P) + resting, where P is the peak of the daily cumulative net value (a lower bound
+                   on the intraday peak, since only daily totals exist in parametric mode);
+       auctions:   each auction date's order exposure. */
+  function targets(calcDays, flowOf, s, restingCont) {
+    var cont = {}, auc = {};
+    calcDays.forEach(function (D) {
+      var nb = E.nextBD(D), G = 0, pos = 0, P = 0;
+      for (var x = add(D, 1); x <= nb; x = add(x, 1)) {
+        var f = flowOf(E.iso(x));
+        G += f.cont.risk;
+        pos += f.cont.buyValue - f.cont.sellValue;
+        if (pos > P) P = pos;
+        auc[E.iso(x)] = f.auc.exposure;
+      }
+      cont[E.iso(D)] = Math.max(G * (1 - (s || 0)), P) + (restingCont || 0);
+    });
+    return { cont: cont, auc: auc };
+  }
+
+  /* ctx = { days: [Date], OR: iso → €, cont: iso → €, auc: (iso, auction) → €, bl: baseLimits(), measure: 'l18'|'l09' }
+     The engine's meets() logic with per-day open risk and targets: base limits covered, the continuous measure,
+     every auction. measure is an ASSUMPTION ('l18' by default, wallet-model §2.2). */
+  function meets(C, k, ctx) {
+    for (var i = 0; i < ctx.days.length; i++) {
+      var D = ctx.days[i], d = E.iso(D);
+      var r = E.day(D, { C: C, OR: ctx.OR(d), cont: { bd: ctx.bl.cont.bd, nbd: ctx.bl.cont.nbd, key: k }, da: { bd: ctx.bl.da.bd, nbd: ctx.bl.da.nbd, key: 100 - k } });
+      if (r.baseUncovered) return false;
+      var tc = ctx.cont(d);
+      if (tc > 0 && r.cont[ctx.measure || 'l18'] < tc - 1e-6) return false;
+      for (var j = 0; j < r.da.auctions.length; j++) {
+        var au = r.da.auctions[j], ta = ctx.auc(au.date, au);
+        if (ta > 0 && au.limit < ta - 1e-6) return false;
+      }
+    }
+    return true;
+  }
+  // Smallest whole euro of collateral meeting ctx with continuous key k; null if out of reach. Same search bounds as the
+  // engine's solve(), which it matches when open risk and targets are constant (tests/wallet/ecc-link.test.js).
+  function solve(ctx, k) {
+    var hi = 1e6;
+    while (!meets(hi, k, ctx)) { hi *= 2; if (hi > 1e13) return null; }
+    if (meets(0, k, ctx)) return 0;
+    var lo = 0;
+    while (hi - lo > 1) { var mid = Math.floor((lo + hi) / 2); if (meets(mid, k, ctx)) hi = mid; else lo = mid; }
+    return hi;
+  }
+  // The split (continuous %) needing the least collateral: every split from 0 to 100, ties to the member's own (ctx.key).
+  function cheapest(ctx) {
+    var best = null, u = ctx.key == null ? 50 : ctx.key;
+    for (var k = 0; k <= 100; k++) {
+      var C = solve(ctx, k);
+      if (C === null) continue;
+      if (!best || C < best.C - 0.5 || (Math.abs(C - best.C) <= 0.5 && Math.abs(k - u) < Math.abs(best.key - u))) best = { key: k, C: C };
+    }
+    return best;
+  }
+
+  /* Collateral form (ECC DCP Risk Management page): "trading limits up to 40 million EUR can be covered by bank
+     guarantees only. For trading limits exceeding 40 million EUR, the excess amount must be backed by a minimum of 50%
+     in cash collateral." Default fund: "4% of the guarantee value", cash only. A cap limit (optional) caps the collateral
+     that counts for limits, so collateral needed above it is out of reach. */
+  var GUARANTEE_ONLY = 40000000, CASH_ABOVE = 0.5, DEFAULT_FUND = 0.04;
+  function form(C, useGuarantee, cap) {
+    var gMax = C <= GUARANTEE_ONLY ? C : GUARANTEE_ONLY + (1 - CASH_ABOVE) * (C - GUARANTEE_ONLY);
+    var g = useGuarantee ? gMax : 0;
+    return { collateral: C, guarantee: g, cash: C - g, defaultFund: DEFAULT_FUND * g, overCap: cap != null && C > cap };
+  }
+
+  return { baseLimits: baseLimits, targets: targets, meets: meets, solve: solve, cheapest: cheapest, form: form };
+})(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'));
+/* Direct+ wallet: BRP security for TenneT, art. 10.8 in force and as drafted (docs/wallet-model.md §4).
+   Each member is treated as its own BRP (Niki, 26 Sep 2026; wallet-model §4.4).
+   Sources: reference/tennet/systeemcode-elektriciteit_wetten-overheid_art-10.8-10.26-10.27-10.29_2026-09-26.txt (SC 2026),
+   reference/tennet/acm-25-196985_gecorrigeerd-ontwerpbesluit_2026-08-25.pdf (ACM draft). */
+var WalletBrp = (function () {
+  'use strict';
+
+  var RULES = {
+    current: {
+      label: 'Systeemcode elektriciteit 2026, art. 10.8 (in force)',
+      priceFloor: { value: 40, src: 'SC 2026 art. 10.8(4) and (12): "met een ondergrens van € 40 per MWh"' },
+      volumeFloorMW: { value: 50, src: 'SC 2026 art. 10.8(3), (6) and (11): "met een ondergrens van 50 MW"' },
+      hours: { value: 24, src: 'SC 2026 art. 10.8(11): "vermenigvuldigd met 24"' },
+      priceMonths: { value: 3, src: 'SC 2026 art. 10.8(4) and (12): "over een periode van drie maanden"' },
+      volumeWeeks: { value: 6, src: 'SC 2026 art. 10.8(5) and (6): "in de zes voorafgaande weken"' },
+      classes: { value: [[2, 10, 2], [11, 25, 11], [26, 50, 26]], src: 'SC 2026 art. 10.8(8)-(9): classes 2-10, 11-25, 26-50 MW, each counted at "de laagste capaciteit van die klasse"; above 50 MW actual capacity, (10)' },
+      nemo: { value: 100000, src: 'SC 2026 art. 10.8(14)' },
+      flatMinimum: { value: 96000, src: 'TenneT BRP recognition page (not retrieved); INTERPRETATION "flat €96,000"' }
+    },
+    draft: {
+      label: 'ACM draft decision ACM/25/196985 of 25 Aug 2026, art. 10.8 (from 1 Jan 2027 once final)',
+      from: { value: '2027-01-01', src: 'ACM draft, Artikel II B' },
+      weights: { value: { A: 3, B: 4, C: 6, D: 6 }, src: 'ACM draft art. 10.8(7): "de som 3A + 4B + 6C + 6D"' },
+      minimum: { value: 96000, src: 'ACM draft art. 10.8(7): "een minimumbedrag van € 96.000,-"' },
+      nemo: { value: 100000, src: 'ACM draft art. 10.8(8)' },
+      weeksB: { value: 10, src: 'ACM draft art. 10.8(3a): "referentieperiode van tien weken"' },
+      sigmaB: { value: 2, src: 'ACM draft art. 10.8(3b): "twee maal de standaarddeviatie"' },
+      monthsCD: { value: 12, src: 'ACM draft art. 10.8(4a) and (5a): "referentieperiode van twaalf maanden"' },
+      sigmaCD: { value: 0.5, src: 'ACM draft art. 10.8(4b) and (5b): "een half maal de standaarddeviatie"' },
+      months: { value: 2, src: 'ACM draft art. 10.8(2): "over een periode van twee maanden"' },
+      missing: { value: 0, src: 'ACM draft art. 10.8(6): "een fictieve factuur van € 0,-"' }
+    }
+  };
+  var C = RULES.current, D = RULES.draft;
+
+  // Rule in force on a date (ISO), unless overridden ('current' | 'draft'). Niki: offer both (Q3).
+  function ruleFor(iso, override) { return override || (iso >= D.from.value ? 'draft' : 'current'); }
+
+  /* Net transaction volume on one day (MWh). byCp = { counterparty: [net MWh per settlement period] }, + bought.
+     INTERPRETATION settings (wallet-model §4.3):
+       perPeriod 'i' |Σ over the day's periods| (default) or 'ii' Σ over the periods of |net|;
+       counterparties 'max' the largest single counterparty (default: "met enige andere" / "met een andere") or 'total'
+       all counterparties netted together. */
+  function dayVolume(byCp, perPeriod, counterparties) {
+    var read = function (v) {
+      var s = 0, a = 0;
+      v.forEach(function (x) { s += x; a += Math.abs(x); });
+      return perPeriod === 'ii' ? a : Math.abs(s);
+    };
+    var cps = Object.keys(byCp);
+    if (counterparties === 'total') {
+      var n = 0, tot = [];
+      cps.forEach(function (cp) { n = Math.max(n, byCp[cp].length); });
+      for (var t = 0; t < n; t++) { tot[t] = 0; cps.forEach(function (cp) { tot[t] += byCp[cp][t] || 0; }); }
+      return read(tot);
+    }
+    var best = 0;
+    cps.forEach(function (cp) { best = Math.max(best, read(byCp[cp])); });
+    return best;
+  }
+
+  /* Capacity counted for B under the current rule (MW), art. 10.8(8)-(10). mw: capacities of the large connections.
+     INTERPRETATION settings: under 2 MW counts nothing (no class); a capacity between two classes (e.g. 10.5 MW) rounds
+     'down' to the lower class (default) or 'up' to the higher one. */
+  function countedCapacity(mw, between) {
+    var cls = C.classes.value, total = 0;
+    mw.forEach(function (m) {
+      if (m > 50) { total += m; return; }
+      if (m < 2) return;
+      for (var i = 0; i < cls.length; i++) {
+        if (m >= cls[i][0] && m <= cls[i][1]) { total += cls[i][2]; return; }
+        var next = cls[i + 1];
+        if (next && m > cls[i][1] && m < next[0]) { total += between === 'up' ? next[2] : cls[i][2]; return; }
+      }
+    });
+    return total;
+  }
+
+  /* Current rule (SC 2026 art. 10.8). o = {
+       price3m,                              average market price over three months (€/MWh), floored at €40
+       kind: 'first' | 'up' | 'down',        which paragraph sets A: (3) first time, (5) TenneT's request, (6) the BRP's request
+       expected,                             expected highest daily net volume (MWh), for 'first'
+       daily,                                the last six weeks of daily highs (MWh), for 'up' and 'down'
+       capacityMW,                           counted capacity of large connections (countedCapacity)
+       reading: '1200' | 'flat',             INTERPRETATION of the 50 MW floor (wallet-model §4.1); default '1200'
+       floors,                               false: no volume floors and no minimum (a Direct+ member's marginal share)
+       nemo }
+     '1200': the 50 MW floor is 50 × 24 = 1,200 MWh, on A (first and down) and on B. 'flat': no volume floors, and a
+     €96,000 minimum on the total. The €40 price floor always applies: it sets the price of the BRP's own calculation. */
+  function current(o) {
+    if (o.nemo) return { rule: 'current', nemo: true, security: C.nemo.value };
+    var floor = o.reading === 'flat' || o.floors === false ? 0 : C.volumeFloorMW.value * C.hours.value;
+    var price = Math.max(o.price3m, C.priceFloor.value), daily = o.daily || [], V;
+    if (o.kind === 'up') V = Math.max.apply(null, daily.length ? daily : [0]);
+    else if (o.kind === 'down') V = Math.max(daily.reduce(function (s, x) { return s + x; }, 0) / (daily.length || 1), floor);
+    else V = Math.max(o.expected || 0, floor);
+    var A = V * price, B = Math.max((o.capacityMW || 0) * C.hours.value, floor) * price;
+    var security = 2 * A >= B ? 2 * A : A + B;
+    if (o.reading === 'flat' && o.floors !== false) security = Math.max(security, C.flatMinimum.value);
+    return { rule: 'current', volume: V, price: price, A: A, B: B, twoA: 2 * A >= B, security: security };
+  }
+
+  /* Mean and standard deviation over a fixed window of invoices, € (signed: positive means the BRP pays).
+     Missing weeks or months count as €0 (ACM draft art. 10.8(6)); values beyond n are ignored (the oldest first).
+     sigma 'population' (default) or 'sample': an INTERPRETATION. */
+  function stats(values, n, sigma) {
+    var v = values.slice(-n), i;
+    while (v.length < n) v.unshift(D.missing.value);
+    var mean = 0; for (i = 0; i < n; i++) mean += v[i]; mean /= n;
+    var ss = 0; for (i = 0; i < n; i++) ss += (v[i] - mean) * (v[i] - mean);
+    return { mean: mean, sd: Math.sqrt(ss / (sigma === 'sample' ? n - 1 : n)) };
+  }
+  // Draft components from invoice histories (oldest first). Components are not floored (proposal p.8).
+  function componentB(weekly, sigma) { var s = stats(weekly, D.weeksB.value, sigma); return s.mean + D.sigmaB.value * s.sd; }
+  function componentCD(monthly, sigma) { var s = stats(monthly, D.monthsCD.value, sigma); return s.mean + D.sigmaCD.value * s.sd; }
+
+  /* Draft rule (ACM draft art. 10.8). o = { A | (volume2m, price2m), weekly | B, profile | C, smart | D, sigma, nemo,
+     minimum }. Components come from invoice histories, or are given directly (B, C, D: the parametric model).
+       A = realised highest daily net volume over two months × average day-ahead reference price over two months;
+       minimum: apply the €96,000 per member (default true; wallet-model §4.4). */
+  function draft(o) {
+    if (o.nemo) return { rule: 'draft', nemo: true, security: D.nemo.value };
+    var w = D.weights.value;
+    var A = o.A != null ? o.A : (o.volume2m || 0) * (o.price2m || 0);
+    var B = o.B != null ? o.B : componentB(o.weekly || [], o.sigma);
+    var Cc = o.C != null ? o.C : componentCD(o.profile || [], o.sigma), Dc = o.D != null ? o.D : componentCD(o.smart || [], o.sigma);
+    var sum = w.A * A + w.B * B + w.C * Cc + w.D * Dc;
+    return { rule: 'draft', A: A, B: B, C: Cc, D: Dc, sum: sum, security: o.minimum === false ? sum : Math.max(sum, D.minimum.value) };
+  }
+
+  /* Draft-rule series for a new member, months 1-18 (wallet-model §4.2). Delivery starts at the beginning of month 1 and
+     TenneT recalculates at the start of each month (ASSUMPTION: the day in the month is not in the texts).
+       A: realised volume exists from month 2;
+       B: the first weekly invoice about four weeks after delivery (ACM draft para 15);
+       C: month M's profile reconciliation is paid in month M+5 (SC 2026 art. 10.26(4)-(5));
+       D: month M's smart-meter/telemetry reconciliation on the first working day of month M+6 (art. 10.27(13)).
+     s = { A, weekly, weeklySd, profile, profileSd, smart, smartSd, sigma, minimum, lagWeeks }: mean (and standard
+     deviation) of one invoice in steady state, €. With k real invoices of mean μ and deviation σ in a window of n, and
+     the rest €0, the component is taken at its expected mean and spread: p·μ + f·√(p(σ² + μ²) − (p·μ)²), p = k/n.
+     With σ = 0 this is exactly the constant-invoice window (stats() on k copies and n − k zeros). */
+  function expectedComponent(k, n, mean, sd, factor, sigma) {
+    var p = Math.min(k, n) / n, v = Math.max(0, p * (sd * sd + mean * mean) - p * mean * p * mean);
+    if (sigma === 'sample') v = v * n / (n - 1);
+    return p * mean + factor * Math.sqrt(v);
+  }
+  function rampUp(s, months) {
+    var out = [], lag = s.lagWeeks == null ? 4 : s.lagWeeks, peak = null;
+    for (var m = 1; m <= (months || 18); m++) {
+      var weeks = Math.floor((m - 1) * 52 / 12), kB = Math.max(0, weeks - lag);
+      var kC = Math.max(0, m - 6), kD = Math.max(0, m - 7);
+      var r = draft({ A: m >= 2 ? s.A || 0 : 0,
+                      B: expectedComponent(kB, D.weeksB.value, s.weekly || 0, s.weeklySd || 0, D.sigmaB.value, s.sigma),
+                      C: expectedComponent(kC, D.monthsCD.value, s.profile || 0, s.profileSd || 0, D.sigmaCD.value, s.sigma),
+                      D: expectedComponent(kD, D.monthsCD.value, s.smart || 0, s.smartSd || 0, D.sigmaCD.value, s.sigma),
+                      minimum: s.minimum });
+      r.month = m; r.invoices = { B: Math.min(kB, 10), C: Math.min(kC, 12), D: Math.min(kD, 12) };
+      out.push(r);
+      if (!peak || r.security > peak.security) peak = r;
+    }
+    return { months: out, peak: peak };
+  }
+
+  return { RULES: RULES, ruleFor: ruleFor, dayVolume: dayVolume, countedCapacity: countedCapacity, current: current,
+           stats: stats, componentB: componentB, componentCD: componentCD, draft: draft, rampUp: rampUp };
+})();
+/* Direct+ wallet: the TenneT account: imbalance and reconciliation invoices, their dates, and the account/security check
+   (docs/wallet-model.md §5, §6.2). Each member pays its own invoices, as if it were its own BRP (Niki, 26 Sep 2026).
+   Sources: SC 2026 art. 10.26, 10.27, 10.29 (reference/tennet/systeemcode-elektriciteit_wetten-overheid_…txt);
+   ACM draft ACM/25/196985 art. 10.8(9)-(10), amended 10.26(5)-(6) and 10.27(13)-(14), explanatory paras 15-17. */
+var WalletTennet = (function () {
+  'use strict';
+  var DAY = 86400000;
+  function parse(iso) { var p = iso.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
+  function iso(d) { return d.toISOString().slice(0, 10); }
+  function add(d, n) { return new Date(d.getTime() + n * DAY); }
+
+  /* ---------- imbalance price (SC 2026 art. 10.29) ----------
+     prices = { up (opregelen), down (afregelen), mid (middenprijs) } for one settlement period; v = imbalance in MWh,
+     + short ("afnemen": the BRP pays), − long ("invoeden": TenneT pays). Returns the signed amount, + = the BRP pays.
+     It is the full imbalance price, not a spread against day-ahead; negative prices flip the flow by themselves. */
+  function price(state, side, p) {
+    if (state === -1) return p.down;                                                   // para 2: afregelen, both sides
+    if (state === 1) return p.up;                                                      // para 3: opregelen, both sides
+    if (state === 0) return p.mid;                                                     // para 5: middenprijs, both sides
+    if (state === 2) return side === 'short' ? Math.max(p.mid, p.up) : Math.min(p.mid, p.down);   // para 4a-4d
+    throw new Error('Unknown regulation state ' + state);
+  }
+  function periodAmount(v, state, p) { return v * price(state, v > 0 ? 'short' : 'long', p); }
+
+  /* ---------- Dutch working days ----------
+     TenneT's deadlines count Dutch working days, not ECC's T2 days. Holidays as in the Algemene termijnenwet (art. 3):
+     New Year's Day, Easter Monday, King's Day (27 April, 26 April when that is a Sunday), 5 May, Ascension Day,
+     Whit Monday, Christmas Day and Boxing Day. To be confirmed with TenneT (Q11). */
+  function easter(y) {                                   // anonymous Gregorian algorithm
+    var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+    var g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+    var l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    var month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(Date.UTC(y, month - 1, day));
+  }
+  var holidayCache = {};
+  function holidays(y) {
+    if (holidayCache[y]) return holidayCache[y];
+    var e = easter(y), king = new Date(Date.UTC(y, 3, 27)), h = {};
+    if (king.getUTCDay() === 0) king = new Date(Date.UTC(y, 3, 26));
+    h[y + '-01-01'] = "Nieuwjaarsdag"; h[iso(add(e, 1))] = 'Tweede Paasdag'; h[iso(king)] = 'Koningsdag';
+    h[y + '-05-05'] = 'Bevrijdingsdag'; h[iso(add(e, 39))] = 'Hemelvaartsdag'; h[iso(add(e, 50))] = 'Tweede Pinksterdag';
+    h[y + '-12-25'] = 'Eerste Kerstdag'; h[y + '-12-26'] = 'Tweede Kerstdag';
+    return (holidayCache[y] = h);
+  }
+  function isWorkday(d) { var w = d.getUTCDay(); return w !== 0 && w !== 6 && !holidays(d.getUTCFullYear())[iso(d)]; }
+  function onOrAfterWorkday(d) { while (!isWorkday(d)) d = add(d, 1); return d; }
+  function workdaysBetween(a, b) { var n = 0; for (var x = add(a, 1); x < b; x = add(x, 1)) if (isWorkday(x)) n++; return n; }
+  function nthWorkday(y, m0, n) { var d = new Date(Date.UTC(y, m0, 1)), k = 0; for (;;) { if (isWorkday(d) && ++k === n) return d; d = add(d, 1); } }
+
+  /* ---------- reconciliation dates ----------
+     month: 'YYYY-MM', the reconciliation month M. version 'current' | 'draft' (default: the draft for statements from
+     1 January 2027, when its 10.26(5) takes effect; ACM draft Artikel II B).
+     Profile (10.26): TenneT states the amount by the 10th working day of M+5 (para 4). Payment on the first Tuesday after;
+       current para 5: the Tuesday after that "tenzij tussen bedoelde moment en de eerste dinsdag niet meer dan drie
+       werkdagen zijn gelegen" applies; the draft drops that exception. Payout on the Wednesday after that Tuesday (para 6).
+       A Tuesday or Wednesday that is not a working day moves to the next working day (para 8; para 7 in the draft).
+     Smart-meter and telemetry (10.27): paid and paid out on the first working day of M+6 (paras 13-14). */
+  function monthShift(month, k) { var y = +month.slice(0, 4), m = +month.slice(5, 7) - 1 + k; return { y: y + Math.floor(m / 12), m0: ((m % 12) + 12) % 12 }; }
+  function paymentDates(statement, version) {
+    var s = typeof statement === 'string' ? parse(statement) : statement;
+    var v = version || (iso(s) >= '2027-01-01' ? 'draft' : 'current');
+    var tue = add(s, ((2 - s.getUTCDay() + 7) % 7) || 7);
+    if (v === 'current' && workdaysBetween(s, tue) <= 3) tue = add(tue, 7);
+    return { version: v, statement: iso(s), pay: iso(onOrAfterWorkday(tue)), payout: iso(onOrAfterWorkday(add(tue, 1))) };
+  }
+  function profileDates(month, version) {
+    var t = monthShift(month, 5), r = paymentDates(nthWorkday(t.y, t.m0, 10), version);
+    r.month = month;
+    return r;
+  }
+  function smartDates(month) {
+    var t = monthShift(month, 6), d = nthWorkday(t.y, t.m0, 1);
+    return { month: month, pay: iso(d), payout: iso(d) };
+  }
+  /* Weekly imbalance invoice for the delivery week starting weekStart (a Monday). ACM draft para 15: "Tussen het moment
+     van levering en facturatie zitten vier weken." The debit day is in TenneT's billing terms, not in the pack (Q11):
+     ASSUMPTION, the first working day on or after the end of the delivery week + lagWeeks (default 4). */
+  function imbalanceDebit(weekStart, lagWeeks) {
+    return iso(onOrAfterWorkday(add(parse(weekStart), 7 + 7 * (lagWeeks == null ? 4 : lagWeeks))));
+  }
+
+  /* ---------- account vs security ----------
+     Draft art. 10.8(10): enough balance for the weekly and monthly settlements (a), and enough security after them (b).
+     INTERPRETATION, processing debits in date order: balance before a debit ≥ max(invoice, 0), and
+     balance after it + guarantee ≥ security. Returns the smallest opening balance that passes, and the binding event.
+     invoices: [{ date, amount }] (+ the BRP pays, − TenneT pays); security: € or a function of the date.
+     rule 'current': invoice cash and security are additive (the deposit tops the guarantee up to the security). */
+  function accountNeed(invoices, security, guarantee, rule) {
+    var sec = typeof security === 'function' ? security : function () { return security; };
+    var g = guarantee || 0, ev = invoices.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var cum = 0, need = 0, why = null;
+    var consider = function (v, what) { if (v > need + 1e-9) { need = v; why = what; } };
+    if (rule === 'current') {
+      var peak = 0;
+      ev.forEach(function (e) { if (cum + Math.max(e.amount, 0) > peak) { peak = cum + Math.max(e.amount, 0); why = { date: e.date, check: 'invoice' }; } cum += e.amount; });
+      var dep = Math.max(sec(ev.length ? ev[0].date : null) - g, 0);
+      return { need: peak + dep, invoices: peak, deposit: dep, binding: why };
+    }
+    consider(sec(ev.length ? ev[0].date : null) - g, { date: ev.length ? ev[0].date : null, check: 'security at the start' });
+    ev.forEach(function (e) {
+      consider(cum + Math.max(e.amount, 0), { date: e.date, check: 'balance before the debit' });
+      cum += e.amount;
+      consider(cum + sec(e.date) - g, { date: e.date, check: 'security after the debit' });
+    });
+    return { need: need, binding: why };
+  }
+
+  /* ---------- weekly imbalance model (wallet-model §6.2) ----------
+     o = { weeklyVolume (MWh traded, nominated or produced a week), share, bias (−1 long … +1 short), price (typical
+     imbalance price €/MWh), statePrice2Share, stateGap2 (€/MWh), cv }. A normal model: it understates NL imbalance-price
+     tails, and says so on the page. */
+  /* shortVolume (MWh a week, optional) is imbalance that is always short, such as an aggregator's non-delivery. */
+  function weekly(o) {
+    var V = o.weeklyVolume * o.share, Vs = o.shortVolume || 0, delta = (o.statePrice2Share || 0) * (o.stateGap2 || 0), b = o.bias || 0;
+    var mu = V * (b * o.price + (1 - Math.abs(b)) * delta / 2) + Vs * o.price, sigma = (o.cv == null ? 0.5 : o.cv) * (V + Vs) * o.price;
+    return { volume: V + Vs, delta: delta, mu: mu, sigma: sigma, B: mu + 2 * sigma };
+  }
+  // Seeded pseudo-random numbers (mulberry32) and standard normals (Box-Muller), so the stress end is reproducible.
+  // Math.imul is ES2015; the fallback keeps the module ES5.
+  var imul = Math.imul || function (a, b) {
+    var ah = (a >>> 16) & 0xffff, al = a & 0xffff, bh = (b >>> 16) & 0xffff, bl = b & 0xffff;
+    return (al * bl + (((ah * bl + al * bh) << 16) >>> 0)) | 0;
+  };
+  function mulberry32(a) {
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = imul(a ^ (a >>> 15), 1 | a);
+      t = (t + imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  /* Stress end of B: the q-quantile of B = mean + 2σ over `runs` simulated windows of ten weekly invoices N(mu, sigma).
+     sigmaType 'population' (default) or 'sample'. */
+  function stressB(mu, sigma, o) {
+    o = o || {};
+    var rnd = mulberry32(o.seed == null ? 20260926 : o.seed), runs = o.runs || 10000, n = 10, q = o.q == null ? 0.95 : o.q, bs = [];
+    var normal = function () { var u = 1 - rnd(), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    for (var r = 0; r < runs; r++) {
+      var w = [], mean = 0, ss = 0, i;
+      for (i = 0; i < n; i++) { w.push(mu + sigma * normal()); mean += w[i]; }
+      mean /= n;
+      for (i = 0; i < n; i++) ss += (w[i] - mean) * (w[i] - mean);
+      bs.push(mean + 2 * Math.sqrt(ss / (o.sigmaType === 'sample' ? n - 1 : n)));
+    }
+    bs.sort(function (a, b) { return a - b; });
+    return bs[Math.min(runs - 1, Math.floor(q * runs))];
+  }
+
+  /* ---------- exit tail (draft art. 10.8(10c); proposal BR-2024-2077 p.2) ----------
+     After the member stops on date `stop`, security and cash stay committed until the last invoices are settled:
+     imbalance about four weeks after the last delivery (ACM draft para 15), profile reconciliation up to 21 months
+     (para 16), smart-meter and telemetry reconciliation six months (para 17). has = { profile, smart }. */
+  function exitTail(stop, has) {
+    var d = parse(stop), addMonths = function (k) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, d.getUTCDate())); };
+    var out = { imbalance: iso(add(d, 28)) };
+    if (has && has.smart) out.smart = iso(addMonths(6));
+    if (has && has.profile) out.profile = iso(addMonths(21));
+    var last = out.imbalance; Object.keys(out).forEach(function (k) { if (out[k] > last) last = out[k]; });
+    out.released = last;
+    return out;
+  }
+
+  return { price: price, periodAmount: periodAmount, holidays: holidays, isWorkday: isWorkday, paymentDates: paymentDates, profileDates: profileDates,
+           smartDates: smartDates, imbalanceDebit: imbalanceDebit, accountNeed: accountNeed, weekly: weekly,
+           mulberry32: mulberry32, stressB: stressB, exitTail: exitTail };
+})();
+/* Direct+ wallet: what one member needs, by purpose and by wallet segment (docs/wallet-model.md).
+   Every setting the page shows (its label, unit, kind, tag and source) is listed here, so the Settings view and the
+   "Assumptions and sources" list come from one place. Each member is treated as its own BRP, and the wallet pools
+   all members at one connected bank, so nothing nets between members (Niki, 26 Sep 2026; wallet-model §11.1). */
+var WalletCalc = (function (E, B, S, L, R, W) {
+  'use strict';
+
+  // ---------- settings ----------
+  // kind: number | share (0-1, shown as %) | bool | select | list (MW, comma-separated) | optional (number or empty)
+  // tag: input (the member's plan) | ASSUMPTION | INTERPRETATION | ECC setting (set with ECC; no built-in value)
+  function f(key, label, unit, kind, tag, src, extra) {
+    var o = { key: key, label: label, unit: unit, kind: kind, tag: tag, src: src };
+    for (var k in extra || {}) o[k] = extra[k];
+    return o;
+  }
+  var GROUPS = [
+    { id: 'plan', title: 'Trading plan', note: 'Your own plan, NL only. The ECC limits also cover other delivery areas and SEMOpx; those are not included here.', fields: [
+      f('contBuy', 'Continuous: buy', 'MWh a day', 'number', 'input', 'EPEX continuous NL (M7)'),
+      f('contSell', 'Continuous: sell', 'MWh a day', 'number', 'input', 'EPEX continuous NL (M7)'),
+      f('aucBuy', 'Auctions: buy', 'MWh a day', 'number', 'input', 'EPEX day-ahead and intraday auctions NL'),
+      f('aucSell', 'Auctions: sell', 'MWh a day', 'number', 'input', 'EPEX day-ahead and intraday auctions NL; sell orders assumed to carry a limit price of €0 or more'),
+      f('aucLimitPrice', 'Highest price on auction buy orders', '€/MWh', 'optional', 'input', 'ECC manual §3.10: an order counts at its highest price × quantity; empty means no limit price (then the market maximum, below, applies)'),
+      f('nominatedIn', 'Nominated in from other BRPs', 'MWh a day', 'number', 'input', 'Aggregators: flexibility bought bilaterally from assets in other BRPs'),
+      f('nonDelivery', 'Non-delivery of nominated flexibility', '%', 'share', 'ASSUMPTION', 'By contract the aggregator carries it, as a short imbalance'),
+      f('weekend', 'Trade at weekends and on holidays', '', 'bool', 'input', 'Weekend days lengthen the Friday period (ECC manual §3.11)')
+    ] },
+    { id: 'prices', title: 'Prices', fields: [
+      f('price', 'Typical price', '€/MWh', 'number', 'ASSUMPTION', 'Check against current NL day-ahead data'),
+      f('stressPrice', 'Stress price', '€/MWh', 'number', 'ASSUMPTION', 'A spike day; every trading value scales with it at the stress end'),
+      f('stressAvgPrice', 'Stress two-to-three-month average price', '€/MWh', 'number', 'ASSUMPTION', 'BRP security uses averages (three months now, two in the draft), not spot prices'),
+      f('negShare', 'Hours with negative prices', '%', 'share', 'ASSUMPTION', 'Share of the hours traded'),
+      f('negPrice', 'Average price in those hours', '€/MWh', 'number', 'ASSUMPTION', 'Needed to value negative-price hours')
+    ] },
+    { id: 'ecc', title: 'ECC limits and collateral', fields: [
+      f('s', 'Buys already offset by sells when the position peaks', '%', 'share', 'ASSUMPTION', 'Continuous target max(G × (1 − s), peak); 0 is the cautious default (wallet-model §2.2)'),
+      f('restingCont', 'Continuous orders resting over 16:00', '€', 'number', 'ASSUMPTION', 'Risk-bearing orders count against the limit (ECC manual §3.11); they need the base limit after 16:00 (ECC deck p.4)'),
+      f('eveningCont', 'Net buying between 16:00 and the evening update', '€', 'number', 'ASSUMPTION', 'Covered by the base limit (ECC deck p.2)'),
+      f('restingAuc', 'Auction orders resting over 16:00', '€', 'number', 'ASSUMPTION', 'ECC deck p.4: future orders above the base limit are deleted after 16:00'),
+      f('restingAucWeekend', 'Weekend auction orders placed on Friday before 16:00', '€', 'number', 'ASSUMPTION', 'Sets the non-business-day auction base limit'),
+      f('updateHour', 'Evening update, expected case', '', 'select', 'ASSUMPTION', 'ECC deck p.2: "approximately 18:00-19:00 CET on best effort basis"', { options: [[18, 'Around 18:00'], [19, 'Around 19:00']] }),
+      f('stressUpdateHour', 'Evening update, stress case', '', 'select', 'ASSUMPTION', 'ECC deck p.2: best effort, so the late end of the window', { options: [[18, 'Around 18:00'], [19, 'Around 19:00']] }),
+      f('measure', 'Limit that must hold the continuous target', '', 'select', 'ASSUMPTION', 'The evening limit applies until settlement (by 10:45 next business day, ECC deck p.3)', { options: [['l18', 'Evening limit (cautious)'], ['l09', 'Limit after settlement']] }),
+      f('splitMode', 'Split between continuous and auctions', '', 'select', 'input', 'Set in the Direct+ platform', { options: [['cheapest', 'The split that needs the least collateral'], ['mine', 'My split']] }),
+      f('key', 'My split: continuous share', '%', 'number', 'input', 'Auctions get the rest'),
+      f('eccForm', 'Collateral form', '', 'select', 'input', 'ECC DCP risk page: guarantees up to €40m alone, above that at least 50% cash; a guarantee adds a default-fund contribution of at least 4%', { options: [['cash', 'Cash'], ['guarantee', 'Bank guarantee']] }),
+      f('cap', 'Cap limit', '€', 'optional', 'ECC setting', 'Set by ECC at KYC, reviewed yearly (ECC DCP risk page); collateral above it does not raise limits'),
+      f('aucMaxPrice', 'Market maximum price (orders without a limit price)', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10; no built-in value (Q9)'),
+      f('aucMinPrice', 'Market minimum price (sells without a limit price)', '€/MWh', 'optional', 'ECC setting', 'INTERPRETATION of ECC manual §3.10 (Q9)'),
+      f('realMin', 'Realistic price range: minimum', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10 p.25: set by the clearing member; both ends or neither (Q9)'),
+      f('realMax', 'Realistic price range: maximum', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10 p.25 (Q9)')
+    ] },
+    { id: 'settlement', title: 'ECC settlement', fields: [
+      f('carryShare', 'Purchases paid before their sale', '% of a day\'s buys', 'share', 'ASSUMPTION', 'Positions bought before the 16:00 booking cut and sold after it (e.g. bought day-ahead, sold intraday the next day): ECC collects the purchase one business day before the sale comes back, so this much stays in the wallet as a float (ECC DCP payments page: one net payment per business day)'),
+      f('lossShare', 'Stress: net payment per window', '% of gross buys', 'share', 'ASSUMPTION', 'A flat trader nets to €0 at one price; the stress end assumes this loss in every window (wallet-model §3)'),
+      f('replenish', 'Topping up the wallet', '', 'select', 'ASSUMPTION', 'How often you replace what ECC collects', { options: [['none', 'Not within the period'], ['daily', 'Every business day'], ['weekly', 'Every Monday']] }),
+      f('feesPerWindow', 'Fees per business day', '€', 'number', 'ASSUMPTION', 'ECC, EPEX and Direct+ fees: not set until the price lists are in (Q7)')
+    ] },
+    { id: 'imbalance', title: 'Imbalance', note: 'A normal model: it understates the tails of NL imbalance prices.', fields: [
+      f('imbShare', 'Imbalance', '% of volume', 'share', 'ASSUMPTION', 'Of the volume chosen below'),
+      f('imbBase', 'Imbalance measured against', '', 'select', 'ASSUMPTION', 'Traded, nominated or produced volume', { options: [['traded', 'Traded volume'], ['nominated', 'Nominated volume'], ['production', 'Net sold volume (production)']] }),
+      f('bias', 'Bias: +1 always short, −1 always long', '', 'number', 'ASSUMPTION', 'Short pays the imbalance price; long receives it (SC 2026 art. 10.29)'),
+      f('cv', 'Weekly invoice volatility', '× imbalance value', 'number', 'ASSUMPTION', 'σ of the weekly invoice as a multiple of volume × price (wallet-model §6.2)'),
+      f('state2Share', 'Periods with dual pricing (regulation state 2)', '%', 'share', 'ASSUMPTION', 'SC 2026 art. 10.29(4)'),
+      f('state2Gap', 'Price gap in those periods', '€/MWh', 'number', 'ASSUMPTION', 'Short price minus long price'),
+      f('shiftShare', 'Volume bought and sold in different settlement periods', '%', 'share', 'ASSUMPTION', 'Only used with reading (ii) of the daily net volume, below (batteries, shifting)')
+    ] },
+    { id: 'connections', title: 'Connections in the Direct+ BRP', fields: [
+      f('connectionsMW', 'Large connections', 'MW each, comma-separated', 'list', 'input', 'SC 2026 art. 10.8(8)-(10): counted per class at the class minimum; above 50 MW actual'),
+      f('between', 'A capacity between two classes (e.g. 10.5 MW)', '', 'select', 'INTERPRETATION', 'The classes are 2-10, 11-25, 26-50 MW', { options: [['down', 'Counts in the lower class'], ['up', 'Counts in the higher class']] }),
+      f('profileMean', 'Profile reconciliation: average monthly invoice', '€', 'number', 'ASSUMPTION', 'Component C of the draft; may be €0 for new connections after cSMA (Q15)'),
+      f('profileSd', 'Profile reconciliation: monthly σ', '€', 'number', 'ASSUMPTION', 'Component C of the draft'),
+      f('smartMean', 'Smart-meter and telemetry reconciliation: average monthly invoice', '€', 'number', 'ASSUMPTION', 'Component D of the draft'),
+      f('smartSd', 'Smart-meter and telemetry reconciliation: monthly σ', '€', 'number', 'ASSUMPTION', 'Component D of the draft')
+    ] },
+    { id: 'brp', title: 'BRP security', note: 'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum.', fields: [
+      f('brpBasis', 'Basis', '', 'select', 'Direct+ contract', 'Direct+ (Niki, 26 Sep 2026): no minimum for members, only the marginal collateral; the €96,000 minimum and the 50 MW floors apply once to the Direct+ BRP. ASSUMPTION: the rule\'s formula on your own figures, never below €0; netting inside the Direct+ portfolio is not modelled', { options: [['marginal', 'Direct+: your marginal collateral'], ['standalone', 'On your own as a BRP (with the minimum), for comparison']] }),
+      f('rule', 'Rule', '', 'select', 'input', 'The draft takes effect on 1 January 2027 once ACM decides (ACM draft Artikel II B)', { options: [['auto', 'By date (the draft from 2027)'], ['current', 'Rule in force now'], ['draft', 'ACM draft']] }),
+      f('reading', 'The current rule\'s 50 MW floor (on your own as a BRP)', '', 'select', 'INTERPRETATION', 'SC 2026 art. 10.8(3), (6), (11); the €96,000 minimum is on TenneT\'s page only (Q14). Not used for the marginal basis', { options: [['1200', '50 MW × 24 h = 1,200 MWh'], ['flat', 'A flat €96,000 minimum']] }),
+      f('perPeriod', 'Daily net volume', '', 'select', 'INTERPRETATION', '"voor alle uren gedurende één kalenderdag" (current) / "één etmaal" (draft)', { options: [['i', '(i) Net over the day'], ['ii', '(ii) Net per settlement period, added up']] }),
+      f('counterparties', 'Counterparties', '', 'select', 'INTERPRETATION', '"met enige andere balanceringsverantwoordelijke" (current), "met een andere" (draft)', { options: [['max', 'The largest single counterparty'], ['total', 'All counterparties netted']] }),
+      f('sigma', 'Standard deviation', '', 'select', 'INTERPRETATION', 'ACM draft art. 10.8(3)-(5) does not say which', { options: [['population', 'Population'], ['sample', 'Sample']] }),
+      f('brpForm', 'Security held as', '', 'select', 'input', 'SC 2026 art. 10.8(1): a guarantee, optionally with a deposit; draft art. 10.8(9): balance, guarantee or both', { options: [['guarantee', 'Bank guarantee'], ['deposit', 'Cash in the account']] })
+    ] },
+    { id: 'tennet', title: 'TenneT account', fields: [
+      f('debitLagWeeks', 'Weekly imbalance invoice after delivery', 'weeks', 'number', 'ASSUMPTION', 'ACM draft para 15: four weeks between delivery and invoicing; the debit day is in TenneT\'s billing terms (Q11)')
+    ] }
+  ];
+
+  var BASE = {
+    week: '2026-10-05',
+    contBuy: 0, contSell: 0, aucBuy: 0, aucSell: 0, aucLimitPrice: 150, nominatedIn: 0, nonDelivery: 0, weekend: true,
+    price: 80, stressPrice: 250, stressAvgPrice: 120, negShare: 0.05, negPrice: -20,
+    s: 0, restingCont: 0, eveningCont: 0, restingAuc: 0, restingAucWeekend: 0, updateHour: 18, stressUpdateHour: 19,
+    measure: 'l18', splitMode: 'cheapest', key: 60, eccForm: 'cash', cap: null,
+    aucMaxPrice: null, aucMinPrice: null, realMin: null, realMax: null,
+    carryShare: 0, lossShare: 0.05, replenish: 'none', feesPerWindow: 0,
+    imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
+    connectionsMW: '', between: 'down', profileMean: 0, profileSd: 0, smartMean: 0, smartSd: 0,
+    brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population', brpForm: 'guarantee',
+    debitLagWeeks: 4
+  };
+  // Presets approved by Niki "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page.
+  var PRESETS = {
+    trader: { label: 'Financial trader', note: 'A small desk that ends each day flat.',
+      values: { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, aucLimitPrice: 150, restingCont: 10000, eveningCont: 5000, carryShare: 0.3,
+                imbShare: 0.005, imbBase: 'traded', bias: 0 } },
+    aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
+      values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000,
+                imbShare: 0.03, imbBase: 'nominated', bias: 0.3 } },
+    asset: { label: 'Asset-controlling party', note: 'A 30 MW solar park with a 10 MW battery.',
+      values: { contBuy: 20, contSell: 20, aucBuy: 0, aucSell: 90, restingCont: 2000, eveningCont: 1000, connectionsMW: '30',
+                imbShare: 0.05, imbBase: 'production', bias: -0.2, shiftShare: 1, smartMean: 0, smartSd: 300 } }
+  };
+  function preset(id) {
+    var s = {}, k;
+    for (k in BASE) s[k] = BASE[k];
+    for (k in PRESETS[id].values) s[k] = PRESETS[id].values[k];
+    s.member = id;
+    return s;
+  }
+
+  // ---------- the prospect questionnaire (src/wallet/prospect.html) ----------
+  // Plain answers map onto the settings above; with each type's default answers they give exactly its preset.
+  var NATURAL = { trader: 'flat', aggregator: 'seller', asset: 'seller' };
+  var IMB_BASE = { trader: 'traded', aggregator: 'nominated', asset: 'production' };
+  var BALANCE = { tight: 0.005, normal: 0.03, forecast: 0.05 };          // imbalance as a share of volume
+  var LEAN = { neither: 0, short: 0.3, long: -0.2 };                      // bias
+  var CARRY = { none: 0, some: 0.3, most: 0.7 };                          // purchases paid before their sale
+  var RECONCILIATION_SD_PER_MW = 10;                                      // ASSUMPTION: € a month per MW connected
+  // Buy and sell volumes (MWh a day) that a trading strategy suggests, starting from the member type's preset.
+  function strategyVolumes(type, strategy) {
+    var v = PRESETS[type].values, out = {};
+    [['cont', v.contBuy || 0, v.contSell || 0], ['auc', v.aucBuy || 0, v.aucSell || 0]].forEach(function (m) {
+      var buy = m[1], sell = m[2], t = buy + sell;
+      if (strategy !== NATURAL[type]) {
+        if (strategy === 'flat') { buy = t / 2; sell = t / 2; }
+        else if (strategy === 'seller') { buy = 0.1 * t; sell = 0.9 * t; }
+        else { buy = 0.9 * t; sell = 0.1 * t; }
+      }
+      out[m[0]] = { buy: Math.round(buy), sell: Math.round(sell) };
+    });
+    return out;
+  }
+  function defaultAnswers(type) {
+    var v = PRESETS[type].values, vol = strategyVolumes(type, NATURAL[type]);
+    return {
+      type: type, markets: 'both', weekend: true, strategy: NATURAL[type],
+      contBuy: vol.cont.buy, contSell: vol.cont.sell, aucBuy: vol.auc.buy, aucSell: vol.auc.sell,
+      carry: type === 'trader' ? 'some' : 'none', nominatedIn: v.nominatedIn || 0, nonDelivery: v.nonDelivery || 0,
+      price: BASE.price, stressPrice: BASE.stressPrice, aucLimitPrice: v.aucLimitPrice != null ? v.aucLimitPrice : BASE.aucLimitPrice,
+      connections: type === 'asset' ? [{ mw: 30, metering: 'telemetry' }] : [],
+      balance: type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast',
+      lean: type === 'aggregator' ? 'short' : type === 'asset' ? 'long' : 'neither',
+      eccForm: 'cash', brpForm: 'guarantee', replenish: 'none', week: BASE.week
+    };
+  }
+  function fromAnswers(a) {
+    var s = preset(a.type), p = PRESETS[a.type].values;
+    var useC = a.markets !== 'auctions', useA = a.markets !== 'continuous';
+    s.contBuy = useC ? +a.contBuy || 0 : 0; s.contSell = useC ? +a.contSell || 0 : 0;
+    s.aucBuy = useA ? +a.aucBuy || 0 : 0; s.aucSell = useA ? +a.aucSell || 0 : 0;
+    // Orders resting over 16:00 and evening buying scale with continuous buying (the preset's ratio).
+    var scale = p.contBuy ? s.contBuy / p.contBuy : 0;
+    s.restingCont = (p.restingCont || 0) * scale; s.eveningCont = (p.eveningCont || 0) * scale;
+    s.weekend = !!a.weekend; s.aucLimitPrice = a.aucLimitPrice == null || a.aucLimitPrice === '' ? null : +a.aucLimitPrice;
+    s.price = +a.price; s.stressPrice = +a.stressPrice; s.stressAvgPrice = 1.5 * s.price;   // ASSUMPTION: averages move less than spot
+    s.carryShare = CARRY[a.carry] || 0;
+    s.nominatedIn = a.type === 'aggregator' ? +a.nominatedIn || 0 : 0; s.nonDelivery = a.type === 'aggregator' ? +a.nonDelivery || 0 : 0;
+    s.imbShare = BALANCE[a.balance]; s.imbBase = IMB_BASE[a.type]; s.bias = LEAN[a.lean];
+    var conns = (a.connections || []).filter(function (c) { return +c.mw > 0; });
+    s.connectionsMW = conns.map(function (c) { return +c.mw; }).join(', ');
+    s.profileMean = 0; s.smartMean = 0; s.profileSd = 0; s.smartSd = 0;
+    conns.forEach(function (c) { if (c.metering === 'profile') s.profileSd += RECONCILIATION_SD_PER_MW * c.mw; else s.smartSd += RECONCILIATION_SD_PER_MW * c.mw; });
+    s.eccForm = a.eccForm; s.brpForm = a.brpForm; s.replenish = a.replenish;
+    if (a.week) s.week = a.week;
+    return s;
+  }
+
+  var SEGMENTS = {
+    trading: 'Trading collateral (at ECC)',
+    brp: 'BRP collateral',
+    available: 'Available balance'
+  };
+  function num(v) { return v == null || v === '' ? null : +v; }
+  function listMW(v) { return String(v || '').split(/[,;\s]+/).filter(function (x) { return x !== ''; }).map(Number).filter(function (x) { return isFinite(x) && x > 0; }); }
+  function sunday(isoMonday) { return E.iso(new Date(E.parse(isoMonday).getTime() + 6 * 86400000)); }
+
+  /* One scenario. o = { stress, priceStress, volMult, imbMult }:
+       stress       the stress end: stress price, stress average price, stress loss share, stress update time, B at its
+                    95th percentile;
+       priceStress  prices at the stress price only (a sensitivity);
+       volMult, imbMult  scale the volumes or the imbalance (sensitivities). */
+  function scenario(st, o) {
+    o = o || {};
+    var hot = o.stress || o.priceStress, fp = hot ? st.stressPrice / st.price : 1, vm = o.volMult || 1, im = o.imbMult || 1;
+    var b = { weekend: st.weekend, price: st.price, negShare: st.negShare, negPrice: st.negPrice,
+              cont: { buy: st.contBuy * vm, sell: st.contSell * vm },
+              auc: { buy: st.aucBuy * vm, sell: st.aucSell * vm, limitPrice: num(st.aucLimitPrice) },
+              lossShare: o.stress ? st.lossShare : 0 };
+    var px = { maxMarket: num(st.aucMaxPrice), minMarket: num(st.aucMinPrice), minReal: num(st.realMin), maxReal: num(st.realMax) };
+    var flowOf = function (d) { return B.dayFlows(b, fp, E.isBD(E.parse(d)) || !!st.weekend, px); };
+    var days = E.weekDays(st.week), isoDays = days.map(E.iso);
+
+    // Part 2: settlement windows and cash
+    var ws = S.windows(isoDays, flowOf, function () { return st.feesPerWindow || 0; });
+    var cash = S.cashPath(ws, st.replenish);
+    // Float: purchases paid one collection before their sale (bought before the 16:00 cut, sold after). In steady state each
+    // collection pays the new carried purchases and receives the previous ones, so the amount stays in the wallet.
+    var carry = (st.carryShare || 0) * (st.contBuy + st.aucBuy) * vm * st.price * fp;
+
+    // Part 1: ECC collateral
+    var tg = L.targets(days, flowOf, st.s, st.restingCont * fp);
+    var bl = L.baseLimits({ restingCont: st.restingCont * fp, eveningCont: st.eveningCont * fp, updateHour: +(o.stress ? st.stressUpdateHour : st.updateHour),
+                            restingAuc: st.restingAuc * fp, restingAucWeekend: st.restingAucWeekend * fp });
+    var OR = {};
+    ws.forEach(function (w) { OR[w.close] = w.OR; });
+    var ctx = { days: days, key: +st.key, measure: st.measure, bl: bl,
+                OR: function (d) { return OR[d]; }, cont: function (d) { return tg.cont[d]; }, auc: function (d) { return tg.auc[d] || 0; } };
+    var split = st.splitMode === 'mine' ? { key: +st.key, C: L.solve(ctx, +st.key) } : L.cheapest(ctx);
+    if (!split || split.C === null) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
+    var binding = null;
+    days.forEach(function (d) {                        // the calculation day that sets the amount
+      var one = { days: [d], key: ctx.key, measure: ctx.measure, bl: bl, OR: ctx.OR, cont: ctx.cont, auc: ctx.auc };
+      var c = L.solve(one, split.key);
+      if (!binding || c > binding.C) binding = { date: E.iso(d), C: c, gap: E.day(d, { C: 0, OR: 0, cont: { bd: 0, nbd: 0, key: 0 }, da: { bd: 0, nbd: 0, key: 0 } }).gap1 };
+    });
+    var form = L.form(split.C, st.eccForm === 'guarantee', num(st.cap));
+
+    // Part 3: BRP security on the member's own figures. Direct+ members put up their marginal collateral: no minimum and
+    // no volume floors, which apply once to the Direct+ BRP (Niki, 26 Sep 2026). 'standalone' is the member as its own
+    // BRP, with both, for comparison.
+    var marginal = st.brpBasis !== 'standalone';
+    var bx = (st.contBuy + st.aucBuy) * vm, sx = (st.contSell + st.aucSell) * vm, nom = st.nominatedIn * vm;
+    var shift = st.perPeriod === 'ii' ? st.shiftShare : 0;
+    var vol = function (buy, sell) { return Math.abs(buy - sell) + 2 * Math.min(buy, sell) * shift; };
+    var V = st.counterparties === 'total' ? vol(bx + nom, sx) : Math.max(vol(bx, sx), nom);
+    var pAvg = hot ? st.stressAvgPrice : st.price;
+    var ruleId = st.rule === 'auto' ? R.ruleFor(isoDays[0]) : st.rule;
+    var cur = R.current({ kind: 'first', expected: V, price3m: pAvg, capacityMW: R.countedCapacity(listMW(st.connectionsMW), st.between), reading: st.reading, floors: !marginal });
+    var floor = marginal || st.reading === 'flat' ? 0 : 1200, pFl = Math.max(pAvg, 40);
+    cur.Aup = V * pFl; cur.Adown = Math.max(V, floor) * pFl;
+    var base = st.imbBase === 'nominated' ? nom : st.imbBase === 'production' ? Math.max(sx - bx, 0) : bx + sx;
+    var wk = W.weekly({ weeklyVolume: base * 7, share: st.imbShare * im, bias: st.bias, price: st.price * fp, statePrice2Share: st.state2Share,
+                        stateGap2: st.state2Gap, cv: st.cv, shortVolume: st.nonDelivery * nom * 7 * im });
+    var Bc = o.stress ? W.stressB(wk.mu, wk.sigma, { sigmaType: st.sigma }) : wk.B;
+    var Cc = st.profileMean + 0.5 * st.profileSd, Dc = st.smartMean + 0.5 * st.smartSd;
+    var dr = R.draft({ A: V * pAvg, B: Bc, C: Cc, D: Dc, minimum: !marginal });
+    // ASSUMPTION: a marginal share never goes below €0, even when the draft's components are negative.
+    if (marginal) { cur.security = Math.max(cur.security, 0); dr.security = Math.max(dr.security, 0); }
+    var byRule = { current: cur, draft: dr };
+    var security = byRule[ruleId].security;
+    var ramp = R.rampUp({ A: V * pAvg, weekly: wk.mu, weeklySd: wk.sigma, profile: st.profileMean, profileSd: st.profileSd, smart: st.smartMean,
+                          smartSd: st.smartSd, sigma: st.sigma, minimum: !marginal, lagWeeks: +st.debitLagWeeks });
+    if (marginal) {
+      ramp.peak = null;
+      ramp.months.forEach(function (mo) { mo.security = Math.max(mo.security, 0); if (!ramp.peak || mo.security > ramp.peak.security) ramp.peak = mo; });
+    }
+    var exit = W.exitTail(sunday(isoDays[0]), { profile: st.profileMean !== 0 || st.profileSd > 0, smart: st.smartMean !== 0 || st.smartSd > 0 });
+
+    // Part 4: TenneT account
+    var invoice = o.stress ? wk.mu + 2 * wk.sigma : Math.max(wk.mu, 0);
+    var debit = W.imbalanceDebit(isoDays[0], +st.debitLagWeeks);
+    var account = W.accountNeed([{ date: debit, amount: invoice }], security, st.brpForm === 'guarantee' ? security : 0, ruleId === 'current' ? 'current' : undefined);
+
+    var parts = [
+      { id: 'ecc', label: 'ECC trading collateral', segment: 'trading', value: split.C, form: st.eccForm === 'guarantee' ? 'Bank guarantee' : 'Cash', formRule: 'Cash or guarantee', confidence: 'Estimate · ECC rule' },
+      { id: 'fund', label: 'ECC default fund', segment: 'available', value: form.defaultFund, form: 'Cash', formRule: 'Cash only', confidence: 'ECC rule' },
+      { id: 'settlement', label: 'ECC settlement', segment: 'available', value: cash.need + carry, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
+      { id: 'brp', label: marginal ? 'BRP collateral (marginal)' : 'BRP security (TenneT)', segment: 'brp', value: security, form: st.brpForm === 'guarantee' ? 'Bank guarantee' : 'Cash', formRule: 'Cash or guarantee', confidence: (ruleId === 'current' ? 'TenneT rule' : 'Draft rule') + ' · Direct+ contract' },
+      { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate' }
+    ];
+    var total = 0, seg = {};
+    parts.forEach(function (p) { total += p.value; seg[p.segment] = (seg[p.segment] || 0) + p.value; });
+    return {
+      total: total, parts: parts, segments: seg,
+      ecc: { key: split.key, C: split.C, form: form, targets: tg, baseLimits: bl, binding: binding, windows: ws },
+      settlement: { windows: ws, need: cash.need + carry, flows: cash.need, float: carry, path: cash.path },
+      brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
+      tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }
+    };
+  }
+
+  /* Everything the page shows for one set of settings. */
+  function compute(st) {
+    var exp = scenario(st, {}), str = scenario(st, { stress: true });
+    var sens = [
+      { id: 'vol+', label: 'Volumes +50%', total: scenario(st, { volMult: 1.5 }).total },
+      { id: 'vol-', label: 'Volumes −50%', total: scenario(st, { volMult: 0.5 }).total },
+      { id: 'price', label: 'All prices at the stress price', total: scenario(st, { priceStress: true }).total },
+      { id: 'imb', label: 'Imbalance twice the assumption', total: scenario(st, { imbMult: 2 }).total }
+    ];
+    return { settings: st, expected: exp, stress: str, sensitivity: sens, segments: SEGMENTS, assumptions: assumptions(st) };
+  }
+
+  function assumptions(st) {
+    var out = [];
+    GROUPS.forEach(function (g) { g.fields.forEach(function (fl) { if (fl.tag !== 'input') out.push({ group: g.title, key: fl.key, label: fl.label, value: st[fl.key], unit: fl.unit, kind: fl.kind, tag: fl.tag, src: fl.src }); }); });
+    return out;
+  }
+
+  return { GROUPS: GROUPS, BASE: BASE, PRESETS: PRESETS, SEGMENTS: SEGMENTS, preset: preset, scenario: scenario, compute: compute,
+           strategyVolumes: strategyVolumes, defaultAnswers: defaultAnswers, fromAnswers: fromAnswers };
+})(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
+   typeof WalletBehaviour !== 'undefined' ? WalletBehaviour : require('./behaviour.js'),
+   typeof WalletSettlement !== 'undefined' ? WalletSettlement : require('./settlement.js'),
+   typeof WalletEccLink !== 'undefined' ? WalletEccLink : require('./ecc-link.js'),
+   typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
+   typeof WalletTennet !== 'undefined' ? WalletTennet : require('./tennet-account.js'));
+(function () {
+  'use strict';
+  var E = LimitEngine, C = WalletCalc;
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
+  function eur(v) { return (v < -0.5 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }
+  function eurShort(v) { var a = Math.abs(v); if (a >= 1e6) return '€' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'm'; if (a >= 1e4) return '€' + Math.round(a / 1e3) + 'k'; if (a >= 1e3) return '€' + (a / 1e3).toFixed(1).replace(/\.0$/, '') + 'k'; return '€' + Math.round(a); }
+  function round(v, to) { return Math.round(v / to) * to; }
+  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function dLabel(iso, year) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (year ? ' ' + d.getUTCFullYear() : ''); }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function clear(n) { n.textContent = ''; return n; }
+
+  function nextMonday() {
+    var n = new Date(), t = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())), m = E.iso(new Date(t.getTime() + (((8 - t.getUTCDay()) % 7) || 7) * 864e5));
+    return m < '2026-01-05' ? '2026-01-05' : m > '2027-12-20' ? '2027-12-20' : m;
+  }
+  var WEEKS = [[nextMonday(), 'Next week (' + dLabel(nextMonday(), true) + ')'], ['2026-12-21', 'Christmas 2026 (from Mon 21 Dec)'], ['2027-03-22', 'Easter 2027 (from Mon 22 Mar)']];
+  WEEKS.forEach(function (w) { var o = el('option', null, w[1]); o.value = w[0]; $('week').appendChild(o); });
+
+  // ---------- answers ----------
+  var ans = C.defaultAnswers('trader'), step = 1, STEPS = 7, last = null;
+  ans.week = WEEKS[0][0];
+  var form = $('q');
+  function setRadio(name, v) { var r = form.querySelector('input[name="' + name + '"][value="' + v + '"]'); if (r) r.checked = true; }
+  function fill() {
+    setRadio('type', ans.type); setRadio('markets', ans.markets); setRadio('weekend', ans.weekend ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
+    setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('eccForm', ans.eccForm); setRadio('brpForm', ans.brpForm); setRadio('replenish', ans.replenish);
+    Array.prototype.forEach.call(form.querySelectorAll('[data-a]'), function (i) { var v = ans[i.getAttribute('data-a')]; i.value = v == null ? '' : (i.hasAttribute('data-pct') ? Math.round(v * 1000) / 10 : v); });
+    renderConns(); visibility();
+  }
+  function visibility() {
+    Array.prototype.forEach.call(form.querySelectorAll('[data-market]'), function (n) {
+      var m = n.getAttribute('data-market'); n.hidden = ans.markets !== 'both' && ans.markets !== m;
+      n.style.display = n.hidden ? 'none' : '';
+    });
+    Array.prototype.forEach.call(form.querySelectorAll('[data-type]'), function (n) { n.style.display = ans.type === n.getAttribute('data-type') ? '' : 'none'; });
+  }
+  form.addEventListener('change', function (e) {
+    var t = e.target, name = t.name;
+    if (t.type === 'radio') {
+      if (name === 'type') {
+        var week = ans.week; ans = C.defaultAnswers(t.value); ans.week = week; fill();
+        note('We filled in typical answers for ' + t.parentNode.querySelector('b').textContent.toLowerCase() + 's. Change any of them.');
+        return;
+      }
+      if (name === 'weekend') ans.weekend = t.value === 'yes';
+      else ans[name] = t.value;
+      if (name === 'strategy') {
+        var v = C.strategyVolumes(ans.type, ans.strategy);
+        ans.contBuy = v.cont.buy; ans.contSell = v.cont.sell; ans.aucBuy = v.auc.buy; ans.aucSell = v.auc.sell;
+        fill(); note('We adjusted your volumes to match. Change them if they don\'t fit.');
+      }
+      visibility();
+    }
+  });
+  form.addEventListener('input', function (e) {
+    var t = e.target, k = t.getAttribute('data-a');
+    if (!k) return;
+    var v = t.value === '' ? null : parseFloat(t.value);
+    ans[k] = v == null || !isFinite(v) ? null : (t.hasAttribute('data-pct') ? v / 100 : v);
+  });
+  function note(text) { var n = $('vol-note'); n.textContent = text; n.hidden = false; }
+
+  // connections
+  function renderConns() {
+    var box = clear($('conns'));
+    if (!ans.connections.length) box.appendChild(el('p', 'hint', 'No connections added.'));
+    ans.connections.forEach(function (c, i) {
+      var row = el('div', 'conn');
+      var n = el('div', 'num'), lab = el('label', null, 'Connection ' + (i + 1) + ': capacity'), inw = el('div', 'in'), inp = el('input');
+      inp.type = 'number'; inp.min = '0'; inp.step = '1'; inp.value = c.mw; inp.id = 'conn-' + i; lab.htmlFor = inp.id;
+      inp.addEventListener('input', function () { c.mw = parseFloat(inp.value) || 0; });
+      inw.appendChild(inp); inw.appendChild(el('span', 'unit', 'MW')); n.appendChild(lab); n.appendChild(inw); row.appendChild(n);
+      var sel = el('select'); [['telemetry', 'Telemetry-metered'], ['smart', 'Smart meter'], ['profile', 'Profile']].forEach(function (o) { var op = el('option', null, o[1]); op.value = o[0]; sel.appendChild(op); });
+      sel.value = c.metering; sel.setAttribute('aria-label', 'Connection ' + (i + 1) + ': metering');
+      sel.addEventListener('change', function () { c.metering = sel.value; });
+      row.appendChild(sel);
+      var rm = el('button', 'linkbtn', 'Remove'); rm.type = 'button'; rm.addEventListener('click', function () { ans.connections.splice(i, 1); renderConns(); });
+      row.appendChild(rm);
+      box.appendChild(row);
+    });
+  }
+  $('add-conn').addEventListener('click', function () { ans.connections.push({ mw: 10, metering: 'telemetry' }); renderConns(); });
+
+  // ---------- steps ----------
+  function validate(s) {
+    var bad = function (k) { return ans[k] == null || !(ans[k] >= 0); };
+    if (s === 3) {
+      var ks = []; if (ans.markets !== 'auctions') ks.push('contBuy', 'contSell'); if (ans.markets !== 'continuous') ks.push('aucBuy', 'aucSell');
+      if (ans.type === 'aggregator') ks.push('nominatedIn', 'nonDelivery');
+      if (ks.some(bad)) return 'Please fill in every volume (0 is fine).';
+      if (ans.type === 'aggregator' && ans.nonDelivery > 1) return 'The share not delivered can\'t be over 100%.';
+    }
+    if (s === 4) {
+      if (!(ans.price > 0) || !(ans.stressPrice > 0)) return 'Please fill in both prices.';
+      if (ans.stressPrice < ans.price) return 'The tough-week price should be at least the normal price.';
+      if (ans.markets !== 'continuous' && ans.aucBuy > 0 && !(ans.aucLimitPrice > 0)) return 'Please fill in the highest price you\'d bid in auctions.';
+    }
+    return null;
+  }
+  function show(s) {
+    step = s;
+    Array.prototype.forEach.call(form.querySelectorAll('.step'), function (f) { f.hidden = +f.getAttribute('data-step') !== s; });
+    $('step-label').textContent = 'Question ' + s + ' of ' + STEPS;
+    $('progress').style.width = (s / STEPS * 100) + '%';
+    $('back').style.visibility = s === 1 ? 'hidden' : 'visible';
+    $('next').textContent = s === STEPS ? 'See my estimate' : 'Next';
+    $('step-error').hidden = true;
+  }
+  $('next').addEventListener('click', function () {
+    var err = validate(step);
+    if (err) { $('step-error').textContent = err; $('step-error').hidden = false; return; }
+    if (step < STEPS) { show(step + 1); $('wizard').scrollIntoView({ block: 'start' }); return; }
+    results();
+  });
+  $('back').addEventListener('click', function () { if (step > 1) show(step - 1); });
+  function edit() { $('results').hidden = true; $('wizard').hidden = false; show(1); window.scrollTo(0, 0); }
+  $('edit').addEventListener('click', edit); $('edit2').addEventListener('click', edit);
+  $('print').addEventListener('click', function () { window.print(); });
+  $('week').addEventListener('change', function () { ans.week = $('week').value; results(); });
+
+  // ---------- tooltip ----------
+  var tip = $('tip');
+  function hoverable(node, value, label) {
+    node.tabIndex = 0; node.setAttribute('aria-label', label + ': ' + value);
+    var showTip = function (evt) {
+      clear(tip); tip.appendChild(el('div', 'tv', value)); tip.appendChild(el('div', 'tl', label)); tip.hidden = false;
+      var b = evt.clientX != null && evt.type.indexOf('pointer') === 0 ? { x: evt.clientX, y: evt.clientY } : (function () { var r = evt.target.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top }; })();
+      tip.style.left = Math.min(Math.max(8, b.x + 12), window.innerWidth - tip.offsetWidth - 8) + 'px';
+      var top = b.y - tip.offsetHeight - 12; tip.style.top = (top < 8 ? b.y + 16 : top) + 'px';
+    };
+    node.addEventListener('pointermove', showTip); node.addEventListener('focus', showTip);
+    node.addEventListener('pointerleave', function () { tip.hidden = true; }); node.addEventListener('blur', function () { tip.hidden = true; });
+  }
+
+  // ---------- results ----------
+  var SEG = [['trading', 'Trading collateral at ECC', 'var(--s-trading)'], ['available', 'Available balance', 'var(--s-available)'], ['brp', 'BRP collateral', 'var(--s-brp)']];
+  var TYPE = { trader: 'Trader', aggregator: 'Aggregator', asset: 'Asset owner' };
+  function results() {
+    var s = C.fromAnswers(ans), r;
+    try { r = C.compute(s); }
+    catch (e) { $('step-error').textContent = 'We can\'t estimate this: ' + e.message; $('step-error').hidden = false; return; }
+    last = r;
+    $('wizard').hidden = true; $('results').hidden = false; $('week').value = ans.week;
+    var x = r.expected, y = r.stress;
+    $('hero-label').textContent = 'Money your Direct+ wallet needs, for the week of ' + dLabel(s.week, true);
+    var hv = clear($('hero-value'));
+    hv.appendChild(document.createTextNode('About ' + eur(round(x.total, 1000)) + ' '));
+    hv.appendChild(el('span', 'to', 'up to ' + eur(round(y.total, 1000)) + ' in a tough week'));
+    var cashOnly = x.parts.filter(function (p) { return p.formRule === 'Cash only'; }).reduce(function (a, p) { return a + p.value; }, 0);
+    $('hero-sub').textContent = 'Of the normal-week amount, about ' + eur(round(cashOnly, 100)) + ' has to be cash; the rest can be cash or a bank guarantee. A tough week here means prices at ' + eur(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.';
+    renderPurposes(r, s); renderBars(r); renderWhen(r, s); renderSens(r, s); renderAnswers(s); renderAssumed(r, s);
+    window.scrollTo(0, 0);
+  }
+  function describe(p, r, s) {
+    var se = r.expected.settlement;
+    switch (p.id) {
+      case 'ecc': return 'Lets you trade: ECC turns it into your trading limits for continuous trading and the auctions. It stays at ECC while you trade.';
+      case 'fund': return 'With a bank guarantee, ECC asks at least 4% of it in cash for its default fund.';
+      case 'settlement': return 'ECC settles each business day\'s trades from your wallet as one net payment.' + (se.float > 0.5 ? ' Purchases you sell only after the 16:00 cut are paid before their sale comes back, so part of this stays in the wallet all the time.' : se.flows < 0.5 ? ' Your days net to about zero or to money coming in.' : '');
+      case 'brp': return 'Your share of the Direct+ BRP\'s security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.';
+      case 'invoices': return 'TenneT invoices imbalance every week, about four weeks after delivery.';
+    }
+    return '';
+  }
+  var LABEL = { ecc: 'Trading collateral at ECC', fund: 'ECC default fund', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
+  function renderPurposes(r, s) {
+    var t = clear($('purposes')), th = el('thead'), hr = el('tr');
+    [['What for', ''], ['Form', ''], ['Normal week', 'r'], ['Tough week', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); });
+    th.appendChild(hr); t.appendChild(th);
+    var tb = el('tbody');
+    r.expected.parts.forEach(function (p, i) {
+      if (p.id === 'fund' && s.eccForm !== 'guarantee') return;
+      var tr = el('tr'), td = el('td');
+      td.appendChild(el('b', null, LABEL[p.id])); td.appendChild(el('span', 'what', describe(p, r, s))); tr.appendChild(td);
+      tr.appendChild(el('td', null, p.formRule === 'Cash only' ? 'Cash' : (p.form === 'Bank guarantee' ? 'Bank guarantee' : 'Cash')));
+      tr.appendChild(el('td', 'r', eur(p.value))); tr.appendChild(el('td', 'r', eur(r.stress.parts[i].value)));
+      tb.appendChild(tr);
+    });
+    var tot = el('tr', 'total'); tot.appendChild(el('td', null, 'Total')); tot.appendChild(el('td'));
+    tot.appendChild(el('td', 'r', eur(r.expected.total))); tot.appendChild(el('td', 'r', eur(r.stress.total))); tb.appendChild(tot);
+    t.appendChild(tb);
+  }
+  function isDark() { return getComputedStyle(document.documentElement).colorScheme === 'dark'; }
+  function renderBars(r) {
+    var box = clear($('bars')), max = Math.max(r.expected.total, r.stress.total, 1);
+    [['Normal week', r.expected], ['Tough week', r.stress]].forEach(function (x) {
+      var rw = el('div', 'bar-row'); rw.appendChild(el('div', 'rl', x[0]));
+      var track = el('div', 'bar-track'), bar = el('div', 'bar');
+      bar.style.width = 'calc((100% - 100px) * ' + (x[1].total / max) + ')';
+      SEG.forEach(function (sg) {
+        var v = x[1].segments[sg[0]] || 0; if (v <= 0.5) return;
+        var n = el('div', 'sg' + (!isDark() && sg[0] !== 'trading' ? ' light-ink' : '')); n.style.flex = v + ' 0 0'; n.style.background = sg[2];
+        n.appendChild(el('span', null, eurShort(v))); hoverable(n, eur(v), x[0] + ' · ' + sg[1]); bar.appendChild(n);
+      });
+      track.appendChild(bar); track.appendChild(el('div', 'bar-total', eur(x[1].total))); rw.appendChild(track); box.appendChild(rw);
+    });
+    requestAnimationFrame(function () { Array.prototype.forEach.call(box.querySelectorAll('.sg'), function (sg) { var sp = sg.firstChild; sp.style.visibility = sp.scrollWidth + 8 <= sg.clientWidth ? '' : 'hidden'; }); });
+    var lg = clear($('legend'));
+    SEG.forEach(function (sg) { var s = el('span'), w = el('span', 'swatch'); w.style.background = sg[2]; s.appendChild(w); s.appendChild(document.createTextNode(sg[1] + ': ' + eur(r.expected.segments[sg[0]] || 0) + ' (tough week ' + eur(r.stress.segments[sg[0]] || 0) + ')')); lg.appendChild(s); });
+  }
+  function li(box, when, text) { var l = el('li'); l.appendChild(el('b', null, when)); l.appendChild(el('span', null, text)); box.appendChild(l); }
+  function renderWhen(r, s) {
+    var box = clear($('when')), x = r.expected, y = r.stress, se = x.settlement, parts = {};
+    x.parts.forEach(function (p) { parts[p.id] = p.value; });
+    var start = 'Trading collateral at ECC: ' + eur(parts.ecc) + (s.eccForm === 'guarantee' ? ' as a bank guarantee, plus ' + eur(parts.fund) + ' in cash for the default fund' : ' in cash') + '.';
+    if (parts.brp > 0.5) start += ' BRP collateral: ' + eur(parts.brp) + (s.brpForm === 'guarantee' ? ' as a bank guarantee.' : ' in cash.');
+    if (se.float > 0.5) start += ' Float for positions held over 16:00: ' + eur(se.float) + '.';
+    li(box, 'Before your first trade', start);
+    li(box, 'Every business day, by 18:00', se.flows > 0.5 || y.settlement.flows > 0.5
+      ? 'ECC collects the day\'s net purchases from your wallet, with value the next business day. In the week shown that comes to ' + eur(se.flows) + (y.settlement.flows > se.flows + 0.5 ? ', up to ' + eur(y.settlement.flows) + ' in a tough week' : '') + ', with ' + (s.replenish === 'none' ? 'no top-up during the week.' : s.replenish === 'daily' ? 'a top-up every business day.' : 'a top-up every Monday.')
+      : 'ECC settles each day\'s trades as one net payment. Yours come to about zero or to money coming in, apart from fees.');
+    li(box, 'Around 18:00 each business day', 'ECC updates your trading limits (best effort). Until then, the base limit you set in the Direct+ platform covers trading from 16:00.');
+    li(box, 'About four weeks after each week', 'TenneT\'s imbalance invoice: about ' + eur(x.tennet.invoice) + ' a week, up to ' + eur(y.tennet.invoice) + ' in a tough week.');
+    if (s.connectionsMW) li(box, 'Months later', 'Metered volumes are reconciled: smart-meter and telemetry about six months after each month, profile-metered up to 21 months later.');
+  }
+  function renderSens(r, s) {
+    var t = clear($('sens')), tb = el('tbody'), LBL = { 'vol+': 'Volumes 50% higher', 'vol-': 'Volumes 50% lower', price: 'All prices at ' + eur(s.stressPrice) + '/MWh', imb: 'Twice as much imbalance' };
+    var th = el('thead'), hr = el('tr'); [['Change', ''], ['Normal week', 'r'], ['Difference', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); }); th.appendChild(hr); t.appendChild(th);
+    var base = el('tr'); base.appendChild(el('td', null, 'Your answers')); base.appendChild(el('td', 'r', eur(r.expected.total))); base.appendChild(el('td', 'r', '')); tb.appendChild(base);
+    r.sensitivity.forEach(function (x) { var d = x.total - r.expected.total, tr = el('tr'); tr.appendChild(el('td', null, LBL[x.id])); tr.appendChild(el('td', 'r', eur(x.total))); tr.appendChild(el('td', 'r', (d >= 0 ? '+' : '') + eur(d))); tb.appendChild(tr); });
+    t.appendChild(tb);
+  }
+  function renderAnswers(s) {
+    var dl = clear($('answers')), add = function (k, v) { dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, v)); };
+    add('You are', TYPE[ans.type]);
+    add('Markets', ans.markets === 'both' ? 'Continuous and auctions' : ans.markets === 'continuous' ? 'Continuous only' : 'Auctions only');
+    add('Weekends and holidays', ans.weekend ? 'Yes' : 'No');
+    if (ans.markets !== 'auctions') add('Continuous, buy / sell', fmt.format(s.contBuy) + ' / ' + fmt.format(s.contSell) + ' MWh a day');
+    if (ans.markets !== 'continuous') add('Auctions, buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
+    if (ans.type === 'aggregator') add('Nominated from other BRPs', fmt.format(s.nominatedIn) + ' MWh a day, ' + Math.round(s.nonDelivery * 100) + '% may not be delivered');
+    add('Held over the 16:00 cut', { none: 'No', some: 'About a third of buys', most: 'About two thirds of buys' }[ans.carry]);
+    add('Normal / tough-week price', eur(s.price) + ' / ' + eur(s.stressPrice) + ' per MWh');
+    if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eur(s.aucLimitPrice) + '/MWh');
+    add('Connections', s.connectionsMW ? s.connectionsMW + ' MW' : 'None');
+    add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
+    add('ECC collateral / BRP collateral', (s.eccForm === 'guarantee' ? 'Guarantee' : 'Cash') + ' / ' + (s.brpForm === 'guarantee' ? 'Guarantee' : 'Cash'));
+    add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
+  }
+  function renderAssumed(r, s) {
+    var ul = clear($('assumed')), x = r.expected, add = function (t) { ul.appendChild(el('li', null, t)); };
+    var rule = x.brp.rule === 'current' ? 'TenneT\'s rule in force (Systeemcode elektriciteit 2026, article 10.8)' : 'ACM\'s draft rule for 2027 (not yet final)';
+    add('Your split between continuous and auctions is the one that needs the least collateral: ' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions. You set it in the Direct+ platform.');
+    add('ECC updates limits around 18:00 on a best-effort basis; a tough week assumes around 19:00. Open orders over 16:00 and trading until the update, ' + eur(s.restingCont) + ' and ' + eur(s.eveningCont) + ', are covered by your base limit.');
+    add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eur(s.negPrice) + '/MWh.');
+    add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum.');
+    add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions. A tough week takes a high but not extreme imbalance week.');
+    if (s.connectionsMW) add('Reconciliation of metered volumes is assumed to vary by about €' + 10 + ' per MW a month.');
+    add('Nothing nets between Direct+ members: the estimate is for you alone. Fees and VAT are not included.');
+  }
+
+  fill(); show(1);
+})();
+</script>

@@ -2,8 +2,8 @@
 //   ECC limit calculator (src/page.html):
 //     dist/direct-plus-limit-calculator.html              page body, as published at the claude.ai artifact link
 //     dist/standalone/direct-plus-limit-calculator.html   full HTML document that opens straight from disk
-//   Wallet calculator (src/wallet/page.html, skipped until it exists):
-//     dist/wallet/direct-plus-wallet-calculator.html and dist/wallet/standalone/direct-plus-wallet-calculator.html
+//   Wallet calculator (src/wallet/page.html) and its questionnaire for prospects (src/wallet/prospect.html):
+//     dist/wallet/direct-plus-wallet-calculator.html, dist/wallet/direct-plus-wallet-prospect.html, and both under dist/wallet/standalone/
 // usage: node scripts/build.js [ecc|wallet|all] [--out <dir>]   (default: all, into dist/)
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
@@ -43,14 +43,19 @@ function buildEcc(out) {
   return [write(out, 'direct-plus-limit-calculator.html', body),
           write(out, 'standalone/direct-plus-limit-calculator.html', standalone(body, 'src/page.html'))];
 }
+// Wallet pages: the full calculator with its Settings view, and the questionnaire for prospects.
+const WALLET_PAGES = [['src/wallet/page.html', 'direct-plus-wallet-calculator.html'], ['src/wallet/prospect.html', 'direct-plus-wallet-prospect.html']];
 function buildWallet(out) {
-  if (!fs.existsSync(path.join(root, 'src/wallet/page.html'))) return [];
-  const page = read('src/wallet/page.html');
-  ['/*__ENGINE__*/', '/*__WALLET__*/'].forEach(m => { if (!page.includes(m)) throw new Error('src/wallet/page.html lost its ' + m + ' marker'); });
-  const wallet = WALLET_MODULES.map(m => stripExport(read('src/wallet/' + m + '.js'))).join('\n');
-  const body = page.replace('/*__ENGINE__*/', () => stripExport(read('src/engine.js'))).replace('/*__WALLET__*/', () => wallet);
-  return [write(out, 'wallet/direct-plus-wallet-calculator.html', body),
-          write(out, 'wallet/standalone/direct-plus-wallet-calculator.html', standalone(body, 'src/wallet/page.html'))];
+  const built = [];
+  WALLET_PAGES.forEach(([src, name]) => {
+    if (!fs.existsSync(path.join(root, src))) return;
+    const page = read(src);
+    ['/*__ENGINE__*/', '/*__WALLET__*/'].forEach(m => { if (!page.includes(m)) throw new Error(src + ' lost its ' + m + ' marker'); });
+    const wallet = WALLET_MODULES.map(m => stripExport(read('src/wallet/' + m + '.js'))).join('\n');
+    const body = page.replace('/*__ENGINE__*/', () => stripExport(read('src/engine.js'))).replace('/*__WALLET__*/', () => wallet);
+    built.push(write(out, 'wallet/' + name, body), write(out, 'wallet/standalone/' + name, standalone(body, src)));
+  });
+  return built;
 }
 
 module.exports = { buildEcc, buildWallet };

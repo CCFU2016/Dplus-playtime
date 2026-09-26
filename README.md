@@ -4,10 +4,11 @@ Two single-file calculators for Direct+ members clearing with ECC as Direct Clea
 
 - **Limit calculator** (`src/engine.js`, `src/page.html`): collateral to trading limit and back, for EPEX continuous and day-ahead. GO auctions are left out for now (see `TASKS.md`).
 - **Wallet calculator** (`src/wallet/`): how much money a member needs, in which part of the Direct+ wallet, as cash or a bank guarantee, and by when. It covers ECC collateral and settlement, TenneT BRP security and imbalance invoices. Every assumption can be changed on its Settings page.
+- **Prospect questionnaire** (`src/wallet/prospect.html`): a shareable page that asks seven questions (type, markets, volumes and strategy, prices, assets, balancing, funding) and shows a plain-English estimate from the same calculation.
 
       npm test          # ECC's worked examples, engine snapshot, markets, ECC dist hashes, wallet tests
-      npm run build     # writes dist/ (both calculators)
-      npm run test:ui   # headless checks of both built pages
+      npm run build     # writes dist/ (all pages)
+      npm run test:ui   # headless checks of the built pages
 
 - How the limits are modelled: `docs/model.md`
 - The wallet: brief `docs/wallet-brief.md`, model `docs/wallet-model.md`

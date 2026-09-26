@@ -1218,6 +1218,63 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     return s;
   }
 
+  // ---------- the prospect questionnaire (src/wallet/prospect.html) ----------
+  // Plain answers map onto the settings above; with each type's default answers they give exactly its preset.
+  var NATURAL = { trader: 'flat', aggregator: 'seller', asset: 'seller' };
+  var IMB_BASE = { trader: 'traded', aggregator: 'nominated', asset: 'production' };
+  var BALANCE = { tight: 0.005, normal: 0.03, forecast: 0.05 };          // imbalance as a share of volume
+  var LEAN = { neither: 0, short: 0.3, long: -0.2 };                      // bias
+  var CARRY = { none: 0, some: 0.3, most: 0.7 };                          // purchases paid before their sale
+  var RECONCILIATION_SD_PER_MW = 10;                                      // ASSUMPTION: € a month per MW connected
+  // Buy and sell volumes (MWh a day) that a trading strategy suggests, starting from the member type's preset.
+  function strategyVolumes(type, strategy) {
+    var v = PRESETS[type].values, out = {};
+    [['cont', v.contBuy || 0, v.contSell || 0], ['auc', v.aucBuy || 0, v.aucSell || 0]].forEach(function (m) {
+      var buy = m[1], sell = m[2], t = buy + sell;
+      if (strategy !== NATURAL[type]) {
+        if (strategy === 'flat') { buy = t / 2; sell = t / 2; }
+        else if (strategy === 'seller') { buy = 0.1 * t; sell = 0.9 * t; }
+        else { buy = 0.9 * t; sell = 0.1 * t; }
+      }
+      out[m[0]] = { buy: Math.round(buy), sell: Math.round(sell) };
+    });
+    return out;
+  }
+  function defaultAnswers(type) {
+    var v = PRESETS[type].values, vol = strategyVolumes(type, NATURAL[type]);
+    return {
+      type: type, markets: 'both', weekend: true, strategy: NATURAL[type],
+      contBuy: vol.cont.buy, contSell: vol.cont.sell, aucBuy: vol.auc.buy, aucSell: vol.auc.sell,
+      carry: type === 'trader' ? 'some' : 'none', nominatedIn: v.nominatedIn || 0, nonDelivery: v.nonDelivery || 0,
+      price: BASE.price, stressPrice: BASE.stressPrice, aucLimitPrice: v.aucLimitPrice != null ? v.aucLimitPrice : BASE.aucLimitPrice,
+      connections: type === 'asset' ? [{ mw: 30, metering: 'telemetry' }] : [],
+      balance: type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast',
+      lean: type === 'aggregator' ? 'short' : type === 'asset' ? 'long' : 'neither',
+      eccForm: 'cash', brpForm: 'guarantee', replenish: 'none', week: BASE.week
+    };
+  }
+  function fromAnswers(a) {
+    var s = preset(a.type), p = PRESETS[a.type].values;
+    var useC = a.markets !== 'auctions', useA = a.markets !== 'continuous';
+    s.contBuy = useC ? +a.contBuy || 0 : 0; s.contSell = useC ? +a.contSell || 0 : 0;
+    s.aucBuy = useA ? +a.aucBuy || 0 : 0; s.aucSell = useA ? +a.aucSell || 0 : 0;
+    // Orders resting over 16:00 and evening buying scale with continuous buying (the preset's ratio).
+    var scale = p.contBuy ? s.contBuy / p.contBuy : 0;
+    s.restingCont = (p.restingCont || 0) * scale; s.eveningCont = (p.eveningCont || 0) * scale;
+    s.weekend = !!a.weekend; s.aucLimitPrice = a.aucLimitPrice == null || a.aucLimitPrice === '' ? null : +a.aucLimitPrice;
+    s.price = +a.price; s.stressPrice = +a.stressPrice; s.stressAvgPrice = 1.5 * s.price;   // ASSUMPTION: averages move less than spot
+    s.carryShare = CARRY[a.carry] || 0;
+    s.nominatedIn = a.type === 'aggregator' ? +a.nominatedIn || 0 : 0; s.nonDelivery = a.type === 'aggregator' ? +a.nonDelivery || 0 : 0;
+    s.imbShare = BALANCE[a.balance]; s.imbBase = IMB_BASE[a.type]; s.bias = LEAN[a.lean];
+    var conns = (a.connections || []).filter(function (c) { return +c.mw > 0; });
+    s.connectionsMW = conns.map(function (c) { return +c.mw; }).join(', ');
+    s.profileMean = 0; s.smartMean = 0; s.profileSd = 0; s.smartSd = 0;
+    conns.forEach(function (c) { if (c.metering === 'profile') s.profileSd += RECONCILIATION_SD_PER_MW * c.mw; else s.smartSd += RECONCILIATION_SD_PER_MW * c.mw; });
+    s.eccForm = a.eccForm; s.brpForm = a.brpForm; s.replenish = a.replenish;
+    if (a.week) s.week = a.week;
+    return s;
+  }
+
   var SEGMENTS = {
     trading: 'Trading collateral (at ECC)',
     brp: 'BRP collateral',
@@ -1340,7 +1397,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     return out;
   }
 
-  return { GROUPS: GROUPS, BASE: BASE, PRESETS: PRESETS, SEGMENTS: SEGMENTS, preset: preset, scenario: scenario, compute: compute };
+  return { GROUPS: GROUPS, BASE: BASE, PRESETS: PRESETS, SEGMENTS: SEGMENTS, preset: preset, scenario: scenario, compute: compute,
+           strategyVolumes: strategyVolumes, defaultAnswers: defaultAnswers, fromAnswers: fromAnswers };
 })(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
    typeof WalletBehaviour !== 'undefined' ? WalletBehaviour : require('./behaviour.js'),
    typeof WalletSettlement !== 'undefined' ? WalletSettlement : require('./settlement.js'),

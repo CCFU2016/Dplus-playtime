@@ -806,3 +806,34 @@ Everything else the brief states, I found in the sources as described:
 - **TenneT's BRP recognition page:** the €96,000 minimum and six-weekly recalculation. A saved PDF or a paste of the text would do.
 - **"TenneT inzake rekening"** (Q14): the formula TenneT actually applies today.
 - **TenneT's billing terms for weekly imbalance invoices** ("Algemene voorwaarden voor facturering en betaling bij onbalans"): the debit day (Q11).
+
+---
+
+## 12. The prospect questionnaire (`src/wallet/prospect.html`)
+
+A shareable page for prospects, built into `dist/wallet/direct-plus-wallet-prospect.html`. It asks seven questions
+and shows a plain-English estimate: what the money is for, where it sits in the wallet, when it's needed, what moves
+it, the answers, the assumptions and the sources. It can be printed or saved as a PDF.
+
+- **Calculation:** the same as the calculator (`WalletCalc.compute`).
+- **What it leaves out:** internal references, tags and the "on your own as a BRP" comparison (W11).
+- **Rounding:** the headline is rounded to €1,000; the table shows whole euros.
+
+Answers map onto settings in `wallet.js` (`defaultAnswers`, `strategyVolumes`, `fromAnswers`). With each type's
+default answers the settings equal that type's preset exactly, and `tests/wallet/wallet.test.js` checks this.
+
+| Question | Settings |
+|---|---|
+| Which describes you best? | Preset: trader, aggregator or asset owner |
+| Markets, weekends | Volumes of markets not traded are set to 0; weekend trading |
+| Strategy | Fills the volumes. The type's own strategy keeps the preset; otherwise each market's total is split evenly (close positions), 10/90 (mainly sell) or 90/10 (mainly buy) |
+| Volumes | Buys and sells per market. Orders resting over 16:00 and evening buying scale with continuous buying (the preset's ratio) |
+| Aggregators: nominated in, not delivered | `nominatedIn`, `nonDelivery` |
+| Held over the 16:00 cut | Settlement float share: none 0, some 30%, most 70% |
+| Prices | Typical and stress price. The stress two-to-three-month average is 1.5 × typical (ASSUMPTION) |
+| Highest auction bid | `aucLimitPrice` (required when buying in auctions) |
+| Connections | Capacities for the current rule's B. Reconciliation spread of €10 per MW a month (ASSUMPTION), in D for smart-meter and telemetry, in C for profile |
+| How close, which way | Imbalance 0.5%, 3% or 5% of volume; bias 0, +0.3 (short) or −0.2 (long) |
+| Funding | Collateral form at ECC, BRP collateral form, top-up rhythm |
+
+Everything else stays at the preset. The page lists it under "What we assumed".

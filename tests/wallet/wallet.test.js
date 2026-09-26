@@ -67,4 +67,22 @@ T.eq(Object.keys(C.BASE).filter(k => k !== 'week' && !keys.has(k)), [], 'every s
 Object.keys(C.PRESETS).forEach(id => T.eq(Object.keys(C.PRESETS[id].values).filter(k => !(k in C.BASE)), [], id + ': preset uses known settings only'));
 T.ok(ft.assumptions.length > 30 && ft.assumptions.every(a => a.src && a.tag !== 'input'), 'assumptions list: every non-input setting with a source');
 
+// The prospect questionnaire: default answers give exactly each preset; answers move the right settings.
+Object.keys(C.PRESETS).forEach(id => {
+  const s = C.fromAnswers(C.defaultAnswers(id)), p = C.preset(id);
+  T.eq(Object.keys(p).filter(k => String(p[k]) !== String(s[k])), [], id + ': default answers reproduce the preset');
+});
+let a = C.defaultAnswers('trader'); a.markets = 'continuous';
+let q = C.fromAnswers(a);
+T.eq([q.aucBuy, q.aucSell, q.contBuy], [0, 0, 240], 'continuous only: no auction volumes');
+a = C.defaultAnswers('trader'); a.contBuy = 120;
+T.eq([C.fromAnswers(a).restingCont, C.fromAnswers(a).eveningCont], [5000, 2500], 'resting orders and evening buying scale with continuous buying');
+T.eq(C.strategyVolumes('aggregator', 'flat'), { cont: { buy: 25, sell: 25 }, auc: { buy: 60, sell: 60 } }, 'a flat strategy splits volumes evenly');
+T.eq(C.strategyVolumes('trader', 'buyer'), { cont: { buy: 432, sell: 48 }, auc: { buy: 180, sell: 20 } }, 'a buyer strategy buys 90%');
+a = C.defaultAnswers('asset'); a.connections = [{ mw: 30, metering: 'telemetry' }, { mw: 12, metering: 'profile' }];
+q = C.fromAnswers(a);
+T.eq([q.connectionsMW, q.smartSd, q.profileSd], ['30, 12', 300, 120], 'connections: capacities, and reconciliation spread by metering type');
+a = C.defaultAnswers('trader'); a.carry = 'none';
+T.money(C.compute(C.fromAnswers(a)).expected.settlement.float, 0, 'no positions held over 16:00: no float');
+
 T.done();
