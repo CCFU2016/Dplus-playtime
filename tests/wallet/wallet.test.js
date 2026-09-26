@@ -2,7 +2,8 @@
 const C = require('../../src/wallet/wallet.js');
 // The worked example (§8) is a larger desk than today's trader preset: the preset's volumes before it was resized to
 // about 150 MWh a day (26 Sep 2026). Everything else is the preset.
-const LARGE_DESK = { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, restingCont: 10000, eveningCont: 5000, s: 0 };
+// It also keeps the €80 normal price and the loss rule of that time: 5% of gross buys lost every business day in a tough week, and no bad days.
+const LARGE_DESK = { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, restingCont: 10000, eveningCont: 5000, s: 0, lossShare: 0.05, badDays: 0, badDaysStress: 0, price: 80, stressAvgPrice: 120 };
 const desk = () => Object.assign(C.preset('trader'), LARGE_DESK);
 const T = require('./assert.js')('wallet');
 
@@ -35,8 +36,8 @@ s.reading = 'flat';
 T.money(C.compute(s).expected.total, 229994.25, 'on your own as a BRP, flat €96,000 reading');
 // Marginal amounts from members with volume or connections.
 const ag = C.compute(C.preset('aggregator')).expected.brp, as = C.compute(C.preset('asset')).expected.brp;
-T.money(ag.security, 150 * 80 * 2, 'aggregator: 150 MWh a day with one counterparty, 2 × A, no floors');
-T.money(as.security, 90 * 80 + 26 * 24 * 80, 'asset: A + B = 90 × 80 + 26 MW × 24 × 80');
+T.money(ag.security, 150 * 100 * 2, 'aggregator: 150 MWh a day with one counterparty, 2 × A at €100, no floors');
+T.money(as.security, 90 * 100 + 26 * 24 * 100, 'asset: A + B = 90 × 100 + 26 MW × 24 × 100');
 // A marginal share is never below €0, even when the draft's components are negative.
 s = C.preset('asset'); s.week = '2027-10-04'; s.bias = -1; s.cv = 0.1; s.imbShare = 0.5;
 let neg = C.compute(s).expected.brp;
@@ -133,4 +134,13 @@ T.ok(cr.fixed.need === null && cr.fixed.short, 'a split that cannot reach the au
 cr = carried({ blContBD: 50000 });
 T.ok(cr.baseLimits.cont.bd === 50000 && cr.fixed.need > own.C, 'carried base limits are used: a larger one needs more collateral');
 T.eq(C.compute(C.preset('trader')).expected.ecc.fixed, null, 'without a carried amount nothing is fixed');
+// Bad days (Direct+ decision, 26 Sep 2026): room for 1 bad day (normal) or 2 (tough): open position × €100/MWh.
+const bt = C.compute(C.preset('trader'));
+T.money(bt.expected.settlement.openMWh, 0.66 * 60 + 15, 'trader: open position = 66% of 60 MWh M7 buys + 15 MWh auction buys');
+T.money(bt.expected.settlement.badDay, 54.6 * 100, 'trader, normal week: one bad day, 54.6 MWh × €100 = €5,460');
+T.money(bt.stress.settlement.badDay, 2 * 54.6 * 100, 'trader, tough week: two bad days, €10,920');
+T.money(bt.stress.settlement.flows, 0, 'no loss every day any more in a tough week');
+const ba = C.compute(C.preset('asset')).expected.settlement;
+T.money(ba.badDay, 20 * 100, 'asset owner: 20 MWh bought (battery, consumption) also has a bad day, €2,000');
+T.money(C.compute(Object.assign(C.preset('trader'), { contBuy: 0, aucBuy: 0 })).expected.settlement.badDay, 0, 'no buying, no bad-day loss');
 T.done();

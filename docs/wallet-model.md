@@ -232,6 +232,19 @@ says "starting at 3 mio €". It's an optional input, off by default. Collateral
 
 **Label:** ECC rule for the timing; Estimate for the amounts.
 
+**Bad days (Niki, 26 Sep 2026).** A flat trader's days net to €0 at one price, but any day can lose money. The wallet keeps room for
+**one bad day in a normal week and two in a tough week** (not a loss every day of the week):
+
+```
+open position = (1 − s) × M7 buys + auction buys          (MWh; auction buys stay open until sold or used)
+bad day       = open position × €100/MWh                  (badMove)
+settlement    = flows + float + bad days × bad day
+```
+
+Anyone who buys has an open position, so aggregators and asset owners with consumption or batteries get a buffer too. Example
+trader (60 / 60 M7, 15 / 15 MATS, largest open M7 position 66%): 39.6 + 15 = 54.6 MWh, so €5,460 (normal) and €10,920 (tough).
+The stress share below (`lossShare`, a loss on every business day) is off by default; the section 8 worked example keeps it.
+
 **Sources:**
 - CBA p.3:
   - "all trades conducted before 4 PM CET are settled in the next morning."
@@ -537,14 +550,14 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 | Auctions, buy / sell | 15 / 15 MWh a day | A day-ahead position closed later |
 | Auction buy limit price | €150/MWh | Bids capped at a price the desk would really pay, not the market maximum |
 | Weekend and holiday trading | on | The cautious choice: weekend periods set the Friday limit |
-| Typical / stress price | €80 / €250 per MWh | A normal day and a spike day |
-| Stress 2–3-month average | €120 | Security uses averages, which move less than spot |
+| Typical / stress price | €100 / €250 per MWh | A normal day and a spike day (normal price €100: Niki, 26 Sep 2026; it was €80) |
+| Stress 2–3-month average | €150 (1.5 × the normal price) | Security uses averages, which move less than spot |
 | Negative-price hours | 5%, at −€20 average | A few hundred negative hours a year |
 | s | 34% | Niki, 26 Sep 2026: buys and sells are mixed through the day, so the largest open position is assumed to be 66% of the day's buys (first 25%, then set to 66% / 33% for the two answers; the brief's cautious default is 0) |
 | Resting orders over 16:00 / net buying 16:00–update | €2,500 / €1,250 | A few open orders and some trading while ECC recalculates |
 | Imbalance | 0.5% of traded volume, no bias, cv 0.5 | Only partial fills and slips at gate closure |
 | State-2 share / gap | 5% / €150 | Dual pricing is rare but expensive |
-| Settlement stress share x | 5% | A bad week for a flat desk |
+| Bad days | 1 (normal week), 2 (tough week), €100 lost per MWh of open position | Niki, 26 Sep 2026: room for one or two bad days, not a bad week (section 3). The old stress share (5% of buys lost every day) is off |
 | Purchases paid before their sale | 30% of a day's buys (all three presets) | Roughly the day-ahead buying, sold intraday the next day; everyone is assumed to hold some positions over 16:00 |
 | Connections | none | |
 
@@ -706,7 +719,7 @@ Direct+ marginal collateral, rule in force on 5 October 2026, all cash (Direct+ 
 - Update time 18:00, stress 19:00.
 - Weekend trading on (presets).
 - Replenishment none.
-- Settlement stress share 5%.
+- Settlement stress share 5% (the worked example's rule; now off by default in favour of bad days).
 - Imbalance cv 0.5.
 - State-2 share and gap.
 - Stress average price.

@@ -56,7 +56,10 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     ] },
     { id: 'settlement', title: 'ECC settlement', fields: [
       f('carryShare', 'Purchases paid before their sale', '% of a day\'s buys', 'share', 'ASSUMPTION', 'Positions bought before the 16:00 booking cut and sold after it (e.g. bought day-ahead, sold intraday the next day): ECC collects the purchase one business day before the sale comes back, so this much stays in the wallet as a float (ECC DCP payments page: one net payment per business day)'),
-      f('lossShare', 'Stress: net payment per window', '% of gross buys', 'share', 'ASSUMPTION', 'A flat trader nets to €0 at one price; the stress end assumes this loss in every window (wallet-model §3)'),
+      f('badMove', 'Bad day: price move against your open position', '€/MWh', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026: the wallet keeps room for a bad day\'s trading loss, the largest open position times this move'),
+      f('badDays', 'Bad days the wallet can absorb, normal week', 'days', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026: one or two bad days, not a bad week'),
+      f('badDaysStress', 'Bad days the wallet can absorb, tough week', 'days', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026'),
+      f('lossShare', 'Extra loss every business day, tough week', '% of gross buys', 'share', 'ASSUMPTION', 'Off by default: bad days above replace it (wallet-model §3)'),
       f('replenish', 'Topping up the wallet', '', 'select', 'ASSUMPTION', 'How often you replace what ECC collects', { options: [['none', 'Not within the period'], ['daily', 'Every business day'], ['weekly', 'Every Monday']] }),
       f('feesPerWindow', 'Fees per business day', '€', 'number', 'ASSUMPTION', 'ECC, EPEX and Direct+ fees: not set until the price lists are in (Q7)')
     ] },
@@ -93,12 +96,12 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var BASE = {
     week: '2026-10-05',
     contBuy: 0, contSell: 0, aucBuy: 0, aucSell: 0, aucLimitPrice: 150, nominatedIn: 0, nonDelivery: 0, weekend: true,
-    price: 80, stressPrice: 250, stressAvgPrice: 120, negShare: 0.05, negPrice: -20,
+    price: 100, stressPrice: 250, stressAvgPrice: 150, negShare: 0.05, negPrice: -20,   // normal price €100/MWh (Direct+ decision, 26 Sep 2026)
     s: 0, restingCont: 0, eveningCont: 0, restingAuc: 0, restingAucWeekend: 0, updateHour: 18, stressUpdateHour: 19,
     measure: 'l18', splitMode: 'cheapest', key: 60, collateralMode: 'static', cap: null,
     eccCollateral: null, blContBD: null, blContNBD: null, blAucBD: null, blAucNBD: null,
     aucMaxPrice: null, aucMinPrice: null, realMin: null, realMax: null,
-    carryShare: 0, lossShare: 0.05, replenish: 'none', feesPerWindow: 0,
+    carryShare: 0, lossShare: 0, badMove: 100, badDays: 1, badDaysStress: 2, replenish: 'none', feesPerWindow: 0,
     imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
     connectionsMW: '', between: 'down', profileMean: 0, profileSd: 0, smartMean: 0, smartSd: 0,
     brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population',
@@ -228,6 +231,11 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     // Part 2: settlement windows and cash
     var ws = S.windows(isoDays, flowOf, function () { return st.feesPerWindow || 0; });
     var cash = S.cashPath(ws, st.replenish);
+    // Bad days (Direct+ decision, 26 Sep 2026): room for one bad day's trading loss in a normal week, two in a tough week,
+    // not a loss every day. A bad day moves the price against the largest open position: M7 buys not yet sold again
+    // (1 − s of them) plus auction buys, which stay open until sold or used. Anyone who buys has one, consumers too.
+    var openMWh = ((1 - (+st.s || 0)) * st.contBuy + st.aucBuy) * vm;
+    var badDays = +(o.stress ? st.badDaysStress : st.badDays) || 0, badDay = badDays * openMWh * (+st.badMove || 0);
     // Float: purchases paid one collection before their sale (bought before the 16:00 cut, sold after). In steady state each
     // collection pays the new carried purchases and receives the previous ones, so the amount stays in the wallet.
     var carry = (st.carryShare || 0) * (st.contBuy + st.aucBuy) * vm * st.price * fp;
@@ -316,7 +324,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
 
     var parts = [
       { id: 'ecc', label: 'ECC trading collateral', segment: 'trading', value: peakC, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
-      { id: 'settlement', label: 'ECC settlement', segment: 'available', value: cash.need + carry, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
+      { id: 'settlement', label: 'ECC settlement', segment: 'available', value: cash.need + carry + badDay, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
       { id: 'brp', label: marginal ? 'BRP collateral (marginal)' : 'BRP security (TenneT)', segment: 'brp', value: security, form: 'Cash', formRule: 'Cash only', confidence: (ruleId === 'current' ? 'TenneT rule' : 'Draft rule') + ' · Direct+ contract' },
       { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate' }
     ];
@@ -327,7 +335,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       // With daily collateral: what the wallet needs Monday to Thursday, when only the weekday amount sits at ECC.
       weekdayTotal: total - peakC + weekdayC,
       ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, overCap: overCap, fixed: fixed, targets: tg, baseLimits: bl, binding: binding, windows: ws },
-      settlement: { windows: ws, need: cash.need + carry, flows: cash.need, float: carry, path: cash.path },
+      settlement: { windows: ws, need: cash.need + carry + badDay, flows: cash.need, float: carry, badDay: badDay, badDays: badDays, openMWh: openMWh, path: cash.path },
       brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
       tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }
     };

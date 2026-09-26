@@ -58,7 +58,7 @@ with sync_playwright() as pw:
     js = pg.evaluate('''() => { const a = WalletCalc.defaultAnswers('trader'); a.week = document.getElementById('week').value; const r = WalletCalc.compute(WalletCalc.fromAnswers(a)); return '€' + (Math.round(r.expected.total / 1000) * 1000).toLocaleString('en-GB'); }''')
     check(js in total, 'trader total equals the calculation for the same answers, rounded to €1,000: ' + js)
     core = pg.inner_text('#core')
-    check(all(k in core for k in ['Price', '€80', 'Held over the 16:00 cut', '30%', 'Largest open M7 position', '66% of a day', 'about 40 MWh', 'about 23 MWh', '60 buy / 60 sell MWh a day', '15 buy / 15 sell MWh a day', 'Split continuous / auctions', 'BRP collateral']), 'core assumptions sit next to what the money is for: ' + core.replace(chr(10), ' | '))
+    check(all(k in core for k in ['Price', '€100', 'Bad day', '€100/MWh lost on about 55 MWh open', 'Held over the 16:00 cut', '30%', 'Largest open M7 position', '66% of a day', 'about 40 MWh', 'about 23 MWh', '60 buy / 60 sell MWh a day', '15 buy / 15 sell MWh a day', 'Split continuous / auctions', 'BRP collateral']), 'core assumptions sit next to what the money is for: ' + core.replace(chr(10), ' | '))
     box = lambda sel: pg.eval_on_selector(sel, 'n => { const r = n.getBoundingClientRect(); return [r.top, r.left]; }')
     pt, cr = box('#purposes'), box('#core')
     check(cr[1] > pt[1] and abs(cr[0] - pt[0]) < 80, 'on a wide screen they are side by side')
@@ -85,28 +85,29 @@ with sync_playwright() as pw:
     check(len(rows) == 3 and any('(your answer)' in r for r in rows), 'top-ups: three rhythms, the answer marked')
     pg.select_option('#topup', 'daily'); pg.wait_for_timeout(1500)
     check('Every business day (your answer)' in pg.inner_text('#topups'), 'the top-up selector recomputes the estimate')
-    # The tough week, when chosen: its price is asked, the estimate shows "up to", and top-ups change the tough week.
+    # The tough week, when chosen: its price is asked and the estimate shows "up to". For a net buyer (ECC collects
+    # purchases every day) the top-up rhythm changes the tough week; a flat trader's days net to zero, so it would not.
     def tough(p):
         check(p.is_hidden('#tough-price'), 'no tough week: its price is not asked')
         p.click('label[for="h-yes"]'); p.wait_for_timeout(100)
         check(p.is_visible('#tough-price'), 'choosing a tough week asks for its price')
-    h = walk(pg, 'trader', {4: tough})
+    h = walk(pg, 'trader', {3: lambda p: p.click('label[for="s-buyer"]'), 4: tough})
     check('up to' in h and 'tough week' in heads(pg, 'purposes'), 'tough week shown when chosen: ' + h)
     tt = pg.eval_on_selector_all('#topups tbody tr', 'rs => rs.map(r => r.innerText.split("\\t").pop())')
-    check(len(set(tt)) > 1, 'top-ups change the tough-week total: ' + str(tt))
+    check(len(set(tt)) > 1, 'a buyer\'s top-ups change the tough-week total: ' + str(tt))
     # Weekends: "show me both" gives two columns and both amounts in the headline.
     h = walk(pg, 'trader', {2: lambda p: p.click('label[for="w-both"]'), 4: lambda p: p.click('label[for="h-no"]')})
     check(heads(pg, 'purposes') == ['what for', 'business days only', 'also at weekends'] and 'business days only' in pg.inner_text('#hero-sub'), 'weekends "show me both": two columns and both amounts: ' + h)
     # Portfolio: a trader with 20 MW of production sees the size question and gets BRP collateral (one site in the
-    # 11-25 MW class counts 11 MW: 11 × 24 × €80 = €21,120, rounded to €21,000).
+    # 11-25 MW class counts 11 MW: 11 × 24 × €100 = €26,400, rounded to €26,000).
     def production(p):
         check(p.is_hidden('#size-q'), 'no assets: the size question is hidden')
         p.click('label[for="a-production"]'); p.wait_for_timeout(100)
         check(p.is_visible('#size-q') and p.is_visible('#pf-note'), 'ticking production shows the size question and the balancing note')
         p.fill('#capacityMW', '20'); p.dispatch_event('#capacityMW', 'input'); p.fill('#sites', '1'); p.dispatch_event('#sites', 'input')
-    walk(pg, 'trader', {2: lambda p: p.click('label[for="w-yes"]'), 5: production})
+    walk(pg, 'trader', {2: lambda p: p.click('label[for="w-yes"]'), 3: lambda p: p.click('label[for="s-flat"]'), 5: production})
     brp = [r for r in pg.eval_on_selector_all('#purposes tbody tr', 'rs => rs.map(r => r.innerText)') if r.startswith('BRP collateral')]
-    check(brp and '€21,000' in brp[0], 'production adds BRP collateral: ' + (brp[0].split('\t')[-1] if brp else 'none'))
+    check(brp and '€26,000' in brp[0], 'production adds BRP collateral: ' + (brp[0].split('\t')[-1] if brp else 'none'))
     # Collateral adjusted every business day: the headline shows the weekday and the weekend amount; the selector switches.
     h = walk(pg, 'trader', {7: lambda p: p.click('label[for="k-daily"]')})
     check('during the week' in h and 'around the weekend' in h, 'daily collateral: weekday and weekend amounts: ' + h)

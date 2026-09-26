@@ -470,7 +470,8 @@
     if (se.float > 0.5) seText += 'Purchases you sell only after the 16:00 cut are paid one collection before the sale comes back, so about ' + eur(se.float) + ' stays in the wallet as a float.' + (se.flows < 0.5 ? ' Otherwise your buys and sells net to about zero.' : ' On top of that come the week\'s net purchases, ' + eur(se.flows) + '.');
     else if (se.flows < 0.5) seText += 'Yours net to about zero or to money coming in, so apart from fees nothing has to wait in the wallet.';
     else seText += 'This is the most ECC collects over the week before you top up.';
-    seText += ' Fees are not included yet. The stress end assumes a loss of ' + Math.round(st.lossShare * 100) + '% of gross buys in every window.';
+    if (se.badDay > 0.5) seText += ' It keeps room for ' + se.badDays + (se.badDays === 1 ? ' bad day' : ' bad days') + ' (' + (y.settlement.badDays) + ' at the stress end): €' + fmt.format(Math.round(st.badMove)) + ' lost on each MWh of the open position, about ' + fmt.format(Math.round(se.openMWh)) + ' MWh, so ' + eur(se.badDay) + '.';
+    seText += ' Fees are not included yet.' + (st.lossShare > 0 ? ' The stress end also assumes a loss of ' + Math.round(st.lossShare * 100) + '% of gross buys in every window.' : '');
     card('var(--p-settlement)', 'ECC settlement', x.settlement.need, y.settlement.need, seText,
       [['carryShare', 'Positions held over 16:00'], ['replenish', 'Topping up']]);
     var br = x.brp, ruleName = br.rule === 'current' ? 'the rule in force (Systeemcode 2026, art. 10.8)' : 'ACM\'s draft for 2027', brpText;
