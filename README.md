@@ -4,11 +4,14 @@ Two single-file calculators for Direct+ members clearing with ECC as Direct Clea
 
 - **Limit calculator** (`src/engine.js`, `src/page.html`): collateral to trading limit and back, for EPEX continuous and day-ahead. GO auctions are left out for now (see `TASKS.md`).
 - **Wallet calculator** (`src/wallet/`): how much money a member needs, in which part of the Direct+ wallet, and by when (Direct+ works with cash only). It covers ECC collateral and settlement, TenneT BRP security and imbalance invoices. Every assumption can be changed on its Settings page.
-- **Prospect questionnaire** (`src/wallet/prospect.html`): a shareable page that asks seven questions (type, markets, volumes and strategy, prices, assets, balancing, funding) and shows a plain-English estimate from the same calculation.
+- **Prospect questionnaire** (`src/wallet/prospect.html`): a shareable page that asks seven questions (type, trading days, strategy and volumes, prices, portfolio, balancing, managing the wallet) and shows a plain-English estimate from the same calculation.
 
       npm test          # ECC's worked examples, engine snapshot, markets, ECC dist hashes, wallet tests
       npm run build     # writes dist/ (all pages)
       npm run test:ui   # headless checks of the built pages
+      npm start         # serves dist/ on $PORT (default 3000): /, /estimate, /limits, /wallet
+
+**Hosting (Railway or any Node host):** `npm start` runs `scripts/serve.js`, which uses only Node's built-in modules. It serves the landing page at `/`, the prospect questionnaire at `/estimate` and the limit calculator at `/limits`. The full wallet calculator at `/wallet` is for Direct+ staff: it is only served when `WALLET_PASSWORD` is set, behind a browser login with user name `WALLET_USER` (default `directplus`). The build runs on deploy, and `dist/` is committed as well.
 
 - How the limits are modelled: `docs/model.md`
 - The wallet: brief `docs/wallet-brief.md`, model `docs/wallet-model.md`

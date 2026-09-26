@@ -256,7 +256,7 @@
   var E = LimitEngine, C = WalletCalc;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
-  // Amounts are rounded to the nearest €1,000: these are estimates, not exact figures (Niki, 26 Sep 2026). Prices and
+  // Amounts are rounded to the nearest €1,000: these are estimates, not exact figures (Direct+ decision, 26 Sep 2026). Prices and
   // amounts typed in are shown as entered (eurP).
   function eur(v) { var a = Math.abs(v); if (a < 0.5) return '€0'; if (a < 1000) return 'under €1,000'; return (v < 0 ? '−€' : '€') + fmt.format(Math.round(a / 1000) * 1000); }
   function eurP(v) { return (v < 0 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }

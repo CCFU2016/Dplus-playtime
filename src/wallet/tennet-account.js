@@ -1,5 +1,5 @@
 /* Direct+ wallet: the TenneT account: imbalance and reconciliation invoices, their dates, and the account/security check
-   (docs/wallet-model.md §5, §6.2). Each member pays its own invoices, as if it were its own BRP (Niki, 26 Sep 2026).
+   (docs/wallet-model.md §5, §6.2). Each member pays its own invoices, as if it were its own BRP (Direct+ decision, 26 Sep 2026).
    Sources: SC 2026 art. 10.26, 10.27, 10.29 (reference/tennet/systeemcode-elektriciteit_wetten-overheid_…txt);
    ACM draft ACM/25/196985 art. 10.8(9)-(10), amended 10.26(5)-(6) and 10.27(13)-(14), explanatory paras 15-17. */
 var WalletTennet = (function () {

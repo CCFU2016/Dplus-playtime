@@ -1,7 +1,7 @@
 /* Direct+ wallet: what one member needs, by purpose and by wallet segment (docs/wallet-model.md).
    Every setting the page shows (its label, unit, kind, tag and source) is listed here, so the Settings view and the
    "Assumptions and sources" list come from one place. Each member is treated as its own BRP, and the wallet pools
-   all members at one connected bank, so nothing nets between members (Niki, 26 Sep 2026; wallet-model §11.1). */
+   all members at one connected bank, so nothing nets between members (Direct+ decision, 26 Sep 2026; wallet-model §11.1). */
 var WalletCalc = (function (E, B, S, L, R, W) {
   'use strict';
 
@@ -73,7 +73,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('smartSd', 'Smart-meter and telemetry reconciliation: monthly σ', '€', 'number', 'ASSUMPTION', 'Component D of the draft')
     ] },
     { id: 'brp', title: 'BRP security', note: 'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum.', fields: [
-      f('brpBasis', 'Basis', '', 'select', 'Direct+ contract', 'Direct+ (Niki, 26 Sep 2026): no minimum for members, only the marginal collateral; the €96,000 minimum and the 50 MW floors apply once to the Direct+ BRP. ASSUMPTION: the rule\'s formula on your own figures, never below €0; netting inside the Direct+ portfolio is not modelled', { options: [['marginal', 'Direct+: your marginal collateral'], ['standalone', 'On your own as a BRP (with the minimum), for comparison']] }),
+      f('brpBasis', 'Basis', '', 'select', 'Direct+ contract', 'Direct+ decision (26 Sep 2026): no minimum for members, only the marginal collateral; the €96,000 minimum and the 50 MW floors apply once to the Direct+ BRP. ASSUMPTION: the rule\'s formula on your own figures, never below €0; netting inside the Direct+ portfolio is not modelled', { options: [['marginal', 'Direct+: your marginal collateral'], ['standalone', 'On your own as a BRP (with the minimum), for comparison']] }),
       f('rule', 'Rule', '', 'select', 'input', 'The draft takes effect on 1 January 2027 once ACM decides (ACM draft Artikel II B)', { options: [['auto', 'By date (the draft from 2027)'], ['current', 'Rule in force now'], ['draft', 'ACM draft']] }),
       f('reading', 'The current rule\'s 50 MW floor (on your own as a BRP)', '', 'select', 'INTERPRETATION', 'SC 2026 art. 10.8(3), (6), (11); the €96,000 minimum is on TenneT\'s page only (Q14). Not used for the marginal basis', { options: [['1200', '50 MW × 24 h = 1,200 MWh'], ['flat', 'A flat €96,000 minimum']] }),
       f('perPeriod', 'Daily net volume', '', 'select', 'INTERPRETATION', '"voor alle uren gedurende één kalenderdag" (current) / "één etmaal" (draft)', { options: [['i', '(i) Net over the day'], ['ii', '(ii) Net per settlement period, added up']] }),
@@ -98,7 +98,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population',
     debitLagWeeks: 4
   };
-  // Presets approved by Niki "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page.
+  // Presets approved by Direct+ "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page.
   var PRESETS = {
     trader: { label: 'Financial trader', note: 'A small desk that ends each day flat.',
       values: { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, aucLimitPrice: 150, restingCont: 10000, eveningCont: 5000, carryShare: 0.3,
@@ -126,7 +126,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var LEAN = { neither: 0, short: 0.3, long: -0.2 };                      // bias
   var CARRY = { none: 0, some: 0.3, most: 0.7 };                          // purchases paid before their sale
   var RECONCILIATION_SD_PER_MW = 10;                                      // ASSUMPTION: € a month per MW connected
-  var ASSETS = ['production', 'consumption'];                             // portfolio answers (Niki: production vs consumption)
+  var ASSETS = ['production', 'consumption'];                             // portfolio answers (Direct+ decision: production vs consumption)
   var NO_ASSETS = { production: false, consumption: false };
   // How closely a portfolio can match its positions: production output (solar, wind) usually needs a forecast.
   function suggestBalance(type, portfolio) {
@@ -239,7 +239,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       if (!binding || c > binding.C) binding = { date: E.iso(d), C: c, gap: E.day(d, { C: 0, OR: 0, cont: { bd: 0, nbd: 0, key: 0 }, da: { bd: 0, nbd: 0, key: 0 } }).gap1 };
     });
     // Collateral by calculation day, each day on its own (with its own cheapest split when that is the choice). With
-    // 'daily' collateral the member changes it every business day (Niki, 26 Sep 2026): less during the week, more before
+    // 'daily' collateral the member changes it every business day (Direct+ decision, 26 Sep 2026): less during the week, more before
     // weekends and holidays. ASSUMPTION: a change is in place by that day's evening calculation; how fast the Direct+
     // platform applies it is open (W4). For one day the engine's own search gives the same answer as ecc-link.js.
     var perDay = days.map(function (d) {
@@ -255,11 +255,11 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var daily = st.collateralMode === 'daily';
     var peakC = daily ? maxOf(function () { return true; }) : split.C;
     var weekdayC = daily ? (maxOf(function (x) { return x.gap === 1; }) || peakC) : split.C;
-    // Direct+ accepts cash only, no bank guarantees (Niki, 26 Sep 2026): so no default-fund contribution either.
+    // Direct+ accepts cash only, no bank guarantees (Direct+ decision, 26 Sep 2026): so no default-fund contribution either.
     var form = L.form(peakC, false, num(st.cap));
 
     // Part 3: BRP security on the member's own figures. Direct+ members put up their marginal collateral: no minimum and
-    // no volume floors, which apply once to the Direct+ BRP (Niki, 26 Sep 2026). 'standalone' is the member as its own
+    // no volume floors, which apply once to the Direct+ BRP (Direct+ decision, 26 Sep 2026). 'standalone' is the member as its own
     // BRP, with both, for comparison.
     var marginal = st.brpBasis !== 'standalone';
     var bx = (st.contBuy + st.aucBuy) * vm, sx = (st.contSell + st.aucSell) * vm, nom = st.nominatedIn * vm;

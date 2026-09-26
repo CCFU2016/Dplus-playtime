@@ -58,7 +58,12 @@ function buildWallet(out) {
   return built;
 }
 
-module.exports = { buildEcc, buildWallet };
+// Landing page for the hosted site (scripts/serve.js): a complete document, copied as is.
+function buildIndex(out) {
+  return [write(out, 'index.html', read('src/index.html'))];
+}
+
+module.exports = { buildEcc, buildWallet, buildIndex };
 
 if (require.main === module) {
   const args = process.argv.slice(2), o = args.indexOf('--out');
@@ -72,5 +77,6 @@ if (require.main === module) {
     if (!w.length) console.log('wallet: skipped, src/wallet/page.html does not exist yet');
     built.push(...w);
   }
+  if (what === 'all') built.push(...buildIndex(out));
   if (built.length) console.log('built ' + built.map(f => path.relative(root, path.join(out, f))).join(' and '));
 }

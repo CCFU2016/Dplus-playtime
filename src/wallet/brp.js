@@ -1,5 +1,5 @@
 /* Direct+ wallet: BRP security for TenneT, art. 10.8 in force and as drafted (docs/wallet-model.md §4).
-   Each member is treated as its own BRP (Niki, 26 Sep 2026; wallet-model §4.4).
+   Each member is treated as its own BRP (Direct+ decision, 26 Sep 2026; wallet-model §4.4).
    Sources: reference/tennet/systeemcode-elektriciteit_wetten-overheid_art-10.8-10.26-10.27-10.29_2026-09-26.txt (SC 2026),
    reference/tennet/acm-25-196985_gecorrigeerd-ontwerpbesluit_2026-08-25.pdf (ACM draft). */
 var WalletBrp = (function () {
@@ -33,7 +33,7 @@ var WalletBrp = (function () {
   };
   var C = RULES.current, D = RULES.draft;
 
-  // Rule in force on a date (ISO), unless overridden ('current' | 'draft'). Niki: offer both (Q3).
+  // Rule in force on a date (ISO), unless overridden ('current' | 'draft'). Direct+ decision: offer both (Q3).
   function ruleFor(iso, override) { return override || (iso >= D.from.value ? 'draft' : 'current'); }
 
   /* Net transaction volume on one day (MWh). byCp = { counterparty: [net MWh per settlement period] }, + bought.
