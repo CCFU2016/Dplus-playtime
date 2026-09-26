@@ -1,10 +1,14 @@
 // wallet.js: the combined result per member, the presets and the settings list (docs/wallet-model.md §7, §8, §11.1).
 const C = require('../../src/wallet/wallet.js');
+// The worked example (§8) is a larger desk than today's trader preset: the preset's volumes before it was resized to
+// about 150 MWh a day (26 Sep 2026). Everything else is the preset.
+const LARGE_DESK = { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, restingCont: 10000, eveningCont: 5000 };
+const desk = () => Object.assign(C.preset('trader'), LARGE_DESK);
 const T = require('./assert.js')('wallet');
 
 // The worked example (§8.5): financial trader, week of 5 Oct 2026, rule in force, all cash. Direct+ members put up
 // their marginal BRP collateral, with no minimum (Niki, 26 Sep 2026): a flat trader without connections adds nothing.
-const ft = C.compute(C.preset('trader'));
+const ft = C.compute(desk());
 T.money(ft.expected.total, 133994.25, 'financial trader: expected total');
 T.money(ft.stress.total, 467883.25, 'financial trader: stress total');
 T.eq(ft.expected.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 125745], ['settlement', 8160], ['brp', 0], ['invoices', 89.25]], 'financial trader: expected parts');
@@ -18,11 +22,11 @@ T.eq([ft.expected.ecc.key, ft.expected.ecc.binding.date], [53, '2026-10-09'], 'f
 T.eq([ft.expected.brp.rule, ft.expected.brp.basis], ['current', 'marginal'], 'October 2026: the rule in force, marginal collateral');
 T.money(ft.expected.brp.draft.security, 7973, 'financial trader: under the draft, 4B = 4 × 1,993.25 and no minimum');
 T.money(ft.expected.segments.trading + ft.expected.segments.brp + ft.expected.segments.available, ft.expected.total, 'segments add up to the total');
-T.ok(!ft.expected.ecc.overCap && C.compute(Object.assign(C.preset('trader'), { cap: 100000 })).expected.ecc.overCap, 'collateral above the cap limit is flagged');
+T.ok(!ft.expected.ecc.overCap && C.compute(Object.assign(desk(), { cap: 100000 })).expected.ecc.overCap, 'collateral above the cap limit is flagged');
 T.ok(!JSON.stringify(ft).includes('efaultFund') && !JSON.stringify(ft).includes('guarantee'), 'no default fund or guarantee in the result');
 
 // On your own as a BRP (for comparison): the minimum and the 50 MW floors apply.
-let s = C.preset('trader'); s.brpBasis = 'standalone';
+let s = desk(); s.brpBasis = 'standalone';
 let sa = C.compute(s);
 T.money(sa.expected.total, 325994.25, 'on your own as a BRP: expected (1,200 MWh reading: 2 × 1,200 × €80)');
 T.money(sa.stress.total, 755883.25, 'on your own as a BRP: stress');
@@ -39,17 +43,17 @@ let neg = C.compute(s).expected.brp;
 T.ok(neg.draft.sum < 0 && neg.security === 0, 'a member whose imbalance earns money adds €0, not a negative amount');
 
 // Choices move the right parts.
-s = C.preset('trader'); s.reading = 'flat';
+s = desk(); s.reading = 'flat';
 T.money(C.compute(s).expected.total, 133994.25, 'the 50 MW reading does not affect the marginal basis');
 T.ok(ft.expected.parts.every(p => p.form === 'Cash' && p.formRule === 'Cash only') && !ft.expected.parts.some(p => p.id === 'fund'), 'Direct+ accepts cash only: every part is cash, no default fund');
-s = C.preset('trader'); s.week = '2027-03-22';
+s = desk(); s.week = '2027-03-22';
 let r = C.compute(s);
 T.eq([r.expected.brp.rule, r.expected.ecc.binding.date, r.expected.ecc.binding.gap], ['draft', '2027-03-25', 5], 'Easter 2027: the draft, and Thursday before the five-day holiday sets the amount');
 s.rule = 'current';
 T.eq(C.compute(s).expected.brp.rule, 'current', 'the rule can be overridden (Q3: both options)');
-s = C.preset('trader'); s.splitMode = 'mine'; s.key = 60;
+s = desk(); s.splitMode = 'mine'; s.key = 60;
 T.ok(C.compute(s).expected.ecc.C > 125745, 'your own split needs more than the cheapest one');
-s = C.preset('trader'); s.aucLimitPrice = null;
+s = desk(); s.aucLimitPrice = null;
 T.throws(() => C.compute(s), 'auction buys without a limit price and no market maximum set');
 s.aucMaxPrice = 4000;
 T.ok(C.compute(s).expected.ecc.C > 1000000, 'orders without a limit price at a €4,000 market maximum need far more collateral');
@@ -71,7 +75,7 @@ T.ok(ft.assumptions.length > 30 && ft.assumptions.every(a => a.src && a.tag !== 
 // Static vs daily-optimised collateral (Niki, 26 Sep 2026). Static: one amount all week, set by the Friday calculation.
 // Daily: each calculation day on its own, with its own cheapest split; the wallet needs the peak only around the weekend.
 T.eq([ft.expected.ecc.mode, ft.expected.weekdayTotal], ['static', ft.expected.total], 'static collateral: one amount all week');
-s = C.preset('trader'); s.collateralMode = 'daily';
+s = desk(); s.collateralMode = 'daily';
 const dl = C.compute(s).expected;
 T.eq(dl.ecc.perDay.map(x => [x.date.slice(5), x.C, x.key]), [['10-05', 58681, 47], ['10-06', 58681, 47], ['10-07', 58681, 47], ['10-08', 58681, 47], ['10-09', 125745, 53]], 'daily collateral: €58,681 Monday to Thursday, €125,745 on Friday');
 T.eq([dl.ecc.weekday, dl.ecc.peak], [58681, 125745], 'daily collateral: weekday level and weekend peak');
@@ -86,11 +90,11 @@ Object.keys(C.PRESETS).forEach(id => {
 });
 let a = C.defaultAnswers('trader'); a.markets = 'continuous';
 let q = C.fromAnswers(a);
-T.eq([q.aucBuy, q.aucSell, q.contBuy], [0, 0, 240], 'continuous only: no auction volumes');
+T.eq([q.aucBuy, q.aucSell, q.contBuy], [0, 0, 60], 'continuous only: no auction volumes');
 a = C.defaultAnswers('trader'); a.contBuy = 120;
 T.eq([C.fromAnswers(a).restingCont, C.fromAnswers(a).eveningCont], [5000, 2500], 'resting orders and evening buying scale with continuous buying');
 T.eq(C.strategyVolumes('aggregator', 'flat'), { cont: { buy: 25, sell: 25 }, auc: { buy: 60, sell: 60 } }, 'a flat strategy splits volumes evenly');
-T.eq(C.strategyVolumes('trader', 'buyer'), { cont: { buy: 432, sell: 48 }, auc: { buy: 180, sell: 20 } }, 'a buyer strategy buys 90%');
+T.eq(C.strategyVolumes('trader', 'buyer'), { cont: { buy: 108, sell: 12 }, auc: { buy: 27, sell: 3 } }, 'a buyer strategy buys 90%');
 a = C.defaultAnswers('asset'); a.capacityMW = 45; a.sites = 3;
 q = C.fromAnswers(a);
 T.eq([q.connectionsMW, q.smartSd, q.shiftShare], ['15, 15, 15', 450, 1], 'portfolio: equal sites, reconciliation spread from capacity, production with consumption shifts between periods');
@@ -105,4 +109,9 @@ T.eq([C.fromAnswers(a).weekend, C.fromAnswers(Object.assign(a, { weekend: 'both'
 a = C.defaultAnswers('trader'); a.carry = 'none';
 T.money(C.compute(C.fromAnswers(a)).expected.settlement.float, 0, 'no positions held over 16:00: no float');
 
+// The presets compare like with like: each moves about 150 MWh a day, and no wallet is an outlier.
+const vol = id => { const v = C.preset(id); return v.contBuy + v.contSell + v.aucBuy + v.aucSell; };
+T.eq(['trader', 'aggregator', 'asset'].map(vol), [150, 170, 130], 'presets: MWh a day traded');
+const tot = ['trader', 'aggregator', 'asset'].map(id => C.compute(C.preset(id)).expected.total);
+T.ok(Math.max.apply(null, tot) <= 3 * Math.min.apply(null, tot), 'the three presets are within a factor of 3: ' + tot.map(Math.round).join(' / '));
 T.done();

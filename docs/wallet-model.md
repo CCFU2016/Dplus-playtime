@@ -528,19 +528,20 @@ Everything is then computed from the real series.
 Every value shows as "assumed" on the page. The prices are placeholders to check against current NL data before
 release; I haven't verified them against market data.
 
-**Financial trader**
+**Financial trader** (resized on 26 Sep 2026 from 240 / 240 continuous and 100 / 100 auctions, €10,000 / €5,000 resting and
+evening, to about 150 MWh a day like the other two presets, so the examples compare like with like; Niki)
 
 | Input | Value | Why |
 |---|---|---|
-| Continuous, buy / sell | 240 / 240 MWh a day | About 10 MW each way around the clock: a small desk that ends each day flat |
-| Auctions, buy / sell | 100 / 100 MWh a day | A day-ahead position closed later |
+| Continuous, buy / sell | 60 / 60 MWh a day | About 2.5 MW each way around the clock: a small desk that ends each day flat |
+| Auctions, buy / sell | 15 / 15 MWh a day | A day-ahead position closed later |
 | Auction buy limit price | €150/MWh | Bids capped at a price the desk would really pay, not the market maximum |
 | Weekend and holiday trading | on | The cautious choice: weekend periods set the Friday limit |
 | Typical / stress price | €80 / €250 per MWh | A normal day and a spike day |
 | Stress 2–3-month average | €120 | Security uses averages, which move less than spot |
 | Negative-price hours | 5%, at −€20 average | A few hundred negative hours a year |
 | s | 0 | The brief's cautious default |
-| Resting orders over 16:00 / net buying 16:00–update | €10,000 / €5,000 | A few open orders and some trading while ECC recalculates |
+| Resting orders over 16:00 / net buying 16:00–update | €2,500 / €1,250 | A few open orders and some trading while ECC recalculates |
 | Imbalance | 0.5% of traded volume, no bias, cv 0.5 | Only partial fills and slips at gate closure |
 | State-2 share / gap | 5% / €150 | Dual pricing is rare but expensive |
 | Settlement stress share x | 5% | A bad week for a flat desk |
@@ -575,7 +576,9 @@ release; I haven't verified them against market data.
 
 ## 8. Worked example: financial trader, week of Monday 5 October 2026
 
-This uses the financial-trader preset above, Direct+ marginal BRP collateral (section 4.4), everything as cash unless stated, and
+This uses a **larger desk** than the financial-trader preset above: 240 / 240 MWh a day continuous, 100 / 100 auctions,
+€10,000 resting and €5,000 evening (the preset before 26 Sep 2026), everything else as the preset. `tests/wallet/wallet.test.js`
+pins it as `LARGE_DESK`. It uses Direct+ marginal BRP collateral (section 4.4), everything as cash unless stated, and
 replenishment none. A throwaway script repeated each step with the engine, and every figure matches.
 
 ### 8.1 Part 1: ECC collateral
@@ -832,6 +835,6 @@ Setting `collateralMode` (calculator: Settings; questionnaire: question 7 and a 
 - **The peak isn't lower.** Optimising by day means less money sits at ECC from Monday to Thursday; the wallet still needs the peak by the evening calculation before a weekend.
 - **ASSUMPTION:** changes are in place by that day's evening calculation (W4).
 
-Financial trader, week of 5 Oct 2026:
+Larger desk (section 8), week of 5 Oct 2026:
 - ECC collateral: €58,681 Monday to Thursday (47/53), €125,745 on Friday (53/47).
 - Wallet: about €67,000 during the week, €134,000 around the weekend.

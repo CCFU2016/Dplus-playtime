@@ -1308,10 +1308,11 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population',
     debitLagWeeks: 4
   };
-  // Presets approved by Direct+ "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page.
+  // Presets approved by Direct+ "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page. The trader was
+  // resized the same day to about 150 MWh a day, like the other two, so the examples compare like with like.
   var PRESETS = {
     trader: { label: 'Financial trader', note: 'A small desk that ends each day flat.',
-      values: { contBuy: 240, contSell: 240, aucBuy: 100, aucSell: 100, aucLimitPrice: 150, restingCont: 10000, eveningCont: 5000, carryShare: 0.3,
+      values: { contBuy: 60, contSell: 60, aucBuy: 15, aucSell: 15, aucLimitPrice: 150, restingCont: 2500, eveningCont: 1250, carryShare: 0.3,
                 imbShare: 0.005, imbBase: 'traded', bias: 0 } },
     aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
       values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000, carryShare: 0.3,
