@@ -79,6 +79,21 @@ with sync_playwright() as pw:
     check('close to flat' in pg.inner_text('#answers'), 'the answer is listed with the estimate')
     def no_netting(pg): check(pg.is_hidden('.q[data-type="trader"]'), 'asset owners are not asked the trader question')
     walk(pg, 'asset', tweak={3: no_netting})
+    # BRP: "Detailed calculation" under the BRP row shows the rule and the figures; asset and imbalance assumptions.
+    pg.click('#edit'); pg.wait_for_timeout(200); pg.click('#skip'); pg.wait_for_timeout(1200); pg.click('[data-extype="asset"]'); pg.wait_for_timeout(1500)
+    brp_row = [r for r in pg.query_selector_all('#purposes tbody tr') if r.inner_text().startswith('BRP collateral')][0]
+    calc = brp_row.query_selector('details.calc')
+    check(calc is not None and not calc.evaluate('d => d.open'), 'BRP row: "Detailed calculation", closed')
+    calc.query_selector('summary').click(); pg.wait_for_timeout(200)
+    ct = calc.inner_text()
+    check('article 10.8' in ct and 'A = volume × price = 95 MWh × €100 = €9,500' in ct and '26 MW' in ct and 'A + B = €71,900' in ct and 'no €96,000 minimum' in ct, 'the BRP calculation shows the rule and the figures: ' + ct.replace(chr(10), ' | ')[:300])
+    core = pg.inner_text('#core')
+    check('Production and consumption, 30 MW at 1 site' in core and '5% of net production, usually long' in core, 'asset owner: portfolio and imbalance assumptions')
+    pg.click('[data-extype="aggregator"]'); pg.wait_for_timeout(1500)
+    core = pg.inner_text('#core')
+    check('3% of nominations, usually short' in core and '5% of nominations' in core, 'aggregator: imbalance and non-delivery assumptions')
+    pg.click('[data-extype="trader"]'); pg.wait_for_timeout(1500)
+    check('Imbalance' not in pg.inner_text('#core'), 'trader: no imbalance line (kept short)')
     # Top-ups: the table compares the three rhythms and marks the answer; the selector recomputes.
     open_all(pg)
     rows = pg.eval_on_selector_all('#topups tbody tr', 'rs => rs.map(r => r.innerText)')

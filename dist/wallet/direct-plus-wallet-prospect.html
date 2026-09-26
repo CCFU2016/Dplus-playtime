@@ -97,6 +97,13 @@
   td details.why > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); width: max-content; }
   td details.why[open] > summary { margin-bottom: 2px; }
   .page.showing-results .masthead .lede, .page.showing-results .masthead .fine { display: none; }
+  td details.calc { margin-top: 6px; }
+  td details.calc > summary { cursor: pointer; font-size: 13.5px; text-decoration: underline; text-underline-offset: 3px; width: max-content; list-style: none; }
+  td details.calc > summary::-webkit-details-marker { display: none; }
+  .calc-body { margin-top: 8px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface-2); display: grid; gap: 8px; font-size: 13px; color: var(--ink-2); max-width: 60ch; }
+  .calc-body b { color: var(--ink); }
+  .calc-body ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .calc-body .res { color: var(--ink); font-weight: 600; }
   .handoff { display: grid; gap: 8px; justify-items: start; padding: 14px 16px; border: 1px solid var(--rule); border-left: 6px solid var(--s-trading); border-radius: 10px; background: var(--surface); }
   .handoff[hidden] { display: none; }
   .handoff b { font-size: 15px; }
@@ -1940,6 +1947,31 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     if (fx) { var b = el('button', 'linkbtn', 'Use the estimate\'s own amount'); b.type = 'button'; b.addEventListener('click', dropSetup); row.appendChild(b); }
     if (row.childNodes.length) td.appendChild(row);
   }
+  // The BRP collateral step by step, with the figures used (TenneT's rule in force, or ACM's draft from 2027; Direct+ marginal).
+  function brpCalc(td, x, st) {
+    var b = x.brp, cur = b.current, dr = b.draft, d = el('details', 'calc no-print-open');
+    d.appendChild(el('summary', null, 'Detailed calculation'));
+    var box = el('div', 'calc-body'), ol = el('ol'), li = function (t) { ol.appendChild(el('li', null, t)); };
+    var mwh = function (v) { return fmt.format(Math.round(v)) + ' MWh'; }, ex = function (v) { return '€' + fmt.format(Math.round(v)); };   // exact euros here, not rounded to €1,000
+    var countedMW = cur.price > 0 ? cur.B / (24 * cur.price) : 0;
+    var nomBigger = st.nominatedIn > 0 && Math.abs(b.volume - st.nominatedIn) < 0.5;
+    var inForce = b.rule === 'current';
+    box.appendChild(el('b', null, inForce ? 'TenneT\'s rule in force (Systeemcode elektriciteit 2026, article 10.8)' : 'ACM\'s draft rule for 2027 (not yet final)'));
+    li('Daily volume at the TenneT boundary: ' + (nomBigger ? 'the volume nominated from other BRPs, ' : 'what you sell minus what you buy, ') + mwh(b.volume) + ' a day.');
+    li('Price: the average of the last three months, ' + eurP(cur.price) + '/MWh (at least €40).');
+    if (inForce) {
+      li('A = volume × price = ' + mwh(cur.volume) + ' × ' + eurP(cur.price) + ' = ' + ex(cur.A) + '.');
+      li('B = connection capacity × 24 hours × price' + (countedMW > 0 ? ' = ' + fmt.format(Math.round(countedMW)) + ' MW (the size class your ' + fmt.format(ans.capacityMW || 0) + ' MW falls in) × 24 × ' + eurP(cur.price) + ' = ' + ex(cur.B) : ' = €0: no connections join the Direct+ BRP') + '.');
+      li((cur.twoA ? '2A is at least B, so the security is 2A' : '2A is below B, so the security is A + B') + ' = ' + ex(cur.security) + '.');
+    } else {
+      li('3A + 4B + 6C + 6D: A = volume × price over two months (' + ex(dr.A) + '), B = weekly imbalance invoices, mean + 2σ (' + ex(dr.B) + '), C and D = monthly reconciliation, mean + 0.5σ (' + ex(dr.C) + ', ' + ex(dr.D) + ').');
+      li('Sum = ' + ex(dr.sum) + '.');
+    }
+    box.appendChild(ol);
+    box.appendChild(el('p', null, b.basis === 'marginal' ? 'As a Direct+ member you put up only this marginal part: no €96,000 minimum and no 50 MW volume floor, which apply once to the Direct+ BRP, and never less than €0.' : 'As your own BRP, with the minimum and volume floors.'));
+    box.appendChild(el('p', 'res', 'BRP collateral: ' + ex(b.security) + (inForce ? '. Under ACM\'s draft rule for 2027 it would be ' + ex(dr.security) + '.' : '. Under the rule in force it would be ' + ex(cur.security) + '.')));
+    d.appendChild(box); td.appendChild(d);
+  }
   var LABEL = { ecc: 'Trading collateral at ECC', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
   function head(t, cols) { var th = el('thead'), hr = el('tr'); cols.forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); }); th.appendChild(hr); t.appendChild(th); }
   function renderPurposes(cols, primary) {
@@ -1951,6 +1983,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       td.appendChild(el('b', null, LABEL[p.id]));
       var why = el('details', 'why'); why.appendChild(el('summary', null, 'What is it?')); why.appendChild(el('span', 'what', describe(p, primary))); td.appendChild(why);
       if (p.id === 'ecc') eccLinks(td, primary.exp);
+      if (p.id === 'brp') brpCalc(td, primary.exp, primary.s);
       tr.appendChild(td);
       cols.forEach(function (c) { tr.appendChild(el('td', 'r', eur(c.res.parts[i].value))); });
       tb.appendChild(tr);
@@ -2048,7 +2081,9 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     add('M7 continuous', bs(s.contBuy, s.contSell));
     add('MATS auctions', bs(s.aucBuy, s.aucSell));
     if (ans.type === 'aggregator') add('Nominated from other BRPs', mwh(s.nominatedIn) + ' a day');
-    if (anyAsset()) add('Portfolio', fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : ''));
+    if (ans.type === 'aggregator') add('Not delivered', Math.round(s.nonDelivery * 100) + '% of nominations');
+    if (anyAsset()) add('Portfolio', ASSET_KEYS.filter(function (k) { return ans.portfolio[k]; }).map(function (k, i) { return i ? k : k.charAt(0).toUpperCase() + k.slice(1); }).join(' and ') + ', ' + fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : ''));
+    if (ans.type !== 'trader') add('Imbalance', Math.round(s.imbShare * 100) + '% of ' + { traded: 'traded volume', nominated: 'nominations', production: 'net production' }[s.imbBase] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
     add('Price', eurP(s.price) + '/MWh' + (ans.tough ? ', tough week ' + eurP(s.stressPrice) : ''));
     add('Weekends and holidays', { yes: 'Traded', no: 'Not traded', both: 'Shown both ways' }[ans.weekend]);
     if (x.settlement.badDay > 0.5) add('Bad day', '€' + fmt.format(Math.round(s.badMove)) + '/MWh lost on about ' + mwh(x.settlement.openMWh) + ' open' + (ans.tough ? ', 2 days in a tough week' : ''));
