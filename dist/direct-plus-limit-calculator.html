@@ -177,6 +177,12 @@
 
   /* Week table */
   .table-wrap { overflow-x: auto; }
+  .view-switch { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: 999px; padding: 2px; background: var(--surface); flex: none; }
+  .view-switch button { border: 0; background: transparent; color: var(--ink-2); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 500; cursor: pointer; }
+  .view-switch button[aria-pressed="true"] { background: var(--select-bg); color: var(--select-ink); }
+  .view-switch button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  tbody tr.off td { background: var(--band); }
+  td.span-note { text-align: left; white-space: normal; }
   table { border-collapse: collapse; width: 100%; min-width: 640px; font-variant-numeric: tabular-nums; }
   th, td { padding: 8px 8px; text-align: right; }
   td { white-space: nowrap; }
@@ -369,8 +375,15 @@
       </section>
 
       <section class="panel card">
-        <h2>This week, day by day</h2>
-        <p class="sub">Each row is one of ECC's evening calculations. "Reserved for base limits" holds today's base limit and the next business day's, for M7 and MATS together: the next one goes live at 16:00, before ECC's next calculation has seen today's trades (before a weekend, MATS reserves one for each auction day). "After settlement" is the limit once the previous day's purchases have been paid, by 10:45 on the next business day.</p>
+        <div class="card-head">
+          <h2>This week, day by day</h2>
+          <div class="view-switch" role="group" aria-label="How to show the week">
+            <button type="button" data-view="days" aria-pressed="true">By day, weekend included</button>
+            <button type="button" data-view="calc" aria-pressed="false">By ECC calculation</button>
+          </div>
+        </div>
+        <p class="sub" id="view-sub-days">What you can trade each day, Monday to Sunday (and a holiday Monday after it). On weekends and holidays M7 keeps the evening limit of the last business day's calculation until the next business morning, and MATS gets a share of that calculation for each auction.</p>
+        <p class="sub" id="view-sub-calc" hidden>Each row is one of ECC's evening calculations. "Reserved for base limits" holds today's base limit and the next business day's, for M7 and MATS together: the next one goes live at 16:00, before ECC's next calculation has seen today's trades (before a weekend, MATS reserves one for each auction day). "After settlement" is the limit once the previous day's purchases have been paid, by 10:45 on the next business day.</p>
         <div class="table-wrap"><table id="week-table"></table></div>
       </section>
 
@@ -1131,7 +1144,57 @@ var LimitEngine = (function () {
   }
 
   // ---------- week table ----------
-  function renderWeek(res) {
+  // The week by calendar day, Monday to Sunday: the limits a member has each day. A business day has a morning limit
+  // (after settlement, from the previous business day's calculation), the base limit from 16:00 and the evening limit;
+  // a weekend or holiday keeps the last business day's evening limit for M7. MATS: the limit at that day's 12:00 auction.
+  var weekView = 'days';
+  function renderWeek(res) { if (weekView === 'days') renderDays(res); else renderCalc(res); }
+  function renderDays(res) {
+    var t = $('week-table'); t.textContent = '';
+    var byDate = {}; res.rows.forEach(function (r) { byDate[r.date] = r; });
+    var last = res.rows[res.rows.length - 1];
+    function calcFor(iso) {                      // the calculation of that business day (outside the week: same parameters as this week's last one)
+      if (byDate[iso]) return byDate[iso];
+      var r = E.day(E.parse(iso), last.p || res.p); byDate[iso] = r; return r;
+    }
+    var thead = el('thead'), g = el('tr', 'grp');
+    g.appendChild(el('th', null, ''));
+    var gc = el('th', 'gl'); gc.colSpan = 3; var sc = el('span'); sc.appendChild(el('span', 'swatch sw-cont')); sc.appendChild(document.createTextNode('M7 continuous')); gc.appendChild(sc); gc.style.textAlign = 'left'; g.appendChild(gc);
+    var ga = el('th', 'gl'); var sa = el('span'); sa.appendChild(el('span', 'swatch sw-da')); sa.appendChild(document.createTextNode('MATS auctions')); ga.appendChild(sa); ga.style.textAlign = 'left'; g.appendChild(ga);
+    thead.appendChild(g);
+    var h = el('tr');
+    [['Day', null], ['Morning, after settlement', 'gl'], ['From 16:00', null], ['From ~18:00', null], ['Day-ahead auction, 12:00', 'gl']].forEach(function (c) { var th = el('th', c[1], c[0]); th.scope = 'col'; h.appendChild(th); });
+    thead.appendChild(h); t.appendChild(thead);
+    var tb = el('tbody'), mon = E.parse(res.s.week);
+    // Monday to Sunday, or on to the next business day when the week ends in a holiday (Easter Monday).
+    var end = Math.max(7, Math.round((E.parse(last.nextBD) - mon) / 864e5));
+    for (var i = 0; i < end; i++) {
+      var d = new Date(mon.getTime() + i * 864e5), iso = E.iso(d), bd = E.isBD(d), prev = E.iso(E.prevBD(d));
+      var pc = calcFor(prev), auc = pc.da.auctions.filter(function (a) { return a.date === iso; })[0];
+      var tr = el('tr', bd ? (iso === selected ? 'sel' : null) : 'off'), dc = el('td');
+      dc.appendChild(document.createTextNode(dLabel(iso)));
+      if (!bd) dc.appendChild(el('span', 'pill info', dayNote(E.holidayName(d)) === 'weekend' ? 'Weekend' : E.holidayName(d)));
+      tr.appendChild(dc);
+      if (bd) {
+        var r = calcFor(iso), m = el('td', 'gl', eur(pc.cont.l09));
+        if (pc.gap1 > 1) m.appendChild(el('div', 'small-split', 'from ' + dLabel(prev) + '\'s calculation'));
+        tr.appendChild(m);
+        tr.appendChild(el('td', null, eur(r.cont.l16)));
+        var ev = el('td', null, eur(r.cont.l18)); if (r.gap1 > 1) ev.appendChild(el('div', 'small-split', 'until ' + dLabel(r.nextBD) + ' morning')); tr.appendChild(ev);
+      } else {
+        var all = el('td', 'gl span-note'); all.colSpan = 3;
+        all.appendChild(el('b', null, eur(pc.cont.l18) + ' all day'));
+        all.appendChild(el('div', 'small-split', dLabel(prev) + '\'s evening limit, until ' + dLabel(pc.nextBD) + ' morning'));
+        tr.appendChild(all);
+      }
+      var a = el('td', 'gl', auc ? eur(auc.limit) : '–');
+      if (auc && !auc.settled) a.appendChild(el('div', 'small-split', 'a share of ' + dLabel(prev) + '\'s calculation'));
+      tr.appendChild(a);
+      tb.appendChild(tr);
+    }
+    t.appendChild(tb);
+  }
+  function renderCalc(res) {
     var t = $('week-table'); t.textContent = '';
     var thead = el('thead'), g = el('tr', 'grp');
     var daily = res.inv && res.inv.daily;
@@ -1332,6 +1395,14 @@ var LimitEngine = (function () {
   $('setup').addEventListener('change', schedule);
   $('setup').addEventListener('submit', function (e) { e.preventDefault(); });
   $('week').addEventListener('change', function () { selected = null; weekNote(); });
+  Array.prototype.forEach.call(document.querySelectorAll('.view-switch button'), function (b) {
+    b.addEventListener('click', function () {
+      weekView = b.getAttribute('data-view');
+      Array.prototype.forEach.call(document.querySelectorAll('.view-switch button'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      $('view-sub-days').hidden = weekView !== 'days'; $('view-sub-calc').hidden = weekView !== 'calc';
+      render();
+    });
+  });
   var ro = null;
   if (window.ResizeObserver) { ro = new ResizeObserver(function () { if (!lastRes) return; plainWeek = quietWeek(lastRes.s.week); try { renderAuctions(lastRes); } finally { plainWeek = false; } }); ro.observe($('auction-chart')); }
   render();
