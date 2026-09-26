@@ -141,6 +141,9 @@ T.money(bt.expected.settlement.badDay, 54.6 * 100, 'trader, normal week: one bad
 T.money(bt.stress.settlement.badDay, 2 * 54.6 * 100, 'trader, tough week: two bad days, €10,920');
 T.money(bt.stress.settlement.flows, 0, 'no loss every day any more in a tough week');
 const ba = C.compute(C.preset('asset')).expected.settlement;
-T.money(ba.badDay, 20 * 100, 'asset owner: 20 MWh bought (battery, consumption) also has a bad day, €2,000');
+T.money(ba.badDay, 0, 'asset owner: buying (battery, consumption) is a planned cost, no bad days');
+T.money(C.compute(C.preset('aggregator')).stress.settlement.badDay, 0, 'aggregator: no bad days, not even in a tough week');
+const buyer = C.fromAnswers(Object.assign(C.defaultAnswers('asset'), { strategy: 'buyer', contBuy: 40, contSell: 5, aucBuy: 60, aucSell: 5 }));
+T.ok(C.compute(buyer).expected.settlement.flows > 0 && C.compute(buyer).expected.settlement.badDay === 0, 'an asset owner who mainly buys pays for it through daily settlement, not a bad-day buffer');
 T.money(C.compute(Object.assign(C.preset('trader'), { contBuy: 0, aucBuy: 0 })).expected.settlement.badDay, 0, 'no buying, no bad-day loss');
 T.done();

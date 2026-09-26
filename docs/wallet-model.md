@@ -241,7 +241,9 @@ bad day       = open position × €100/MWh                  (badMove)
 settlement    = flows + float + bad days × bad day
 ```
 
-Anyone who buys has an open position, so aggregators and asset owners with consumption or batteries get a buffer too. Example
+**Traders only** (Niki, 26 Sep 2026): for aggregators and asset owners buying (consumption, battery charging) is a planned cost,
+which daily settlement already collects as net purchases; their presets set no bad days. Their tough week still has higher prices
+and more imbalance. Example
 trader (60 / 60 M7, 15 / 15 MATS, largest open M7 position 66%): 39.6 + 15 = 54.6 MWh, so €5,460 (normal) and €10,920 (tough).
 The stress share below (`lossShare`, a loss on every business day) is off by default; the section 8 worked example keeps it.
 
@@ -557,7 +559,7 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 | Resting orders over 16:00 / net buying 16:00–update | €2,500 / €1,250 | A few open orders and some trading while ECC recalculates |
 | Imbalance | 0.5% of traded volume, no bias, cv 0.5 | Only partial fills and slips at gate closure |
 | State-2 share / gap | 5% / €150 | Dual pricing is rare but expensive |
-| Bad days | 1 (normal week), 2 (tough week), €100 lost per MWh of open position | Niki, 26 Sep 2026: room for one or two bad days, not a bad week (section 3). The old stress share (5% of buys lost every day) is off |
+| Bad days | 1 (normal week), 2 (tough week), €100 lost per MWh of open position | Niki, 26 Sep 2026: room for one or two bad days, not a bad week (section 3); traders only, the aggregator and asset presets set 0. The old stress share (5% of buys lost every day) is off |
 | Purchases paid before their sale | 30% of a day's buys (all three presets) | Roughly the day-ahead buying, sold intraday the next day; everyone is assumed to hold some positions over 16:00 |
 | Connections | none | |
 

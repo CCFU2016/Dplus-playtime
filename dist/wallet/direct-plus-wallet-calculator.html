@@ -1133,7 +1133,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     { id: 'settlement', title: 'ECC settlement', fields: [
       f('carryShare', 'Purchases paid before their sale', '% of a day\'s buys', 'share', 'ASSUMPTION', 'Positions bought before the 16:00 booking cut and sold after it (e.g. bought day-ahead, sold intraday the next day): ECC collects the purchase one business day before the sale comes back, so this much stays in the wallet as a float (ECC DCP payments page: one net payment per business day)'),
       f('badMove', 'Bad day: price move against your open position', '€/MWh', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026: the wallet keeps room for a bad day\'s trading loss, the largest open position times this move'),
-      f('badDays', 'Bad days the wallet can absorb, normal week', 'days', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026: one or two bad days, not a bad week'),
+      f('badDays', 'Bad days the wallet can absorb, normal week', 'days', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026: one or two bad days, not a bad week; traders only (0 for aggregators and asset owners, whose buying is a planned cost)'),
       f('badDaysStress', 'Bad days the wallet can absorb, tough week', 'days', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026'),
       f('lossShare', 'Extra loss every business day, tough week', '% of gross buys', 'share', 'ASSUMPTION', 'Off by default: bad days above replace it (wallet-model §3)'),
       f('replenish', 'Topping up the wallet', '', 'select', 'ASSUMPTION', 'How often you replace what ECC collects', { options: [['none', 'Not within the period'], ['daily', 'Every business day'], ['weekly', 'Every Monday']] }),
@@ -1192,9 +1192,11 @@ var WalletCalc = (function (E, B, S, L, R, W) {
                 imbShare: 0.005, imbBase: 'traded', bias: 0 } },
     aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
       values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000, carryShare: 0.3,
+                badDays: 0, badDaysStress: 0,   // buying is a planned cost, paid through daily settlement, not a trading loss (Direct+ decision, 26 Sep 2026)
                 imbShare: 0.03, imbBase: 'nominated', bias: 0.3 } },
     asset: { label: 'Asset-controlling party', note: 'A 30 MW solar park with a 10 MW battery.',
       values: { contBuy: 20, contSell: 20, aucBuy: 0, aucSell: 90, restingCont: 2000, eveningCont: 1000, carryShare: 0.3, connectionsMW: '30',
+                badDays: 0, badDaysStress: 0,   // as for the aggregator: consumption and battery charging are planned costs
                 imbShare: 0.05, imbBase: 'production', bias: -0.2, shiftShare: 1, smartMean: 0, smartSd: 300 } }
   };
   function preset(id) {
@@ -1309,7 +1311,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var cash = S.cashPath(ws, st.replenish);
     // Bad days (Direct+ decision, 26 Sep 2026): room for one bad day's trading loss in a normal week, two in a tough week,
     // not a loss every day. A bad day moves the price against the largest open position: M7 buys not yet sold again
-    // (1 − s of them) plus auction buys, which stay open until sold or used. Anyone who buys has one, consumers too.
+    // (1 − s of them) plus auction buys, which stay open until sold or used. Traders only: for aggregators and asset owners
+    // buying is a planned cost that daily settlement already collects (their presets set no bad days).
     var openMWh = ((1 - (+st.s || 0)) * st.contBuy + st.aucBuy) * vm;
     var badDays = +(o.stress ? st.badDaysStress : st.badDays) || 0, badDay = badDays * openMWh * (+st.badMove || 0);
     // Float: purchases paid one collection before their sale (bought before the 16:00 cut, sold after). In steady state each

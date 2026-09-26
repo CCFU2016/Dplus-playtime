@@ -271,7 +271,7 @@
         <div class="q"><span class="ql">Do you also want to see a tough week?</span>
           <div class="choices cols">
             <div class="choice"><input type="radio" name="tough" id="h-no" value="no"><label for="h-no"><b>No, a normal week is enough</b></label></div>
-            <div class="choice"><input type="radio" name="tough" id="h-yes" value="yes"><label for="h-yes"><b>Yes, show a tough week too</b><span>Higher prices, two bad trading days and more imbalance.</span></label></div>
+            <div class="choice"><input type="radio" name="tough" id="h-yes" value="yes"><label for="h-yes"><b>Yes, show a tough week too</b><span>Higher prices and more imbalance; for traders also two bad trading days.</span></label></div>
           </div>
         </div>
         <div class="nums" id="tough-price">
@@ -714,7 +714,7 @@
     if (runs.length > 1) sub.push(eur(runs[0].exp.total) + ' if you trade on business days only, ' + eur(runs[1].exp.total) + ' if you also trade at weekends and on holidays.');
     if (ans.collateral === 'daily') sub.push('With your trading collateral adjusted every business day, it is lower Monday to Thursday and raised for the evening calculation before a weekend or holiday.');
     sub.push('All in cash: Direct+ does not accept bank guarantees.');
-    if (ans.tough) sub.push('A tough week here means prices at ' + eurP(s.stressPrice) + '/MWh, room for ' + s.badDaysStress + ' bad trading days instead of ' + s.badDays + ', and more imbalance.');
+    if (ans.tough) sub.push('A tough week here means prices at ' + eurP(s.stressPrice) + '/MWh' + (s.badDaysStress > 0 ? ', room for ' + s.badDaysStress + ' bad trading days instead of ' + s.badDays : '') + ' and more imbalance.');
     $('hero-sub').textContent = sub.join(' ');
     renderPurposes(cols, primary); renderBars(cols); renderWhen(primary, s, runs.length > 1); renderTopups(primary);
     renderSens(primary.full, s); renderAnswers(s); renderAssumed(primary.full, s); renderCore(primary.full, s);
@@ -853,7 +853,7 @@
     if (anyAsset()) add('Portfolio', fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : ''));
     add('Price', eurP(s.price) + '/MWh' + (ans.tough ? ', tough week ' + eurP(s.stressPrice) : ''));
     add('Weekends and holidays', { yes: 'Traded', no: 'Not traded', both: 'Shown both ways' }[ans.weekend]);
-    if (x.settlement.openMWh > 0.5) add('Bad day', '€' + fmt.format(Math.round(s.badMove)) + '/MWh lost on about ' + mwh(x.settlement.openMWh) + ' open' + (ans.tough ? ', 2 days in a tough week' : ''));
+    if (x.settlement.badDay > 0.5) add('Bad day', '€' + fmt.format(Math.round(s.badMove)) + '/MWh lost on about ' + mwh(x.settlement.openMWh) + ' open' + (ans.tough ? ', 2 days in a tough week' : ''));
     add('Held over the 16:00 cut', Math.round(s.carryShare * 100) + '% of a day\'s buys, about ' + mwh(s.carryShare * (s.contBuy + s.aucBuy)));
     if (ans.type === 'trader') add('Largest open M7 position', Math.round((1 - s.s) * 100) + '% of a day\'s buys, about ' + mwh((1 - s.s) * s.contBuy));
     if (x.ecc.fixed) add('Trading collateral at ECC', 'From your limit calculator, ' + eur(x.ecc.fixed.C));
@@ -869,7 +869,7 @@
     else add('Your split between continuous and auctions is the one that needs the least collateral: ' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions. You set it in the Direct+ platform.');
     add('ECC updates limits around 18:00 on a best-effort basis' + (ans.tough ? '; a tough week assumes around 19:00' : '') + '. Open orders over 16:00 and trading until the update, ' + eur(s.restingCont) + ' and ' + eur(s.eveningCont) + ', are covered by your base limit.');
     add('You hold some positions over ECC\'s 16:00 booking cut, about a third of a day\'s buys (for example bought day-ahead, sold intraday the next day). ECC collects those purchases a business day before the sale comes back, so that money waits in your wallet.');
-    if (x.settlement.openMWh > 0.5) add('A bad trading day loses €' + fmt.format(Math.round(s.badMove)) + ' on each MWh of your largest open position (continuous buys not yet sold again, plus auction buys until sold or used). Your wallet keeps room for ' + s.badDays + (s.badDays === 1 ? ' bad day' : ' bad days') + (ans.tough ? ', ' + s.badDaysStress + ' in a tough week' : '') + ', not for a whole bad week.');
+    if (x.settlement.badDay > 0.5) add('A bad trading day loses €' + fmt.format(Math.round(s.badMove)) + ' on each MWh of your largest open position (continuous buys not yet sold again, plus auction buys until sold or used). Your wallet keeps room for ' + s.badDays + (s.badDays === 1 ? ' bad day' : ' bad days') + (ans.tough ? ', ' + s.badDaysStress + ' in a tough week' : '') + ', not for a whole bad week.');
     add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
     add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum.');
     add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions.' + (ans.tough ? ' A tough week takes a high but not extreme imbalance week.' : ''));
