@@ -82,3 +82,9 @@ EPEX GO auctions were left out for now (September 2026). What ECC's tool does, f
   - Only buy orders are checked; sell orders don't offset them.
   - If the limit is lowered below the orders already firmed, those orders fall back to draft.
   - The limit is also used as a pre-auction margin (end of day two days before and one day before the auction; zero on auction day). How this interacts with DCP collateral is not documented.
+
+## The wallet calculator
+
+`src/wallet/` builds a second page on this engine: what a Direct+ member needs in total (ECC collateral and
+settlement, TenneT BRP security and invoices). It uses the engine's public API only, with its own solver for
+open risk that changes day by day. See `docs/wallet-model.md`.

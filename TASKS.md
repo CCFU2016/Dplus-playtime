@@ -33,3 +33,9 @@ The trading-day question below is still open.
 - EPEX GB (continuous and auction, GBP): needs currency, exchange rate and delivery risk (£140 per MWh, sell only, since 22 Jan 2026, Circular 04/2026).
 - EPEX capacity auctions (EPEX_CPCTY_EUR).
 - Base-limit change latency from form O09 (open question 3).
+
+## Wallet calculator
+Brief `docs/wallet-brief.md`, model `docs/wallet-model.md`.
+- [x] Phases 0–5 (26 Sep 2026). Presets are approved for now; every assumption is on the page's Settings view.
+- [x] Phase 6: documentation.
+- [ ] Open points W1–W12 in `docs/open-questions.md`.

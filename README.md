@@ -1,15 +1,18 @@
-# Direct+ limit calculator
+# Direct+ limit calculator and wallet calculator
 
-Collateral to trading limit and back, for Direct+ members clearing with ECC as Direct Clearing
-Participants. Covers EPEX continuous and day-ahead today; GO auctions are next (see `TASKS.md`).
+Two single-file calculators for Direct+ members clearing with ECC as Direct Clearing Participants:
 
-    npm test          # ECC's worked examples + engine snapshot
-    npm run build     # writes dist/
-    npm run test:ui   # headless check of the built page
+- **Limit calculator** (`src/engine.js`, `src/page.html`): collateral to trading limit and back, for EPEX continuous and day-ahead. GO auctions are left out for now (see `TASKS.md`).
+- **Wallet calculator** (`src/wallet/`): how much money a member needs, in which part of the Direct+ wallet, as cash or a bank guarantee, and by when. It covers ECC collateral and settlement, TenneT BRP security and imbalance invoices. Every assumption can be changed on its Settings page.
+
+      npm test          # ECC's worked examples, engine snapshot, markets, ECC dist hashes, wallet tests
+      npm run build     # writes dist/ (both calculators)
+      npm run test:ui   # headless checks of both built pages
 
 - How the limits are modelled: `docs/model.md`
-- What ECC has not confirmed: `docs/open-questions.md`
+- The wallet: brief `docs/wallet-brief.md`, model `docs/wallet-model.md`
+- What ECC and TenneT have not confirmed: `docs/open-questions.md`
 - Sources: `docs/sources.md`
 - Working rules for Claude Code: `CLAUDE.md`
 
-This is an explanatory tool, not ECC's calculation. ECC's figures in the ECC Member Area are what count.
+These are explanatory tools, not ECC's or TenneT's calculations. Their own figures are what count.

@@ -1,6 +1,13 @@
 # Direct+ wallet calculator: model
 
-Phase 0 of `docs/wallet-brief.md`. Draft for Niki's approval, 26 September 2026. There is no wallet code yet.
+Written as Phase 0 of `docs/wallet-brief.md` (26 September 2026). Built through Phase 5 on the same day: the code is
+in `src/wallet/`, and the page (`dist/wallet/`) has a Settings view with every assumption below. Niki's answers to
+the gate questions are in section 11.1.
+
+**Choices made while building** (beyond the sections below):
+- Auction sell orders are assumed to carry a limit price of €0 or more, so in parametric mode they add no exposure.
+- The expected end of B uses μ + 2σ of the weekly model whichever σ type is set. The σ setting affects the ramp-up series and real invoice histories.
+- The ramp-up series takes k real invoices of mean μ and spread σ, the rest €0, at their expected mean and spread (`brp.js`, `rampUp`). With σ = 0 this is the constant-invoice window of section 4.2.
 
 The page answers: *how much money do I need, in which account, in what form (cash or bank guarantee), and by
 which moment, to trade the way I plan to through Direct+?* This document gives every formula the wallet will use

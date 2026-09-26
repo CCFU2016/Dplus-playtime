@@ -20,3 +20,26 @@ Questions 5–9 are about GO auctions, which are left out for now. `docs/model.m
 ## Settled without asking ECC
 
 - **Excess below zero (26 Sep 2026, Niki).** The excess collateral is floored at zero, following ECC's deck (p.8: Wednesday 18:00 = 1 with collateral 10, reserve 2, exposure 9). We don't ask ECC about it. ECC's tool does not floor it (VBA 5483, no `Max` anywhere), which would push evening limits below the base limit and even below zero (continuous −€13k in the `shortCollat` test case). The two readings only differ from the evening update until the next morning's settlement; next-morning limits are the same as long as collateral covers the reserved base limits.
+
+## Wallet calculator
+
+Open points behind the wallet calculator (`docs/wallet-model.md`). Each one has a visible default on the wallet's
+Settings page, tagged "Assumed", "Interpretation" or "ECC setting", with its source.
+
+| # | Question | For | Default on the page |
+|---|---|---|---|
+| W1 | Does ECC's DCP auction limit cover intraday auctions like the exchange limit does (same as question 4)? | ECC | Yes |
+| W2 | Does a sell trade in an auction credit the auction limit? | ECC | No credit |
+| W3 | The realistic price range, the market maximum and the market minimum used for orders without a limit price. Can a DCP set the range, or only a clearing member? | ECC / Niki | Not set (orders need a limit price) |
+| W4 | Do ECC's O09 timing and any per-change fee apply to settings changed in the Direct+ platform? | Direct+ | Not modelled |
+| W5 | ECC, EPEX and Direct+ fees. | Niki | €0, marked "not set" |
+| W6 | Aggregators: does the wallet also fund the bilateral (non-exchange) leg? | Niki | No; ECC settles only the exchange leg |
+| W7 | TenneT's weekly invoicing calendar: the debit day of imbalance invoices, and the Dutch working-day list it uses (the page uses the Algemene termijnenwet holidays). | TenneT | Four weeks after the delivery week, first working day |
+| W8 | TenneT's "inzake rekening" formula for today's rule: is the €96,000 on TenneT's page a flat minimum, or 2 × 50 MW × 24 h × €40? How often is it recalculated? | TenneT | 1,200 MWh reading; toggle "flat €96,000" |
+| W9 | Can new connections in the Direct+ BRP still be profile-allocated after cSMA (1 May 2026), or is C always zero? | TenneT / Niki | Per member input, €0 for the presets |
+| W10 | VAT: is any flow not reverse-charged for some member types? | Niki | Not modelled |
+| W11 | Show "standalone BRP vs through Direct+" on a member-facing page? Members now pay as their own BRP, so the two are the same unless the €96,000 minimum is waived per member. | Niki | Not shown; "apply the minimum per member" setting on |
+| W12 | The pooled wallet: ECC asks that the settlement account be "on the name of the applicant" and "used exclusively for ECC clearing" (connected-bank document p.6). How does the pooled Direct+ wallet meet that (for example, sub-accounts per member)? | Direct+ / ECC | Labelled "Direct+ contract" |
+
+Readings of the TenneT texts that the page leaves switchable: the per-period net volume (i or ii); one counterparty
+or all; population or sample σ; connections between classes. See `docs/wallet-model.md` §4.3 and §9.
