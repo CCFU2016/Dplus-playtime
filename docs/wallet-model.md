@@ -56,7 +56,7 @@ All wallet code lives in `src/wallet/`. It uses only the engine's public API, in
 | `behaviour.js` | Inputs and presets → per-day trade flows per market (volume, value, risk-bearing value), orders over 16:00, imbalance volumes, weekly invoice parameters | nothing |
 | `settlement.js` | Booking windows, funding deadline and value date per window, net amount per window, cash path, `OR(D)` | behaviour, engine calendar |
 | `ecc-link.js` | Limit targets per calculation day, base limits, the per-day solver, the split search, collateral form | behaviour, settlement, engine |
-| `brp.js` | Current and draft art. 10.8, NEMO, the three pass-through modes, ramp-up series, seeded Monte Carlo for B | behaviour, rule configs |
+| `brp.js` | Current and draft art. 10.8 on the member's own figures (as its own BRP), NEMO, ramp-up series, seeded Monte Carlo for B | behaviour, rule configs |
 | `tennet-account.js` | Imbalance and reconciliation invoices, the Dutch working-day calendar, payment dates, the account/security check, exit tail | behaviour, brp |
 | `wallet.js` | Totals by purpose and by account, the expected–stress range, sensitivities | all |
 | `page.html` | The page, with `/*__ENGINE__*/` and `/*__WALLET__*/` markers | |
@@ -368,7 +368,7 @@ S = max(3A + 4B + 6C + 6D, 96,000)
   - (b) enough security **after** them;
   - (c) enough security after withdrawal of recognition, for invoices still to come.
 
-**Ramp-up for a new BRP (mode 1):**
+**Ramp-up for a new BRP (a new member, section 4.4):**
 - **A:** 0 at the first calculation (no realised volume), then the realised two-month maximum.
 - **B:** the first imbalance invoice arrives about four weeks after delivery (ACM draft para 15: "Tussen het moment van levering en facturatie zitten vier weken"). Missing weeks count as €0, so B peaks at about 1.618 × its steady-state value with 7 of 10 real invoices (the maximum of p + 2√(p(1−p)) is at p = 0.724, exactly the golden ratio). For C and D the peak is about 1.055× at 11 of 12.
 - **C:** month M's profile reconciliation is stated by the 10th working day of M+5 and paid the first Tuesday after (SC 2026 art. 10.26(4)–(5)). With delivery starting in month 1, **the first C invoice falls in month 6**.
@@ -389,15 +389,18 @@ S = max(3A + 4B + 6C + 6D, 96,000)
   - For aggregators, each bilateral counterparty and the exchange are separate counterparties.
 - **Price.** Default: the arithmetic mean of NL day-ahead prices over the period (three months current, two months draft).
 
-### 4.4 How the security reaches a member (Q1): three modes, none chosen
+### 4.4 How the security reaches a member: as if it were its own BRP (Niki, 26 Sep 2026)
 
-1. **Standalone:** as if the member were its own BRP ("what you'd post without Direct+"). The ramp-up applies.
-2. **Share of the Direct+ BRP:** the BRP's security is computed on the aggregate portfolio.
-   - Imbalances and exchange positions net inside it, and the minimum or NEMO amount applies once.
-   - It's multiplied by a sharing key: volume share, imbalance share or equal split.
-   - There's no ramp-up.
-   - Needs aggregate figures from Direct+ (Direct+ contract).
-3. **Contract:** a fixed or tiered amount from the Direct+ pricelist (Direct+ contract, no default).
+The Direct+ BRP is a **commercial BRP**, not EPEX SPOT's NEMO recognition. Each member pays what is equal to its share
+**as if it were its own BRP**.
+
+**Security** is therefore computed on the member's own figures: its own A, its own imbalance and reconciliation
+invoices, and its own connections.
+- The ramp-up applies to a new member.
+- The €96,000 minimum applies per member, which is the literal reading of "as if its own BRP". A setting, "apply the minimum per member" (default on), lets Niki switch it off if the commercial terms differ.
+- The NEMO rule stays in `brp.js` because both texts have it, but it doesn't apply to Direct+ members.
+
+The brief's other two modes (a share of the aggregate BRP security, and a pricelist amount) are dropped.
 
 ---
 
@@ -557,7 +560,7 @@ release; I haven't verified them against market data.
 
 ## 8. Worked example: financial trader, week of Monday 5 October 2026
 
-This uses the financial-trader preset above, mode 1 (standalone BRP), everything as cash unless stated, and
+This uses the financial-trader preset above, the member as its own BRP (section 4.4), everything as cash unless stated, and
 replenishment none. A throwaway script repeated each step with the engine, and every figure matches.
 
 ### 8.1 Part 1: ECC collateral
@@ -653,7 +656,7 @@ The ramp-up series is €96,000 in every month from 1 to 18. With no connections
 
 ### 8.5 The total
 
-Mode 1, rule in force on 5 October 2026, collateral and security as cash or guarantee (no default fund):
+Member as its own BRP, rule in force on 5 October 2026, collateral and security as cash or guarantee (no default fund):
 
 | Purpose | Account | Form | Label | Expected | Stress |
 |---|---|---|---|---|---|
@@ -723,7 +726,26 @@ Everything else the brief states, I found in the sources as described:
 
 ## 11. Questions for Niki
 
-**Gate questions (from the brief; the affected part isn't built without an answer):**
+### 11.1 Answers (26 September 2026)
+
+1. **BRP:** a commercial BRP, not EPEX SPOT's NEMO recognition. Section 4.4.
+2. **Accounts:** the Direct+ wallet pools all members at one connected bank, so the calculator shows each member's individual need. There is no netting between members.
+   - The default account mapping uses the wallet's segments, as in the member video:
+
+| Purpose | Wallet segment |
+|---|---|
+| 1. ECC trading collateral | "Trading collateral (at ECC)", locked |
+| 1b. Default fund | available balance |
+| 2. ECC settlement | available balance, paid from the pooled connected bank account |
+| 3. BRP security | "BRP collateral" segment |
+| 4. Imbalance and reconciliation invoices | available balance |
+
+   - Flag for Niki, not for the calculator: ECC's CBA p.6 asks that the settlement account be "on the name of the applicant" and "used exclusively for ECC clearing". A pooled account works if that is squared with ECC (for example with per-member sub-accounts). The page labels the pooling as Direct+ contract and doesn't describe ECC's account rules beyond that.
+3. **Rule timing:** both options. For dates from 1 January 2027 the page defaults to the draft, and shows the current rule's figure beside it (and the other way round before 2027). The manual selector stays.
+4. **Imbalance and reconciliation:** each member pays its own, as if it were its own BRP. Part 4 uses the member's own invoices.
+5. **Presets:** not approved; waiting for Niki. Phases 1–4 don't use them.
+
+### 11.2 The original gate questions (from the brief)
 
 1. **BRP** *(Part 3)*
    - Who holds the Direct+ BRP recognition?
