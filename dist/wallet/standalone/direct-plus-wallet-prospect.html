@@ -115,6 +115,12 @@
   .calc-body b { color: var(--ink); }
   .calc-body ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
   .calc-body .res { color: var(--ink); font-weight: 600; }
+  .rule-body { display: grid; gap: 8px; }
+  .rule-body p { margin: 0; }
+  .rule-switch { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: 999px; padding: 2px; background: var(--surface); width: max-content; max-width: 100%; }
+  .rule-switch button { border: 0; background: transparent; color: var(--ink-2); border-radius: 999px; padding: 4px 12px; font-size: 12.5px; font-weight: 500; cursor: pointer; }
+  .rule-switch button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .rule-switch button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
   .handoff { display: grid; gap: 8px; justify-items: start; padding: 14px 16px; border: 1px solid var(--rule); border-left: 6px solid var(--s-trading); border-radius: 10px; background: var(--surface); }
   .handoff[hidden] { display: none; }
   .handoff b { font-size: 15px; }
@@ -1959,29 +1965,49 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     if (fx) { var b = el('button', 'linkbtn', 'Use the estimate\'s own amount'); b.type = 'button'; b.addEventListener('click', dropSetup); row.appendChild(b); }
     if (row.childNodes.length) td.appendChild(row);
   }
-  // The BRP collateral step by step, with the figures used (TenneT's rule in force, or ACM's draft from 2027; Direct+ marginal).
+  // The BRP collateral step by step, with the figures used: TenneT's rule in force and ACM's draft from 2027, with a switch
+  // between them that starts on the rule the estimate uses for the week shown. Exact euros, not rounded to €1,000.
   function brpCalc(td, x, st) {
-    var b = x.brp, cur = b.current, dr = b.draft, d = el('details', 'calc no-print-open');
+    var b = x.brp, cur = b.current, dr = b.draft, marginal = b.basis === 'marginal', d = el('details', 'calc');
     d.appendChild(el('summary', null, 'Detailed calculation'));
-    var box = el('div', 'calc-body'), ol = el('ol'), li = function (t) { ol.appendChild(el('li', null, t)); };
-    var mwh = function (v) { return fmt.format(Math.round(v)) + ' MWh'; }, ex = function (v) { return '€' + fmt.format(Math.round(v)); };   // exact euros here, not rounded to €1,000
+    var box = el('div', 'calc-body');
+    var mwh = function (v) { return fmt.format(Math.round(v)) + ' MWh'; }, ex = function (v) { return (v < 0 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); };
     var countedMW = cur.price > 0 ? cur.B / (24 * cur.price) : 0;
-    var nomBigger = st.nominatedIn > 0 && Math.abs(b.volume - st.nominatedIn) < 0.5;
-    var inForce = b.rule === 'current';
-    box.appendChild(el('b', null, inForce ? 'TenneT\'s rule in force (Systeemcode elektriciteit 2026, article 10.8)' : 'ACM\'s draft rule for 2027 (not yet final)'));
-    li('Daily volume at the TenneT boundary: ' + (nomBigger ? 'the volume nominated from other BRPs, ' : 'what you sell minus what you buy, ') + mwh(b.volume) + ' a day.');
-    li('Price: the average of the last three months, ' + eurP(cur.price) + '/MWh (at least €40).');
-    if (inForce) {
-      li('A = volume × price = ' + mwh(cur.volume) + ' × ' + eurP(cur.price) + ' = ' + ex(cur.A) + '.');
-      li('B = connection capacity × 24 hours × price' + (countedMW > 0 ? ' = ' + fmt.format(Math.round(countedMW)) + ' MW (the size class your ' + fmt.format(ans.capacityMW || 0) + ' MW falls in) × 24 × ' + eurP(cur.price) + ' = ' + ex(cur.B) : ' = €0: no connections join the Direct+ BRP') + '.');
-      li((cur.twoA ? '2A is at least B, so the security is 2A' : '2A is below B, so the security is A + B') + ' = ' + ex(cur.security) + '.');
-    } else {
-      li('3A + 4B + 6C + 6D: A = volume × price over two months (' + ex(dr.A) + '), B = weekly imbalance invoices, mean + 2σ (' + ex(dr.B) + '), C and D = monthly reconciliation, mean + 0.5σ (' + ex(dr.C) + ', ' + ex(dr.D) + ').');
-      li('Sum = ' + ex(dr.sum) + '.');
+    var volText = 'Daily volume at the TenneT boundary: ' + (st.nominatedIn > 0 && Math.abs(b.volume - st.nominatedIn) < 0.5 ? 'the volume nominated from other BRPs, ' : 'what you sell minus what you buy, ') + mwh(b.volume) + ' a day.';
+    var views = {
+      current: { label: 'Rule in force (2026)', title: 'TenneT\'s rule in force: Systeemcode elektriciteit 2026, article 10.8', result: cur.security, steps: [
+        volText,
+        'Price: the average of the last three months, ' + eurP(cur.price) + '/MWh (at least €40).',
+        'A = volume × price = ' + mwh(cur.volume) + ' × ' + eurP(cur.price) + ' = ' + ex(cur.A) + '.',
+        'B = connection capacity × 24 hours × price' + (countedMW > 0 ? ' = ' + fmt.format(Math.round(countedMW)) + ' MW (the size class your ' + fmt.format(ans.capacityMW || 0) + ' MW falls in) × 24 × ' + eurP(cur.price) + ' = ' + ex(cur.B) : ' = €0: no connections join the Direct+ BRP') + '.',
+        (cur.twoA ? '2A is at least B, so the security is 2A' : '2A is below B, so the security is A + B') + ' = ' + ex(cur.security) + '.'],
+        note: marginal ? 'As a Direct+ member you put up only this marginal part: no 50 MW volume floor, which applies once to the Direct+ BRP, and never less than €0.' : 'As your own BRP, with the 50 MW volume floor.' },
+      draft: { label: 'ACM draft (from 2027)', title: 'ACM\'s draft rule from 1 January 2027 (ACM/25/196985, not yet final)', result: dr.security, steps: [
+        volText,
+        'A = volume × the average price of the last two months = ' + mwh(b.volume) + ' × ' + eurP(b.price) + ' = ' + ex(dr.A) + '.',
+        'B = your weekly imbalance invoices over the last 10 weeks: average + 2 × σ = ' + ex(dr.B) + ' (from your imbalance assumptions).',
+        'C = monthly reconciliation of profile-metered connections over 12 months: average + 0.5 × σ = ' + ex(dr.C) + '.',
+        'D = monthly reconciliation of telemetry and smart-meter connections over 12 months: average + 0.5 × σ = ' + ex(dr.D) + '.',
+        '3A + 4B + 6C + 6D = ' + ex(3 * dr.A) + ' + ' + ex(4 * dr.B) + ' + ' + ex(6 * dr.C) + ' + ' + ex(6 * dr.D) + ' = ' + ex(dr.sum) + (dr.sum < 0 ? ', so €0' : '') + '.'],
+        note: marginal ? 'As a Direct+ member you put up only this marginal part: no €96,000 minimum, which applies once to the Direct+ BRP, and never less than €0.' : 'As your own BRP, with the €96,000 minimum.' }
+    };
+    var sw = el('div', 'rule-switch'), body = el('div', 'rule-body');
+    sw.setAttribute('role', 'group'); sw.setAttribute('aria-label', 'Which rule to show');
+    function showRule(id) {
+      var v = views[id], ol = el('ol');
+      clear(body);
+      Array.prototype.forEach.call(sw.children, function (btn) { btn.setAttribute('aria-pressed', String(btn.getAttribute('data-rule') === id)); });
+      body.appendChild(el('b', null, v.title));
+      v.steps.forEach(function (t) { ol.appendChild(el('li', null, t)); });
+      body.appendChild(ol); body.appendChild(el('p', null, v.note));
+      body.appendChild(el('p', 'res', 'BRP collateral under this rule: ' + ex(v.result) + (id === b.rule ? '. This is the rule the estimate uses for the week of ' + dLabel(ans.week, true) + '.' : '. The estimate uses the other rule for the week of ' + dLabel(ans.week, true) + '.')));
     }
-    box.appendChild(ol);
-    box.appendChild(el('p', null, b.basis === 'marginal' ? 'As a Direct+ member you put up only this marginal part: no €96,000 minimum and no 50 MW volume floor, which apply once to the Direct+ BRP, and never less than €0.' : 'As your own BRP, with the minimum and volume floors.'));
-    box.appendChild(el('p', 'res', 'BRP collateral: ' + ex(b.security) + (inForce ? '. Under ACM\'s draft rule for 2027 it would be ' + ex(dr.security) + '.' : '. Under the rule in force it would be ' + ex(cur.security) + '.')));
+    ['current', 'draft'].forEach(function (id) {
+      var btn = el('button', null, views[id].label); btn.type = 'button'; btn.setAttribute('data-rule', id);
+      btn.addEventListener('click', function () { showRule(id); });
+      sw.appendChild(btn);
+    });
+    box.appendChild(sw); box.appendChild(body); showRule(b.rule);
     d.appendChild(box); td.appendChild(d);
   }
   var LABEL = { ecc: 'Trading collateral at ECC', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
