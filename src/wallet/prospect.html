@@ -152,7 +152,7 @@
   <header class="masthead">
     <p class="eyebrow">Direct+ · Netherlands · EUR</p>
     <h1>Your Direct+ wallet estimate</h1>
-    <p class="lede">Answer a few questions about how you plan to trade. You'll see roughly how much money your Direct+ wallet needs, what it is for, and when you need it. It takes about two minutes.</p>
+    <p class="lede">Answer a few questions about how you plan to trade. You'll see roughly how much money your Direct+ wallet needs, what it is for, and when you need it. It takes about two minutes. Direct+ works with cash only.</p>
     <p class="fine">Indicative only: not an offer and not advice. The estimate applies ECC's published rules and TenneT's rules to your answers and to the assumptions listed with the result. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
   </header>
 
@@ -260,20 +260,9 @@
       </fieldset>
 
       <fieldset class="step" data-step="7" hidden>
-        <legend><h2>How will you fund it?</h2></legend>
-        <div class="q"><span class="ql">Trading collateral at ECC</span>
-          <div class="choices cols">
-            <div class="choice"><input type="radio" name="eccForm" id="e-cash" value="cash"><label for="e-cash"><b>Cash</b></label></div>
-            <div class="choice"><input type="radio" name="eccForm" id="e-guarantee" value="guarantee"><label for="e-guarantee"><b>Bank guarantee</b><span>ECC then asks at least 4% of it in cash for its default fund.</span></label></div>
-          </div>
-        </div>
-        <div class="q"><span class="ql">BRP collateral</span>
-          <div class="choices cols">
-            <div class="choice"><input type="radio" name="brpForm" id="p-guarantee" value="guarantee"><label for="p-guarantee"><b>Bank guarantee</b></label></div>
-            <div class="choice"><input type="radio" name="brpForm" id="p-cash" value="deposit"><label for="p-cash"><b>Cash</b></label></div>
-          </div>
-        </div>
-        <div class="q"><span class="ql">How often will you top up your wallet?</span>
+        <legend><h2>How often will you top up your wallet?</h2></legend>
+        <p class="why">Direct+ works with cash only: collateral, settlement and invoices all come from your wallet balance. No bank guarantees.</p>
+        <div class="q">
           <div class="choices">
             <div class="choice"><input type="radio" name="replenish" id="r-none" value="none"><label for="r-none"><b>Not during the week</b><span>The wallet holds enough for the whole week.</span></label></div>
             <div class="choice"><input type="radio" name="replenish" id="r-daily" value="daily"><label for="r-daily"><b>Every business day</b><span>You replace each day's collection.</span></label></div>
@@ -376,7 +365,7 @@
   function setRadio(name, v) { var r = form.querySelector('input[name="' + name + '"][value="' + v + '"]'); if (r) r.checked = true; }
   function fill() {
     setRadio('type', ans.type); setRadio('markets', ans.markets); setRadio('weekend', ans.weekend ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
-    setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('eccForm', ans.eccForm); setRadio('brpForm', ans.brpForm); setRadio('replenish', ans.replenish);
+    setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('replenish', ans.replenish);
     Array.prototype.forEach.call(form.querySelectorAll('[data-a]'), function (i) { var v = ans[i.getAttribute('data-a')]; i.value = v == null ? '' : (i.hasAttribute('data-pct') ? Math.round(v * 1000) / 10 : v); });
     renderConns(); visibility();
   }
@@ -499,8 +488,7 @@
     var hv = clear($('hero-value'));
     hv.appendChild(document.createTextNode('About ' + eur(round(x.total, 1000)) + ' '));
     hv.appendChild(el('span', 'to', 'up to ' + eur(round(y.total, 1000)) + ' in a tough week'));
-    var cashOnly = x.parts.filter(function (p) { return p.formRule === 'Cash only'; }).reduce(function (a, p) { return a + p.value; }, 0);
-    $('hero-sub').textContent = 'Of the normal-week amount, about ' + eur(round(cashOnly, 100)) + ' has to be cash; the rest can be cash or a bank guarantee. A tough week here means prices at ' + eur(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.';
+    $('hero-sub').textContent = 'All in cash: Direct+ does not accept bank guarantees. A tough week here means prices at ' + eur(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.';
     renderPurposes(r, s); renderBars(r); renderWhen(r, s); renderSens(r, s); renderAnswers(s); renderAssumed(r, s);
     window.scrollTo(0, 0);
   }
@@ -508,28 +496,25 @@
     var se = r.expected.settlement;
     switch (p.id) {
       case 'ecc': return 'Lets you trade: ECC turns it into your trading limits for continuous trading and the auctions. It stays at ECC while you trade.';
-      case 'fund': return 'With a bank guarantee, ECC asks at least 4% of it in cash for its default fund.';
       case 'settlement': return 'ECC settles each business day\'s trades from your wallet as one net payment.' + (se.float > 0.5 ? ' Purchases you sell only after the 16:00 cut are paid before their sale comes back, so part of this stays in the wallet all the time.' : se.flows < 0.5 ? ' Your days net to about zero or to money coming in.' : '');
       case 'brp': return 'Your share of the Direct+ BRP\'s security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.';
       case 'invoices': return 'TenneT invoices imbalance every week, about four weeks after delivery.';
     }
     return '';
   }
-  var LABEL = { ecc: 'Trading collateral at ECC', fund: 'ECC default fund', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
+  var LABEL = { ecc: 'Trading collateral at ECC', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
   function renderPurposes(r, s) {
     var t = clear($('purposes')), th = el('thead'), hr = el('tr');
-    [['What for', ''], ['Form', ''], ['Normal week', 'r'], ['Tough week', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); });
+    [['What for', ''], ['Normal week', 'r'], ['Tough week', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); });
     th.appendChild(hr); t.appendChild(th);
     var tb = el('tbody');
     r.expected.parts.forEach(function (p, i) {
-      if (p.id === 'fund' && s.eccForm !== 'guarantee') return;
       var tr = el('tr'), td = el('td');
       td.appendChild(el('b', null, LABEL[p.id])); td.appendChild(el('span', 'what', describe(p, r, s))); tr.appendChild(td);
-      tr.appendChild(el('td', null, p.formRule === 'Cash only' ? 'Cash' : (p.form === 'Bank guarantee' ? 'Bank guarantee' : 'Cash')));
       tr.appendChild(el('td', 'r', eur(p.value))); tr.appendChild(el('td', 'r', eur(r.stress.parts[i].value)));
       tb.appendChild(tr);
     });
-    var tot = el('tr', 'total'); tot.appendChild(el('td', null, 'Total')); tot.appendChild(el('td'));
+    var tot = el('tr', 'total'); tot.appendChild(el('td', null, 'Total'));
     tot.appendChild(el('td', 'r', eur(r.expected.total))); tot.appendChild(el('td', 'r', eur(r.stress.total))); tb.appendChild(tot);
     t.appendChild(tb);
   }
@@ -555,8 +540,8 @@
   function renderWhen(r, s) {
     var box = clear($('when')), x = r.expected, y = r.stress, se = x.settlement, parts = {};
     x.parts.forEach(function (p) { parts[p.id] = p.value; });
-    var start = 'Trading collateral at ECC: ' + eur(parts.ecc) + (s.eccForm === 'guarantee' ? ' as a bank guarantee, plus ' + eur(parts.fund) + ' in cash for the default fund' : ' in cash') + '.';
-    if (parts.brp > 0.5) start += ' BRP collateral: ' + eur(parts.brp) + (s.brpForm === 'guarantee' ? ' as a bank guarantee.' : ' in cash.');
+    var start = 'Trading collateral at ECC: ' + eur(parts.ecc) + '.';
+    if (parts.brp > 0.5) start += ' BRP collateral: ' + eur(parts.brp) + '.';
     if (se.float > 0.5) start += ' Float for positions held over 16:00: ' + eur(se.float) + '.';
     li(box, 'Before your first trade', start);
     li(box, 'Every business day, by 18:00', se.flows > 0.5 || y.settlement.flows > 0.5
@@ -586,7 +571,6 @@
     if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eur(s.aucLimitPrice) + '/MWh');
     add('Connections', s.connectionsMW ? s.connectionsMW + ' MW' : 'None');
     add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
-    add('ECC collateral / BRP collateral', (s.eccForm === 'guarantee' ? 'Guarantee' : 'Cash') + ' / ' + (s.brpForm === 'guarantee' ? 'Guarantee' : 'Cash'));
     add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
   }
   function renderAssumed(r, s) {

@@ -9,7 +9,7 @@
     --rule: #dbe0e7; --rule-strong: #b7c0cc; --critical: #c3362c; --critical-bg: #fbeceb; --notice-ink: #7a5200; --notice-bg: #fff5da;
     --focus: #2a78d6; --select-bg: #121a24; --select-ink: #ffffff;
     /* purposes and wallet segments: validated categorical slots 1-5 (light, on #ffffff) */
-    --p-ecc: #2a78d6; --p-fund: #eb6834; --p-settlement: #1baf7a; --p-brp: #eda100; --p-invoices: #e87ba4;
+    --p-ecc: #2a78d6; --p-settlement: #1baf7a; --p-brp: #eda100; --p-invoices: #e87ba4;
     --s-trading: #2a78d6; --s-available: #1baf7a; --s-brp: #eda100; --series: #2a78d6;
     --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --font-cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
@@ -21,7 +21,7 @@
       --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
       --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --notice-ink: #f4c35a; --notice-bg: #30260b;
       --focus: #6fa8f0; --select-bg: #eef2f6; --select-ink: #0d1116;
-      --p-ecc: #3987e5; --p-fund: #d95926; --p-settlement: #199e70; --p-brp: #c98500; --p-invoices: #d55181;
+      --p-ecc: #3987e5; --p-settlement: #199e70; --p-brp: #c98500; --p-invoices: #d55181;
       --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500; --series: #3987e5;
     }
   }
@@ -30,7 +30,7 @@
     --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
     --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --notice-ink: #f4c35a; --notice-bg: #30260b;
     --focus: #6fa8f0; --select-bg: #eef2f6; --select-ink: #0d1116;
-    --p-ecc: #3987e5; --p-fund: #d95926; --p-settlement: #199e70; --p-brp: #c98500; --p-invoices: #d55181;
+    --p-ecc: #3987e5; --p-settlement: #199e70; --p-brp: #c98500; --p-invoices: #d55181;
     --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500; --series: #3987e5;
   }
 
@@ -159,7 +159,7 @@
   <header class="masthead">
     <p class="eyebrow">Direct+ · ECC direct clearing · TenneT BRP · Netherlands, EUR</p>
     <h1>Direct+ Wallet Calculator</h1>
-    <p class="lede">How much money you need in your Direct+ wallet, in which part of it, as cash or a bank guarantee, and by when, to trade the way you plan to.</p>
+    <p class="lede">How much money you need in your Direct+ wallet, in which part of it, and by when, to trade the way you plan to. Direct+ works with cash only.</p>
     <p class="fine">Indicative only, not advice. It applies ECC's published rules and the TenneT rules in the Systeemcode elektriciteit 2026 (and ACM's draft for 2027) to assumptions you can change. ECC's and TenneT's own figures always prevail.</p>
   </header>
 
@@ -395,7 +395,7 @@
   }
 
   // ---------- rendering ----------
-  var PURPOSE_COLOR = { ecc: 'var(--p-ecc)', fund: 'var(--p-fund)', settlement: 'var(--p-settlement)', brp: 'var(--p-brp)', invoices: 'var(--p-invoices)' };
+  var PURPOSE_COLOR = { ecc: 'var(--p-ecc)', settlement: 'var(--p-settlement)', brp: 'var(--p-brp)', invoices: 'var(--p-invoices)' };
   var SEGMENT_ORDER = ['trading', 'available', 'brp'], SEGMENT_COLOR = { trading: 'var(--s-trading)', available: 'var(--s-available)', brp: 'var(--s-brp)' };
   var LIGHT_FILL = { settlement: 1, brp: 1, invoices: 1, available: 1 };   // light fills take dark label text in light mode
   function items(res) {
@@ -434,14 +434,14 @@
 
   function renderPurposeTable(r) {
     var t = clear($('purpose-table'));
-    head(t, [{ t: 'Purpose' }, { t: 'Wallet segment' }, { t: 'Form' }, { t: 'Basis' }, { t: 'Expected', cls: 'r' }, { t: 'Stress', cls: 'r' }]);
+    head(t, [{ t: 'Purpose' }, { t: 'Wallet segment' }, { t: 'Basis' }, { t: 'Expected', cls: 'r' }, { t: 'Stress', cls: 'r' }]);
     var tb = el('tbody');
     r.expected.parts.forEach(function (p, i) {
       var name = el('span'); var w = el('span', 'swatch'); w.style.background = PURPOSE_COLOR[p.id]; w.style.marginRight = '8px'; name.appendChild(w); name.appendChild(document.createTextNode(p.label));
-      row(tb, [{ node: name }, { t: C.SEGMENTS[p.segment] }, { t: p.formRule + (p.formRule === 'Cash only' ? '' : ' (you chose ' + p.form.toLowerCase() + ')') }, { node: el('span', 'tag', p.confidence) },
+      row(tb, [{ node: name }, { t: C.SEGMENTS[p.segment] }, { node: el('span', 'tag', p.confidence) },
                { t: eur(p.value), cls: 'r' }, { t: eur(r.stress.parts[i].value), cls: 'r' }]);
     });
-    row(tb, [{ t: 'Total' }, { t: '' }, { t: '' }, { t: '' }, { t: eur(r.expected.total), cls: 'r' }, { t: eur(r.stress.total), cls: 'r' }]).className = 'total';
+    row(tb, [{ t: 'Total' }, { t: '' }, { t: '' }, { t: eur(r.expected.total), cls: 'r' }, { t: eur(r.stress.total), cls: 'r' }]).className = 'total';
     t.appendChild(tb);
   }
 
@@ -458,7 +458,7 @@
     }
     var b = x.ecc.binding;
     card('var(--p-ecc)', 'ECC trading collateral', x.ecc.C, y.ecc.C,
-      'Set by the calculation on ' + dLabel(b.date) + (b.gap > 1 ? ', whose limit has to last ' + b.gap + ' days until the next business day,' : '') + ' at a ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ' split between continuous and auctions.' + (x.ecc.form.guarantee ? ' As a guarantee it adds ' + eur(x.ecc.form.defaultFund) + ' of default fund in cash.' : ''),
+      'Set by the calculation on ' + dLabel(b.date) + (b.gap > 1 ? ', whose limit has to last ' + b.gap + ' days until the next business day,' : '') + ' at a ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ' split between continuous and auctions.',
       b.gap > 1 && st.weekend ? [['weekend', 'Weekend trading'], ['s', 'Buys offset by sells']] : [['contBuy', 'Continuous buying'], ['aucLimitPrice', 'Auction bid prices']]);
     var se = x.settlement, seText = 'ECC settles each business day\'s trades from the wallet as one net payment. ';
     if (se.float > 0.5) seText += 'Purchases you sell only after the 16:00 cut are paid one collection before the sale comes back, so about ' + eur(se.float) + ' stays in the wallet as a float.' + (se.flows < 0.5 ? ' Otherwise your buys and sells net to about zero.' : ' On top of that come the week\'s net purchases, ' + eur(se.flows) + '.');
@@ -606,7 +606,7 @@
     last = r;
     $('hero-label').textContent = 'Money needed in your Direct+ wallet, week of ' + dLabel(state.week, true);
     var hv = clear($('hero-value')); hv.appendChild(document.createTextNode(eur(r.expected.total) + ' ')); hv.appendChild(el('span', 'to', 'to')); hv.appendChild(document.createTextNode(' ' + eur(r.stress.total)));
-    $('hero-sub').textContent = 'Expected to stress. Of the expected amount, ' + eur(r.expected.parts.filter(function (p) { return p.formRule === 'Cash only'; }).reduce(function (a, p) { return a + p.value; }, 0)) + ' has to be cash; the rest can be cash or a bank guarantee.';
+    $('hero-sub').textContent = 'Expected to stress. All of it is cash: Direct+ does not accept bank guarantees.';
     renderBars(r); renderPurposeTable(r); renderParts(r); renderTimeline(r); renderBrp(r); renderSens(r); renderAssumptions(r);
   }
   var timer = null;

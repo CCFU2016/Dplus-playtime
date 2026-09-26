@@ -7,8 +7,8 @@ const T = require('./assert.js')('wallet');
 const ft = C.compute(C.preset('trader'));
 T.money(ft.expected.total, 133994.25, 'financial trader: expected total');
 T.money(ft.stress.total, 467883.25, 'financial trader: stress total');
-T.eq(ft.expected.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 125745], ['fund', 0], ['settlement', 8160], ['brp', 0], ['invoices', 89.25]], 'financial trader: expected parts');
-T.eq(ft.stress.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 406594], ['fund', 0], ['settlement', 55250], ['brp', 0], ['invoices', 6039.25]], 'financial trader: stress parts');
+T.eq(ft.expected.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 125745], ['settlement', 8160], ['brp', 0], ['invoices', 89.25]], 'financial trader: expected parts');
+T.eq(ft.stress.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 406594], ['settlement', 55250], ['brp', 0], ['invoices', 6039.25]], 'financial trader: stress parts');
 // Settlement: ECC nets each business day, but purchases sold only after the 16:00 cut are paid one collection before
 // the sale comes back. The trader carries 30% of a day's buys: a float of 0.3 × 340 MWh × €80, and × €250 in stress.
 T.money(ft.expected.settlement.float, 8160, 'financial trader: settlement float (expected)');
@@ -39,8 +39,7 @@ T.ok(neg.draft.sum < 0 && neg.security === 0, 'a member whose imbalance earns mo
 // Choices move the right parts.
 s = C.preset('trader'); s.reading = 'flat';
 T.money(C.compute(s).expected.total, 133994.25, 'the 50 MW reading does not affect the marginal basis');
-s = C.preset('trader'); s.eccForm = 'guarantee';
-T.money(C.compute(s).expected.parts[1].value, 5029.8, 'a guarantee adds a 4% default-fund contribution');
+T.ok(ft.expected.parts.every(p => p.form === 'Cash' && p.formRule === 'Cash only') && !ft.expected.parts.some(p => p.id === 'fund'), 'Direct+ accepts cash only: every part is cash, no default fund');
 s = C.preset('trader'); s.week = '2027-03-22';
 let r = C.compute(s);
 T.eq([r.expected.brp.rule, r.expected.ecc.binding.date, r.expected.ecc.binding.gap], ['draft', '2027-03-25', 5], 'Easter 2027: the draft, and Thursday before the five-day holiday sets the amount');

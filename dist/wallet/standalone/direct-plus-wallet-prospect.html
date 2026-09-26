@@ -164,7 +164,7 @@
   <header class="masthead">
     <p class="eyebrow">Direct+ · Netherlands · EUR</p>
     <h1>Your Direct+ wallet estimate</h1>
-    <p class="lede">Answer a few questions about how you plan to trade. You'll see roughly how much money your Direct+ wallet needs, what it is for, and when you need it. It takes about two minutes.</p>
+    <p class="lede">Answer a few questions about how you plan to trade. You'll see roughly how much money your Direct+ wallet needs, what it is for, and when you need it. It takes about two minutes. Direct+ works with cash only.</p>
     <p class="fine">Indicative only: not an offer and not advice. The estimate applies ECC's published rules and TenneT's rules to your answers and to the assumptions listed with the result. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
   </header>
 
@@ -272,20 +272,9 @@
       </fieldset>
 
       <fieldset class="step" data-step="7" hidden>
-        <legend><h2>How will you fund it?</h2></legend>
-        <div class="q"><span class="ql">Trading collateral at ECC</span>
-          <div class="choices cols">
-            <div class="choice"><input type="radio" name="eccForm" id="e-cash" value="cash"><label for="e-cash"><b>Cash</b></label></div>
-            <div class="choice"><input type="radio" name="eccForm" id="e-guarantee" value="guarantee"><label for="e-guarantee"><b>Bank guarantee</b><span>ECC then asks at least 4% of it in cash for its default fund.</span></label></div>
-          </div>
-        </div>
-        <div class="q"><span class="ql">BRP collateral</span>
-          <div class="choices cols">
-            <div class="choice"><input type="radio" name="brpForm" id="p-guarantee" value="guarantee"><label for="p-guarantee"><b>Bank guarantee</b></label></div>
-            <div class="choice"><input type="radio" name="brpForm" id="p-cash" value="deposit"><label for="p-cash"><b>Cash</b></label></div>
-          </div>
-        </div>
-        <div class="q"><span class="ql">How often will you top up your wallet?</span>
+        <legend><h2>How often will you top up your wallet?</h2></legend>
+        <p class="why">Direct+ works with cash only: collateral, settlement and invoices all come from your wallet balance. No bank guarantees.</p>
+        <div class="q">
           <div class="choices">
             <div class="choice"><input type="radio" name="replenish" id="r-none" value="none"><label for="r-none"><b>Not during the week</b><span>The wallet holds enough for the whole week.</span></label></div>
             <div class="choice"><input type="radio" name="replenish" id="r-daily" value="daily"><label for="r-daily"><b>Every business day</b><span>You replace each day's collection.</span></label></div>
@@ -1228,7 +1217,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('negShare', 'Hours with negative prices', '%', 'share', 'ASSUMPTION', 'Share of the hours traded'),
       f('negPrice', 'Average price in those hours', '€/MWh', 'number', 'ASSUMPTION', 'Needed to value negative-price hours')
     ] },
-    { id: 'ecc', title: 'ECC limits and collateral', fields: [
+    { id: 'ecc', title: 'ECC limits and collateral', note: 'Direct+ accepts cash only: collateral is never a bank guarantee.', fields: [
       f('s', 'Buys already offset by sells when the position peaks', '%', 'share', 'ASSUMPTION', 'Continuous target max(G × (1 − s), peak); 0 is the cautious default (wallet-model §2.2)'),
       f('restingCont', 'Continuous orders resting over 16:00', '€', 'number', 'ASSUMPTION', 'Risk-bearing orders count against the limit (ECC manual §3.11); they need the base limit after 16:00 (ECC deck p.4)'),
       f('eveningCont', 'Net buying between 16:00 and the evening update', '€', 'number', 'ASSUMPTION', 'Covered by the base limit (ECC deck p.2)'),
@@ -1239,7 +1228,6 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('measure', 'Limit that must hold the continuous target', '', 'select', 'ASSUMPTION', 'The evening limit applies until settlement (by 10:45 next business day, ECC deck p.3)', { options: [['l18', 'Evening limit (cautious)'], ['l09', 'Limit after settlement']] }),
       f('splitMode', 'Split between continuous and auctions', '', 'select', 'input', 'Set in the Direct+ platform', { options: [['cheapest', 'The split that needs the least collateral'], ['mine', 'My split']] }),
       f('key', 'My split: continuous share', '%', 'number', 'input', 'Auctions get the rest'),
-      f('eccForm', 'Collateral form', '', 'select', 'input', 'ECC DCP risk page: guarantees up to €40m alone, above that at least 50% cash; a guarantee adds a default-fund contribution of at least 4%', { options: [['cash', 'Cash'], ['guarantee', 'Bank guarantee']] }),
       f('cap', 'Cap limit', '€', 'optional', 'ECC setting', 'Set by ECC at KYC, reviewed yearly (ECC DCP risk page); collateral above it does not raise limits'),
       f('aucMaxPrice', 'Market maximum price (orders without a limit price)', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10; no built-in value (Q9)'),
       f('aucMinPrice', 'Market minimum price (sells without a limit price)', '€/MWh', 'optional', 'ECC setting', 'INTERPRETATION of ECC manual §3.10 (Q9)'),
@@ -1276,7 +1264,6 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('perPeriod', 'Daily net volume', '', 'select', 'INTERPRETATION', '"voor alle uren gedurende één kalenderdag" (current) / "één etmaal" (draft)', { options: [['i', '(i) Net over the day'], ['ii', '(ii) Net per settlement period, added up']] }),
       f('counterparties', 'Counterparties', '', 'select', 'INTERPRETATION', '"met enige andere balanceringsverantwoordelijke" (current), "met een andere" (draft)', { options: [['max', 'The largest single counterparty'], ['total', 'All counterparties netted']] }),
       f('sigma', 'Standard deviation', '', 'select', 'INTERPRETATION', 'ACM draft art. 10.8(3)-(5) does not say which', { options: [['population', 'Population'], ['sample', 'Sample']] }),
-      f('brpForm', 'Security held as', '', 'select', 'input', 'SC 2026 art. 10.8(1): a guarantee, optionally with a deposit; draft art. 10.8(9): balance, guarantee or both', { options: [['guarantee', 'Bank guarantee'], ['deposit', 'Cash in the account']] })
     ] },
     { id: 'tennet', title: 'TenneT account', fields: [
       f('debitLagWeeks', 'Weekly imbalance invoice after delivery', 'weeks', 'number', 'ASSUMPTION', 'ACM draft para 15: four weeks between delivery and invoicing; the debit day is in TenneT\'s billing terms (Q11)')
@@ -1288,12 +1275,12 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     contBuy: 0, contSell: 0, aucBuy: 0, aucSell: 0, aucLimitPrice: 150, nominatedIn: 0, nonDelivery: 0, weekend: true,
     price: 80, stressPrice: 250, stressAvgPrice: 120, negShare: 0.05, negPrice: -20,
     s: 0, restingCont: 0, eveningCont: 0, restingAuc: 0, restingAucWeekend: 0, updateHour: 18, stressUpdateHour: 19,
-    measure: 'l18', splitMode: 'cheapest', key: 60, eccForm: 'cash', cap: null,
+    measure: 'l18', splitMode: 'cheapest', key: 60, cap: null,
     aucMaxPrice: null, aucMinPrice: null, realMin: null, realMax: null,
     carryShare: 0, lossShare: 0.05, replenish: 'none', feesPerWindow: 0,
     imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
     connectionsMW: '', between: 'down', profileMean: 0, profileSd: 0, smartMean: 0, smartSd: 0,
-    brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population', brpForm: 'guarantee',
+    brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population',
     debitLagWeeks: 4
   };
   // Presets approved by Niki "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page.
@@ -1348,7 +1335,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       connections: type === 'asset' ? [{ mw: 30, metering: 'telemetry' }] : [],
       balance: type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast',
       lean: type === 'aggregator' ? 'short' : type === 'asset' ? 'long' : 'neither',
-      eccForm: 'cash', brpForm: 'guarantee', replenish: 'none', week: BASE.week
+      replenish: 'none', week: BASE.week
     };
   }
   function fromAnswers(a) {
@@ -1368,7 +1355,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     s.connectionsMW = conns.map(function (c) { return +c.mw; }).join(', ');
     s.profileMean = 0; s.smartMean = 0; s.profileSd = 0; s.smartSd = 0;
     conns.forEach(function (c) { if (c.metering === 'profile') s.profileSd += RECONCILIATION_SD_PER_MW * c.mw; else s.smartSd += RECONCILIATION_SD_PER_MW * c.mw; });
-    s.eccForm = a.eccForm; s.brpForm = a.brpForm; s.replenish = a.replenish;
+    s.replenish = a.replenish;
     if (a.week) s.week = a.week;
     return s;
   }
@@ -1421,7 +1408,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       var c = L.solve(one, split.key);
       if (!binding || c > binding.C) binding = { date: E.iso(d), C: c, gap: E.day(d, { C: 0, OR: 0, cont: { bd: 0, nbd: 0, key: 0 }, da: { bd: 0, nbd: 0, key: 0 } }).gap1 };
     });
-    var form = L.form(split.C, st.eccForm === 'guarantee', num(st.cap));
+    // Direct+ accepts cash only, no bank guarantees (Niki, 26 Sep 2026): so no default-fund contribution either.
+    var form = L.form(split.C, false, num(st.cap));
 
     // Part 3: BRP security on the member's own figures. Direct+ members put up their marginal collateral: no minimum and
     // no volume floors, which apply once to the Direct+ BRP (Niki, 26 Sep 2026). 'standalone' is the member as its own
@@ -1457,13 +1445,12 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     // Part 4: TenneT account
     var invoice = o.stress ? wk.mu + 2 * wk.sigma : Math.max(wk.mu, 0);
     var debit = W.imbalanceDebit(isoDays[0], +st.debitLagWeeks);
-    var account = W.accountNeed([{ date: debit, amount: invoice }], security, st.brpForm === 'guarantee' ? security : 0, ruleId === 'current' ? 'current' : undefined);
+    var account = W.accountNeed([{ date: debit, amount: invoice }], security, 0, ruleId === 'current' ? 'current' : undefined);
 
     var parts = [
-      { id: 'ecc', label: 'ECC trading collateral', segment: 'trading', value: split.C, form: st.eccForm === 'guarantee' ? 'Bank guarantee' : 'Cash', formRule: 'Cash or guarantee', confidence: 'Estimate · ECC rule' },
-      { id: 'fund', label: 'ECC default fund', segment: 'available', value: form.defaultFund, form: 'Cash', formRule: 'Cash only', confidence: 'ECC rule' },
+      { id: 'ecc', label: 'ECC trading collateral', segment: 'trading', value: split.C, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
       { id: 'settlement', label: 'ECC settlement', segment: 'available', value: cash.need + carry, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
-      { id: 'brp', label: marginal ? 'BRP collateral (marginal)' : 'BRP security (TenneT)', segment: 'brp', value: security, form: st.brpForm === 'guarantee' ? 'Bank guarantee' : 'Cash', formRule: 'Cash or guarantee', confidence: (ruleId === 'current' ? 'TenneT rule' : 'Draft rule') + ' · Direct+ contract' },
+      { id: 'brp', label: marginal ? 'BRP collateral (marginal)' : 'BRP security (TenneT)', segment: 'brp', value: security, form: 'Cash', formRule: 'Cash only', confidence: (ruleId === 'current' ? 'TenneT rule' : 'Draft rule') + ' · Direct+ contract' },
       { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate' }
     ];
     var total = 0, seg = {};
@@ -1530,7 +1517,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   function setRadio(name, v) { var r = form.querySelector('input[name="' + name + '"][value="' + v + '"]'); if (r) r.checked = true; }
   function fill() {
     setRadio('type', ans.type); setRadio('markets', ans.markets); setRadio('weekend', ans.weekend ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
-    setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('eccForm', ans.eccForm); setRadio('brpForm', ans.brpForm); setRadio('replenish', ans.replenish);
+    setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('replenish', ans.replenish);
     Array.prototype.forEach.call(form.querySelectorAll('[data-a]'), function (i) { var v = ans[i.getAttribute('data-a')]; i.value = v == null ? '' : (i.hasAttribute('data-pct') ? Math.round(v * 1000) / 10 : v); });
     renderConns(); visibility();
   }
@@ -1653,8 +1640,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var hv = clear($('hero-value'));
     hv.appendChild(document.createTextNode('About ' + eur(round(x.total, 1000)) + ' '));
     hv.appendChild(el('span', 'to', 'up to ' + eur(round(y.total, 1000)) + ' in a tough week'));
-    var cashOnly = x.parts.filter(function (p) { return p.formRule === 'Cash only'; }).reduce(function (a, p) { return a + p.value; }, 0);
-    $('hero-sub').textContent = 'Of the normal-week amount, about ' + eur(round(cashOnly, 100)) + ' has to be cash; the rest can be cash or a bank guarantee. A tough week here means prices at ' + eur(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.';
+    $('hero-sub').textContent = 'All in cash: Direct+ does not accept bank guarantees. A tough week here means prices at ' + eur(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.';
     renderPurposes(r, s); renderBars(r); renderWhen(r, s); renderSens(r, s); renderAnswers(s); renderAssumed(r, s);
     window.scrollTo(0, 0);
   }
@@ -1662,28 +1648,25 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var se = r.expected.settlement;
     switch (p.id) {
       case 'ecc': return 'Lets you trade: ECC turns it into your trading limits for continuous trading and the auctions. It stays at ECC while you trade.';
-      case 'fund': return 'With a bank guarantee, ECC asks at least 4% of it in cash for its default fund.';
       case 'settlement': return 'ECC settles each business day\'s trades from your wallet as one net payment.' + (se.float > 0.5 ? ' Purchases you sell only after the 16:00 cut are paid before their sale comes back, so part of this stays in the wallet all the time.' : se.flows < 0.5 ? ' Your days net to about zero or to money coming in.' : '');
       case 'brp': return 'Your share of the Direct+ BRP\'s security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.';
       case 'invoices': return 'TenneT invoices imbalance every week, about four weeks after delivery.';
     }
     return '';
   }
-  var LABEL = { ecc: 'Trading collateral at ECC', fund: 'ECC default fund', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
+  var LABEL = { ecc: 'Trading collateral at ECC', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
   function renderPurposes(r, s) {
     var t = clear($('purposes')), th = el('thead'), hr = el('tr');
-    [['What for', ''], ['Form', ''], ['Normal week', 'r'], ['Tough week', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); });
+    [['What for', ''], ['Normal week', 'r'], ['Tough week', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); });
     th.appendChild(hr); t.appendChild(th);
     var tb = el('tbody');
     r.expected.parts.forEach(function (p, i) {
-      if (p.id === 'fund' && s.eccForm !== 'guarantee') return;
       var tr = el('tr'), td = el('td');
       td.appendChild(el('b', null, LABEL[p.id])); td.appendChild(el('span', 'what', describe(p, r, s))); tr.appendChild(td);
-      tr.appendChild(el('td', null, p.formRule === 'Cash only' ? 'Cash' : (p.form === 'Bank guarantee' ? 'Bank guarantee' : 'Cash')));
       tr.appendChild(el('td', 'r', eur(p.value))); tr.appendChild(el('td', 'r', eur(r.stress.parts[i].value)));
       tb.appendChild(tr);
     });
-    var tot = el('tr', 'total'); tot.appendChild(el('td', null, 'Total')); tot.appendChild(el('td'));
+    var tot = el('tr', 'total'); tot.appendChild(el('td', null, 'Total'));
     tot.appendChild(el('td', 'r', eur(r.expected.total))); tot.appendChild(el('td', 'r', eur(r.stress.total))); tb.appendChild(tot);
     t.appendChild(tb);
   }
@@ -1709,8 +1692,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   function renderWhen(r, s) {
     var box = clear($('when')), x = r.expected, y = r.stress, se = x.settlement, parts = {};
     x.parts.forEach(function (p) { parts[p.id] = p.value; });
-    var start = 'Trading collateral at ECC: ' + eur(parts.ecc) + (s.eccForm === 'guarantee' ? ' as a bank guarantee, plus ' + eur(parts.fund) + ' in cash for the default fund' : ' in cash') + '.';
-    if (parts.brp > 0.5) start += ' BRP collateral: ' + eur(parts.brp) + (s.brpForm === 'guarantee' ? ' as a bank guarantee.' : ' in cash.');
+    var start = 'Trading collateral at ECC: ' + eur(parts.ecc) + '.';
+    if (parts.brp > 0.5) start += ' BRP collateral: ' + eur(parts.brp) + '.';
     if (se.float > 0.5) start += ' Float for positions held over 16:00: ' + eur(se.float) + '.';
     li(box, 'Before your first trade', start);
     li(box, 'Every business day, by 18:00', se.flows > 0.5 || y.settlement.flows > 0.5
@@ -1740,7 +1723,6 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eur(s.aucLimitPrice) + '/MWh');
     add('Connections', s.connectionsMW ? s.connectionsMW + ' MW' : 'None');
     add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
-    add('ECC collateral / BRP collateral', (s.eccForm === 'guarantee' ? 'Guarantee' : 'Cash') + ' / ' + (s.brpForm === 'guarantee' ? 'Guarantee' : 'Cash'));
     add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
   }
   function renderAssumed(r, s) {

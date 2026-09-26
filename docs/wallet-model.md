@@ -217,6 +217,10 @@ fast enough for two markets.
 
 ### 2.7 Collateral form, default fund, cap
 
+**Direct+ accepts cash only (Niki, 26 Sep 2026).** The wallet never uses a bank guarantee, so ECC's guarantee cap and
+the default-fund contribution below don't apply to Direct+ members. They stay documented here because they are ECC's
+rules for DCPs generally, and `ecc-link.js` (`form`) still implements them.
+
 **Source:** ECC risk page.
 - **Accepted collateral:** "Cash funds in EUR and GBP" and "Bank Guarantee in EUR and GBP".
 - **Guarantee cap:** "there is a bank-guarantee-only collateral limit of currently 40 million EUR … For trading limits exceeding 40 million EUR, the excess amount must be backed by a minimum of 50% in cash collateral."
@@ -638,8 +642,7 @@ replenishment none. A throwaway script repeated each step with the engine, and e
 - **Result:** free ≥ 3 × 46,875 / 0.48 = 292,968.75 at 52/48, so **C = €406,594**. Without the open risk it would be €402,344.
 
 **Form:**
-- All cash, or all guarantee, since the amount is well under the €40m guarantee-only cap.
-- With a guarantee, the default fund needs at least 4% of it: **€5,029.80** typical, €16,263.76 stress. It is cash, paid through the connected account.
+- All cash, as Direct+ requires, so there is no default-fund contribution. (With a guarantee, ECC would ask at least 4% of it, €5,029.80 to €16,263.76, in cash.)
 
 ### 8.2 Part 2: ECC settlement cash
 
@@ -692,24 +695,23 @@ Under the draft, the marginal ramp-up series builds to €7,973 by month 5: B ha
 
 - **Week of 5–11 October:** it will be invoiced about four weeks later, in the week of 2 November 2026. The exact debit day is Q11.
 - **Cash for the invoice:** expected €89.25; stress (μ + 2σ at €250) **€6,039.25**.
-- **Current rule:** the marginal collateral is €0. On your own as a BRP it would be €192,000 or €96,000, held as a guarantee. Either way, the account needs only the invoice amount.
+- **Current rule:** the marginal collateral is €0. On your own as a BRP it would be €192,000 or €96,000. Either way, the account needs only the invoice amount.
 
 ### 8.5 The total
 
-Direct+ marginal collateral, rule in force on 5 October 2026, collateral as cash (no default fund). Pinned by
+Direct+ marginal collateral, rule in force on 5 October 2026, all cash (Direct+ accepts no guarantees, so no default fund). Pinned by
 `tests/wallet/wallet.test.js` and shown on the page:
 
 | Purpose | Wallet segment | Form | Label | Expected | Stress |
 |---|---|---|---|---|---|
-| 1. ECC collateral | Trading collateral (at ECC) | cash or guarantee | Estimate · ECC rule | 125,745 | 406,594 |
+| 1. ECC collateral | Trading collateral (at ECC) | cash | Estimate · ECC rule | 125,745 | 406,594 |
 | 2. ECC settlement (float + net payments) | Available balance | cash | Estimate · ECC rule | 8,160 + fees | 55,250 |
-| 3. BRP collateral (marginal) | BRP collateral | cash or guarantee | TenneT rule · Direct+ contract | 0 | 0 |
+| 3. BRP collateral (marginal) | BRP collateral | cash | TenneT rule · Direct+ contract | 0 | 0 |
 | 4. Imbalance invoices | Available balance | cash | Estimate | 89.25 | 6,039.25 |
 | **Total** | | | | **€133,994** | **€467,883** |
 
 - **The same week with dates in 2027 (the draft):** the BRP collateral is €7,973 to €33,154.
 - **On your own as a BRP, for comparison:** €325,994 to €755,883 with the 1,200 MWh reading, or €229,994 to €563,883 with the flat €96,000.
-- **ECC collateral as a guarantee:** add €5,030 to €16,264 of cash for the default fund.
 - **Largest driver for this trader:** the ECC collateral, and within it the Friday period and the weekend auctions.
 
 ---
@@ -777,7 +779,6 @@ Everything else the brief states, I found in the sources as described:
 | Purpose | Wallet segment |
 |---|---|
 | 1. ECC trading collateral | "Trading collateral (at ECC)", locked |
-| 1b. Default fund | available balance |
 | 2. ECC settlement | available balance, paid from the pooled connected bank account |
 | 3. BRP security | "BRP collateral" segment |
 | 4. Imbalance and reconciliation invoices | available balance |
@@ -786,6 +787,7 @@ Everything else the brief states, I found in the sources as described:
 3. **Rule timing:** both options. For dates from 1 January 2027 the page defaults to the draft, and shows the current rule's figure beside it (and the other way round before 2027). The manual selector stays.
 4. **Imbalance and reconciliation:** each member pays its own, as if it were its own BRP. Part 4 uses the member's own invoices.
    - Same day, later: **no minimum for Direct+ members, only the marginal collateral.** BRP security is the rule on the member's own figures, without the €96,000 minimum or the 50 MW floors (section 4.4).
+   - Same day: **Direct+ accepts cash only, no bank guarantees.** Every part of the wallet is cash, and there is no ECC default-fund contribution.
 5. **Presets:** not approved; waiting for Niki. Phases 1–4 don't use them.
 
 ### 11.2 The original gate questions (from the brief)
@@ -834,6 +836,6 @@ default answers the settings equal that type's preset exactly, and `tests/wallet
 | Highest auction bid | `aucLimitPrice` (required when buying in auctions) |
 | Connections | Capacities for the current rule's B. Reconciliation spread of €10 per MW a month (ASSUMPTION), in D for smart-meter and telemetry, in C for profile |
 | How close, which way | Imbalance 0.5%, 3% or 5% of volume; bias 0, +0.3 (short) or −0.2 (long) |
-| Funding | Collateral form at ECC, BRP collateral form, top-up rhythm |
+| Top-ups | Top-up rhythm (Direct+ accepts cash only, so there is no question about guarantees) |
 
 Everything else stays at the preset. The page lists it under "What we assumed".
