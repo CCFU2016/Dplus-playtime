@@ -19,9 +19,9 @@ with sync_playwright() as pw:
     # Market names: M7 and MATS everywhere, explained once in the header.
     text = pg.inner_text('body')
     key = pg.inner_text('.markets-key')
-    check('M7' in key and 'continuous' in key and 'MATS' in key and 'day-ahead auction and the intraday auctions' in key, 'the header explains M7 and MATS')
+    check('M7 continuous' in key and 'MATS auctions' in key and 'day-ahead auction and intraday auctions' in key, 'the header explains M7 continuous and MATS auctions')
     check('Continuous' not in text and 'Day-ahead' not in text, 'no "Continuous" or "Day-ahead" labels left')
-    check(pg.eval_on_selector_all('fieldset.market legend', 'ls => ls.map(l => l.innerText.trim())') == ['M7', 'MATS'], 'market sections are M7 and MATS')
+    check(pg.eval_on_selector_all('fieldset.market legend', 'ls => ls.map(l => l.innerText.trim())') == ['M7 continuous', 'MATS auctions'], 'market sections are M7 continuous and MATS auctions')
 
     # Amounts: thousands separators, formatted as you type; arrow keys step.
     check(pg.input_value('#collateral') == '500,000' and pg.input_value('#c-bd') == '20,000', 'amounts start with separators')
@@ -53,7 +53,7 @@ with sync_playwright() as pw:
     pg.click('label[for=mode-inv]'); pg.wait_for_timeout(300)
     pg.click('label:has(#scope-week)'); pg.click('label:has(#key-cheapest)'); pg.wait_for_timeout(400)
     tile = pg.eval_on_selector_all('.tile', 'ts => ts.map(t => t.innerText.replace(/\\n/g, " / "))')[0]
-    check('602,986' in tile and 'M7 / MATS split 33 / 67' in tile, 'deck example: €602,986 at 33/67 (' + tile + ')')
+    check('602,986' in tile and 'M7 continuous / MATS auctions split 33 / 67' in tile, 'deck example: €602,986 at 33/67 (' + tile + ')')
     # Optimised by day: each day on its own with its own cheapest split (Fri €580,282 at 29/71, Mon-Wed €350,323,
     # Thu €390,323), the static amount for comparison, and the average held weighted by calendar days.
     pg.click('label:has(#cmode-daily)'); pg.wait_for_timeout(500)

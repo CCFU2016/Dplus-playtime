@@ -10,7 +10,7 @@
   [hidden] { display: none !important; }
 </style>
 <title>Direct+ Limit Calculator</title>
-<meta name="description" content="Collateral to trading limit and back, for EPEX M7 (continuous intraday) and MATS (auctions) under ECC direct clearing.">
+<meta name="description" content="Collateral to trading limit and back, for EPEX M7 continuous and MATS auctions under ECC direct clearing.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -76,7 +76,7 @@
   .fine { font-size: 12.5px; color: var(--muted); max-width: 90ch; }
   .markets-key { display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 2px 0 0; font-size: 14px; color: var(--ink-2); }
   .markets-key div { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
-  .markets-key dt { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); }
+  .markets-key dt { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); white-space: nowrap; }
   .markets-key dd { margin: 0; }
 
   /* Layout */
@@ -255,12 +255,12 @@
 <body>
 <div class="page">
   <header class="masthead">
-    <p class="eyebrow">ECC direct clearing · EPEX M7 &amp; MATS · Netherlands, EUR</p>
+    <p class="eyebrow">ECC direct clearing · EPEX M7 continuous &amp; MATS auctions · Netherlands, EUR</p>
     <h1>Direct+ Limit Calculator</h1>
     <p class="lede">See what trading limit your collateral gives you, or how much collateral a target limit needs. It applies ECC's dynamic limit rules day by day, including weekends and holidays.</p>
     <dl class="markets-key" aria-label="The two markets">
-      <div><dt><span class="swatch sw-cont"></span>M7</dt><dd>EPEX continuous intraday trading</dd></div>
-      <div><dt><span class="swatch sw-da"></span>MATS</dt><dd>EPEX auctions: the day-ahead auction and the intraday auctions</dd></div>
+      <div><dt><span class="swatch sw-cont"></span>M7 continuous</dt><dd>EPEX continuous intraday trading</dd></div>
+      <div><dt><span class="swatch sw-da"></span>MATS auctions</dt><dd>EPEX day-ahead auction and intraday auctions</dd></div>
     </dl>
     <p class="fine">ECC sets a separate trading limit for each, and you split your excess collateral between them. Unofficial tool built on ECC's public DCP client materials (July 2025) and ECC's DCP Simulation Tool v1.3.5. Figures are indicative; ECC's own calculation always prevails.</p>
   </header>
@@ -293,15 +293,15 @@
 
       <div id="inv-fields" class="field" hidden style="gap:14px">
         <div class="field">
-          <label for="t-cont">M7 limit you need</label>
+          <label for="t-cont">M7 continuous limit you need</label>
           <div class="money"><span>€</span><input id="t-cont" type="text" inputmode="numeric" data-step="10000" value="150,000" spellcheck="false"></div>
-          <div class="radio-row" role="radiogroup" aria-label="When the M7 limit must be available">
+          <div class="radio-row" role="radiogroup" aria-label="When the M7 continuous limit must be available">
             <label><input type="radio" name="t-cont-when" id="t-cont-18" value="l18" checked> From around 18:00, before the next morning's settlement</label>
             <label><input type="radio" name="t-cont-when" id="t-cont-09" value="l09"> After the next morning's settlement</label>
           </div>
         </div>
         <div class="field">
-          <label for="t-da">MATS limit at each day-ahead auction</label>
+          <label for="t-da">MATS auctions limit you need, at each day-ahead auction</label>
           <div class="money"><span>€</span><input id="t-da" type="text" inputmode="numeric" data-step="10000" value="100,000" spellcheck="false"></div>
           <label class="check"><input type="checkbox" id="t-da-nonbd" checked> Also at weekend and holiday auctions</label>
         </div>
@@ -335,7 +335,7 @@
       </div>
 
       <fieldset class="market">
-        <legend><span class="swatch sw-cont"></span>M7</legend>
+        <legend><span class="swatch sw-cont"></span>M7 continuous</legend>
         <div class="pair">
           <div class="field"><label for="c-bd">Base limit, business day</label><div class="money"><span>€</span><input id="c-bd" type="text" inputmode="numeric" data-step="1000" value="20,000" spellcheck="false"></div></div>
           <div class="field"><label for="c-nbd">Base limit, non-business day</label><div class="money"><span>€</span><input id="c-nbd" type="text" inputmode="numeric" data-step="1000" value="10,000" spellcheck="false"></div></div>
@@ -343,19 +343,19 @@
       </fieldset>
 
       <fieldset class="market">
-        <legend><span class="swatch sw-da"></span>MATS</legend>
+        <legend><span class="swatch sw-da"></span>MATS auctions</legend>
         <div class="pair">
           <div class="field"><label for="a-bd">Base limit, business day</label><div class="money"><span>€</span><input id="a-bd" type="text" inputmode="numeric" data-step="1000" value="10,000" spellcheck="false"></div></div>
           <div class="field"><label for="a-nbd">Base limit, non-business day</label><div class="money"><span>€</span><input id="a-nbd" type="text" inputmode="numeric" data-step="1000" value="10,000" spellcheck="false"></div></div>
         </div>
       </fieldset>
 
-      <p class="hint">Base limits carry you from 16:00 until the evening update around 18:00, which is best effort, so size them for that gap and for any orders you keep in the system over 16:00. Each €1 reserves about €2 of collateral. MATS has no auction in that window.</p>
+      <p class="hint">Base limits carry you from 16:00 until the evening update around 18:00, which is best effort, so size them for that gap and for any orders you keep in the system over 16:00. Each €1 reserves about €2 of collateral. There is no MATS auction in that window.</p>
 
       <div class="field market">
         <label for="split" id="split-label">Your split of excess collateral</label>
         <input type="range" id="split" min="0" max="100" step="1" value="60" aria-describedby="split-read">
-        <div class="split-read" id="split-read"><span>M7 <b id="split-c">60%</b></span><span>MATS <b id="split-a">40%</b></span></div>
+        <div class="split-read" id="split-read"><span>M7 continuous <b id="split-c">60%</b></span><span>MATS auctions <b id="split-a">40%</b></span></div>
       </div>
     </form>
 
@@ -383,9 +383,9 @@
       </section>
 
       <section class="panel card">
-        <h2>MATS limit at each day-ahead auction</h2>
+        <h2>MATS auctions: limit at each day-ahead auction</h2>
         <p class="sub">On business days the day-ahead auction runs at 12:00, after the morning settlement. Weekend and holiday auctions get an equal share of the calculation made on the business day before, with no settlement in between. The next business day's auction is back at the full limit if they went unused.</p>
-        <div class="chart" id="auction-chart" role="img" aria-label="MATS limit at each day-ahead auction"></div>
+        <div class="chart" id="auction-chart" role="img" aria-label="MATS auctions: limit at each day-ahead auction"></div>
         <div class="chart-key" id="auction-key"></div>
       </section>
 
@@ -412,8 +412,8 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
         <ol style="margin-top:14px">
           <li><b>16:00:</b> each market's limit resets to its base limit, the fixed amount you set to bridge the time until the evening update. Resting orders above it, including bids for future auctions, are deleted.</li>
           <li><b>Reserved for base limits:</b> ECC holds back today's base limit and the one it will hand out at 16:00 on the next business day, for both markets, because that one goes live before the next calculation can see today's trades.</li>
-          <li><b>M7</b> does not reset on weekends or holidays: the base limit before them is BD + NBD per non-business day, and the evening limit must last until the next business morning. Reset days are always 1.</li>
-          <li><b>MATS</b> resets every calendar day. Before a weekend or holiday each auction day gets max(BD, NBD) as base limit and an equal share of the dynamic limit (÷ 3 on a Friday). On the next business day, the day-ahead auction is back at the full limit if those auctions went unused.</li>
+          <li><b>M7 continuous</b> does not reset on weekends or holidays: the base limit before them is BD + NBD per non-business day, and the evening limit must last until the next business morning. Reset days are always 1.</li>
+          <li><b>MATS auctions</b> reset every calendar day. Before a weekend or holiday each auction day gets max(BD, NBD) as base limit and an equal share of the dynamic limit (÷ 3 on a Friday). On the next business day, the day-ahead auction is back at the full limit if those auctions went unused.</li>
           <li><b>Around 18:00 (best effort, no guaranteed time):</b> the dynamic limit is added to what is left of the base limit.</li>
           <li><b>By 10:45 next business day:</b> once yesterday's purchases are paid, that amount comes back, split by your key. If collateral was short, this calculator assumes the payment first refills the reserve; ECC's materials do not say.</li>
         </ol>
@@ -424,12 +424,12 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
           <li>Formulas follow ECC's DCP Simulation Tool v1.3.5 and ECC's client deck (July 2025). ECC's production system may differ in detail; ECC's calculation always prevails.</li>
           <li>Limits are shown before any new trades. Trading uses them up; only net buying counts (volume × price), so a sale at a negative price adds to what you owe.</li>
           <li>Unsettled purchases are assumed to be paid in full the next morning.</li>
-          <li>"Size for the weekend only" solves the calculation before the weekend or holiday, as the deck does; the other days are shown with the same split, so their M7 limit can fall below your target, and the tile says what they need with a split of their own. "The whole week" finds one split that meets the targets every day.</li>
+          <li>"Size for the weekend only" solves the calculation before the weekend or holiday, as the deck does; the other days are shown with the same split, so their M7 continuous limit can fall below your target, and the tile says what they need with a split of their own. "The whole week" finds one split that meets the targets every day.</li>
           <li>After a weekend or holiday, the next business day's day-ahead auction is back at the full limit, as in ECC's client deck (ECC's simulation tool shows only one day's share there). ECC's worked example fits two readings: the unused weekend or holiday limit carried over, or the normal weekday level. With both markets and weekend base limits they differ by a few thousand euros; the calculator shows the lower one, assuming those auctions went unused.</li>
           <li>When collateral does not cover the reserved base limits, ECC's tool flags the setup as invalid. Adjust base limits or collateral.</li>
           <li>ECC business days for 2026–2027 from ECC's calendar. Base limits are used as entered (ECC's tool rounds them up to the next €10).</li>
           <li>"Optimised by day" sizes each business day's calculation on its own and assumes you change your collateral (and split) every business day, in time for that day's evening calculation. Collateral changes run through ECC's daily payment cycle, so check the timing with ECC or in the Direct+ platform before relying on it.</li>
-          <li>MATS: ECC's clearing manual says the auction limit covers the day-ahead and the intraday auctions. We assume ECC's DCP limit works the same way, one limit for all MATS auctions, until ECC confirms. The auction timings on this page are the day-ahead auction's; intraday auctions draw on the same limit at other times of day.</li>
+          <li>MATS auctions: ECC's clearing manual says the auction limit covers the day-ahead and the intraday auctions. We assume ECC's DCP limit works the same way, one limit for all MATS auctions, until ECC confirms. The auction timings on this page are the day-ahead auction's; intraday auctions draw on the same limit at other times of day.</li>
           <li>EUR only. GB markets (GBP, FX, delivery risk) are out of scope.</li>
         </ul>
       </div>
@@ -907,7 +907,7 @@ var LimitEngine = (function () {
         if (rb) restTxt = ' · the other days need about ' + eur(rb.C) + ' at ' + rb.key + ' / ' + (100 - rb.key);
         else if (rm !== null) restTxt = ' · the other days need ' + eur(rm) + ' with this split';
       }
-      box.appendChild(tile('Collateral needed', eur(inv.C), scopeTxt + ', M7 / MATS split ' + splitTxt + (res.s.keyMode === 'cheapest' ? ' (least collateral)' : '') + restTxt, { hero: true }));
+      box.appendChild(tile('Collateral needed', eur(inv.C), scopeTxt + ', M7 continuous / MATS auctions split ' + splitTxt + (res.s.keyMode === 'cheapest' ? ' (least collateral)' : '') + restTxt, { hero: true }));
       if (res.s.keyMode === 'cheapest') {
         var m = inv.mine;
         box.appendChild(tile('With your split (' + res.s.split + ' / ' + (100 - res.s.split) + ')', m === null ? 'Not reachable' : eur(m), m === null ? '' : (m - inv.C > 0.5 ? eur(m - inv.C) + ' more than the cheapest split' : 'already the cheapest split')));
@@ -923,15 +923,15 @@ var LimitEngine = (function () {
     var auc = allAuctions(rows);
     var lowA = minBy(auc, function (a) { return a.limit; }), highA = maxBy(auc, function (a) { return a.limit; });
     var hiR = maxBy(rows, function (r) { return r.blr; }), loR = minBy(rows, function (r) { return r.blr; });
-    box.appendChild(tile('M7, from 18:00', eurShort(lowC.cont.l18), 'lowest, ' + dLabel(lowC.date) + ' · highest ' + eurShort(highC.cont.l18), { swatch: 'sw-cont' }));
-    box.appendChild(tile('MATS, per day-ahead auction', eurShort(lowA.limit), 'lowest, ' + dLabel(lowA.date) + (lowA.note ? ' (' + lowA.note.toLowerCase() + ')' : '') + ' · highest ' + eurShort(highA.limit), { swatch: 'sw-da' }));
+    box.appendChild(tile('M7 continuous, from 18:00', eurShort(lowC.cont.l18), 'lowest, ' + dLabel(lowC.date) + ' · highest ' + eurShort(highC.cont.l18), { swatch: 'sw-cont' }));
+    box.appendChild(tile('MATS auctions, per day-ahead auction', eurShort(lowA.limit), 'lowest, ' + dLabel(lowA.date) + (lowA.note ? ' (' + lowA.note.toLowerCase() + ')' : '') + ' · highest ' + eurShort(highA.limit), { swatch: 'sw-da' }));
     box.appendChild(tile('Reserved for base limits', eurShort(hiR.blr), 'peak, ' + dLabel(hiR.date) + (loR.blr < hiR.blr ? ' · lowest ' + eurShort(loR.blr) : ''), null));
   }
   function bindingText(b) {
     if (!b) return '–';
     if (b.market === 'base') return 'Base limits';
-    if (b.market === 'cont') return 'M7, ' + dShort(b.date);
-    return 'MATS, ' + dShort(b.date);
+    if (b.market === 'cont') return 'M7 continuous, ' + dShort(b.date);
+    return 'MATS auctions, ' + dShort(b.date);
   }
   function bindingSub(b) {
     if (!b) return '';
@@ -989,12 +989,12 @@ var LimitEngine = (function () {
     var h2 = el('div', 'h step'); h2.appendChild(el('span', 'time', 'From ~18:00 (best effort)')); h2.appendChild(el('span', 'what', 'Dynamic limit added, until ' + (r.gap1 > 1 ? nxt + ' morning' : 'the next morning'))); box.appendChild(h2);
     var h3 = el('div', 'h step'); h3.appendChild(el('span', 'time', 'By 10:45, ' + nxt)); h3.appendChild(el('span', 'what', 'Settled purchases added back')); box.appendChild(h3);
 
-    var mk = el('div', 'mk'); mk.appendChild(el('span', 'swatch sw-cont')); mk.appendChild(document.createTextNode('M7')); box.appendChild(mk);
+    var mk = el('div', 'mk'); mk.appendChild(el('span', 'swatch sw-cont')); mk.appendChild(document.createTextNode('M7 continuous')); box.appendChild(mk);
     box.appendChild(cell('', eur(r.cont.l16), r.gap1 > 1 ? 'Covers ' + r.gap1 + ' days, until ' + dShort(r.nextBD) + ' 16:00' : 'Until the dynamic limit arrives'));
     box.appendChild(cell('', eur(r.cont.l18), r.gap1 > 1 ? 'Must last until ' + dShort(r.nextBD) + ' morning' : 'Until settlement'));
     box.appendChild(cell('', eur(r.cont.l09), '+ ' + eur(r.refill * r.p.cont.key / 100) + ' settled, until 16:00'));
 
-    var mk2 = el('div', 'mk'); mk2.appendChild(el('span', 'swatch sw-da')); mk2.appendChild(document.createTextNode('MATS')); box.appendChild(mk2);
+    var mk2 = el('div', 'mk'); mk2.appendChild(el('span', 'swatch sw-da')); mk2.appendChild(document.createTextNode('MATS auctions')); box.appendChild(mk2);
     box.appendChild(cell('', eur(r.da.l16), r.gap1 > 1 ? 'Per auction day (max of BD, NBD)' : 'Base limit'));
     var aucDays = r.da.auctions.map(function (a) { return dShort(a.date); }).join(', ');
     box.appendChild(cell('', eur(r.da.l18), r.gap1 > 1 ? 'Per auction: ' + aucDays + ' (÷ ' + r.gap1 + ')' : 'Per auction'));
@@ -1031,10 +1031,10 @@ var LimitEngine = (function () {
     var C = r.p.C;
     var parts = [
       { v: r.p.OR, cls: 'sw-owed', label: 'Unsettled purchases (open risk)' },
-      { v: r.blrC, cls: 'sw-cont-res', label: 'M7: reserved for base limits' },
-      { v: r.shareC, cls: 'sw-cont', label: 'M7: share of excess' },
-      { v: r.blrA, cls: 'sw-da-res', label: 'MATS: reserved for base limits' },
-      { v: r.shareA, cls: 'sw-da', label: 'MATS: share of excess' }
+      { v: r.blrC, cls: 'sw-cont-res', label: 'M7 continuous: reserved for base limits' },
+      { v: r.shareC, cls: 'sw-cont', label: 'M7 continuous: share of excess' },
+      { v: r.blrA, cls: 'sw-da-res', label: 'MATS auctions: reserved for base limits' },
+      { v: r.shareA, cls: 'sw-da', label: 'MATS auctions: share of excess' }
     ];
     var total = Math.max(C, parts.reduce(function (s, x) { return s + x.v; }, 0));
     parts.forEach(function (x) {
@@ -1060,8 +1060,8 @@ var LimitEngine = (function () {
     var thead = el('thead'), g = el('tr', 'grp');
     var daily = res.inv && res.inv.daily;
     g.appendChild(el('th', null, '')); if (daily) g.appendChild(el('th', null, '')); g.appendChild(el('th', null, '')); g.appendChild(el('th', null, ''));
-    var gc = el('th', 'gl'); gc.colSpan = 3; var sc = el('span'); sc.appendChild(el('span', 'swatch sw-cont')); sc.appendChild(document.createTextNode('M7')); gc.appendChild(sc); gc.style.textAlign = 'left'; g.appendChild(gc);
-    var ga = el('th', 'gl'); ga.colSpan = 2; var sa = el('span'); sa.appendChild(el('span', 'swatch sw-da')); sa.appendChild(document.createTextNode('MATS')); ga.appendChild(sa); ga.style.textAlign = 'left'; g.appendChild(ga);
+    var gc = el('th', 'gl'); gc.colSpan = 3; var sc = el('span'); sc.appendChild(el('span', 'swatch sw-cont')); sc.appendChild(document.createTextNode('M7 continuous')); gc.appendChild(sc); gc.style.textAlign = 'left'; g.appendChild(gc);
+    var ga = el('th', 'gl'); ga.colSpan = 2; var sa = el('span'); sa.appendChild(el('span', 'swatch sw-da')); sa.appendChild(document.createTextNode('MATS auctions')); ga.appendChild(sa); ga.style.textAlign = 'left'; g.appendChild(ga);
     thead.appendChild(g);
     var h = el('tr');
     var cols = ['Calculation day'].concat(daily ? ['Collateral that day'] : []).concat(['Reserved for base limits', 'Excess collateral', '16:00', 'From 18:00', 'After settlement', 'Per auction from 18:00', 'Next business day\'s auction']);
@@ -1137,7 +1137,7 @@ var LimitEngine = (function () {
     }
     box.appendChild(svg);
     var key = $('auction-key'); key.textContent = '';
-    var k1 = el('span'); k1.appendChild(el('span', 'swatch sw-da')); k1.appendChild(document.createTextNode('MATS limit at the day-ahead auction')); key.appendChild(k1);
+    var k1 = el('span'); k1.appendChild(el('span', 'swatch sw-da')); k1.appendChild(document.createTextNode('MATS auctions: limit at the day-ahead auction')); key.appendChild(k1);
     if (items.some(function (a) { return !a.bd; })) { var k2 = el('span'); k2.appendChild(el('span', 'band-key')); k2.appendChild(document.createTextNode('Weekend or holiday auction, no settlement before it')); key.appendChild(k2); }
     if (target > 0) { var k3 = el('span'); k3.appendChild(el('span', 'line-key')); k3.appendChild(document.createTextNode('Your target')); key.appendChild(k3); }
   }
@@ -1145,8 +1145,8 @@ var LimitEngine = (function () {
   // ---------- O09 ----------
   function o09Rows(res) {
     return [
-      ['M7', res.p.cont.bd, res.p.cont.nbd, res.p.cont.key],
-      ['MATS', res.p.da.bd, res.p.da.nbd, res.p.da.key]
+      ['M7 continuous', res.p.cont.bd, res.p.cont.nbd, res.p.cont.key],
+      ['MATS auctions', res.p.da.bd, res.p.da.nbd, res.p.da.key]
     ];
   }
   function renderO09(res) {
