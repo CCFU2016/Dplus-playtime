@@ -15,7 +15,7 @@ Work top to bottom. Run `npm test` before and after each task. One commit per ta
 
 ## 3. Add EPEX GO auctions (EPEX_GOEU_EUR)
 **Left out for now (Niki, 26 Sep 2026).** Not started. What ECC's tool does for GO is written up in
-`docs/model.md` ("Markets with their own trading calendar"), and the open points are questions 5–8 and 10.
+`docs/model.md` ("Markets with their own trading calendar"), and the open points are questions 5–9.
 The trading-day question below is still open.
 
 - [ ] Market definition from the table: reset `day`, auction flag 1, own trading calendar.

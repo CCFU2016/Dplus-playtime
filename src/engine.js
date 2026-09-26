@@ -80,7 +80,7 @@ var LimitEngine = (function () {
     var blr = 0;
     ms.forEach(function (m) { m.blr = m.rule.res(g1) + m.rule.res(g2); blr += m.blr; });
     var excess = p.C - blr - p.OR;          // can be negative (shortfall)
-    var free = Math.max(excess, 0);
+    var free = Math.max(excess, 0);         // floored at zero as in ECC's deck (p.8); ECC's tool does not floor it, see docs/open-questions.md
     // Next morning: yesterday's settled purchases come back; a shortfall is refilled first.
     var refill = Math.max(p.OR - Math.max(-excess, 0), 0);
     var out = {};

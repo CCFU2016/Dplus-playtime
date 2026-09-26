@@ -13,7 +13,10 @@ and the page must say so.
 | 6 | **GO dates in DCP.** ECC's tool marks GO trading days with dates that look like the order-book **closing** day (e.g. 2025-01-22, a Wednesday). Is the GO base limit needed on the day before the close, the day the book opens, or both? | Not modelled yet. |
 | 7 | **GO pre-auction margin.** The manual (§3.9) says the GO trading limit is charged as a pre-auction margin two days and one day before the auction. For a DCP, is that on top of the DCP collateral use, or the same thing? | Not modelled yet. |
 | 8 | **ECC's deck says GO auctions are "once a month".** EPEX runs two a month (2025 and 2026). Presumably the deck is out of date; confirm nothing else on that slide changed. | Uses EPEX's calendar. |
-| 9 | **Excess below zero (the tool and the deck disagree).** ECC's tool does not floor the excess collateral at zero (VBA 5483: collateral − base exposure − open risk, no `Max` anywhere). A shortfall would then push the evening limit below the base limit. The deck's p.8 example needs the floor: Wednesday 18:00 = 1 with collateral 10, reserve 2 and exposure 9. Confirm the floor applies in production. | Floors at zero, following the deck (`ecc_examples.test.js`). |
-| 10 | **GO key share on other days.** In ECC's tool a GO market only takes part in the calculation on the business day before a GO trading day. On the other days its key share of the excess goes to no market (VBA 5534, no redistribution). Is that how production works, or do the other markets share it? | Not modelled (GO left out for now). |
+| 9 | **GO key share on other days.** In ECC's tool a GO market only takes part in the calculation on the business day before a GO trading day. On the other days its key share of the excess goes to no market (VBA 5534, no redistribution). Is that how production works, or do the other markets share it? | Not modelled (GO left out for now). |
 
-Questions 5–8 and 10 are about GO auctions, which are left out for now. `docs/model.md` records what ECC's tool does for them.
+Questions 5–9 are about GO auctions, which are left out for now. `docs/model.md` records what ECC's tool does for them.
+
+## Settled without asking ECC
+
+- **Excess below zero (26 Sep 2026, Niki).** The excess collateral is floored at zero, following ECC's deck (p.8: Wednesday 18:00 = 1 with collateral 10, reserve 2, exposure 9). We don't ask ECC about it. ECC's tool does not floor it (VBA 5483, no `Max` anywhere), which would push evening limits below the base limit and even below zero (continuous −€13k in the `shortCollat` test case). The two readings only differ from the evening update until the next morning's settlement; next-morning limits are the same as long as collateral covers the reserved base limits.
