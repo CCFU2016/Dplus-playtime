@@ -140,6 +140,10 @@
   .when li b { font-weight: 600; }
   .when li span { color: var(--ink-2); }
   @media (max-width: 560px) { .when li { grid-template-columns: minmax(0, 1fr); } }
+  .beside { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .beside { grid-template-columns: minmax(0, 1fr); } }
+  .core { align-content: start; }
+  .core dd { text-align: right; }
   .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
   @media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
   dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; font-size: 13.5px; }
@@ -349,9 +353,16 @@
       <div class="legend" id="legend"></div>
     </div>
 
-    <div class="panel card">
-      <h3>What the money is for</h3>
-      <div class="table-wrap"><table id="purposes"></table></div>
+    <div class="beside">
+      <div class="panel card">
+        <h3>What the money is for</h3>
+        <div class="table-wrap"><table id="purposes"></table></div>
+      </div>
+      <div class="panel card core">
+        <h3>Core assumptions</h3>
+        <dl id="core"></dl>
+        <a class="linkbtn no-print" href="#assumed-card">All assumptions and sources</a>
+      </div>
     </div>
 
     <div class="panel card">
@@ -374,7 +385,7 @@
 
     <div class="two">
       <div class="panel card"><h3 id="answers-title">Your answers</h3><dl id="answers"></dl><div class="no-print"><button type="button" class="linkbtn" id="edit2">Change my answers</button></div></div>
-      <div class="panel card"><h3>What we assumed</h3><ul class="plain" id="assumed"></ul></div>
+      <div class="panel card" id="assumed-card"><h3>What we assumed</h3><ul class="plain" id="assumed"></ul></div>
     </div>
 
     <div class="panel card">
@@ -590,7 +601,7 @@
     if (ans.tough) sub.push('A tough week here means prices at ' + eurP(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.');
     $('hero-sub').textContent = sub.join(' ');
     renderPurposes(cols, primary); renderBars(cols); renderWhen(primary, s, runs.length > 1); renderTopups(primary);
-    renderSens(primary.full, s); renderAnswers(s); renderAssumed(primary.full, s);
+    renderSens(primary.full, s); renderAnswers(s); renderAssumed(primary.full, s); renderCore(primary.full, s);
     window.scrollTo(0, 0);
   }
   function describe(p, primary) {
@@ -696,6 +707,18 @@
     add('Portfolio', have.length ? have.join(', ').replace(/^./, function (c) { return c.toUpperCase(); }) + ', ' + fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : '') : 'None');
     add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
     add('Trading collateral', ans.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
+    add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
+  }
+  // The few assumptions that move the estimate most, next to what the money is for; the full list is further down.
+  function renderCore(r, s) {
+    var dl = clear($('core')), x = r.expected, add = function (k, v) { dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, v)); };
+    add('Price', eurP(s.price) + '/MWh' + (ans.tough ? ', tough week ' + eurP(s.stressPrice) : ''));
+    add('Weekends and holidays', { yes: 'Traded', no: 'Not traded', both: 'Shown both ways' }[ans.weekend]);
+    add('Held over the 16:00 cut', Math.round(s.carryShare * 100) + '% of a day\'s buys');
+    if (ans.type === 'trader') add('Buys offset at the peak', Math.round(s.s * 100) + '%');
+    add('Split continuous / auctions', x.ecc.key + '% / ' + (100 - x.ecc.key) + '%');
+    add('BRP collateral', (x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027') + ', no minimum');
+    add('Collateral at ECC', ans.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
     add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
   }
   function renderAssumed(r, s) {
