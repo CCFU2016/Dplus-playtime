@@ -32,7 +32,7 @@ with sync_playwright() as pw:
     href = pg.get_attribute('#purposes a.detail', 'href') or ''
     check(href.startswith('../../standalone/direct-plus-limit-calculator.html#w='), 'Detailed calculation links to the limit calculator: ' + href[:60])
     w = dec(re.search(r'#w=([^&]+)', href).group(1))
-    pg.click('#purposes a.detail'); pg.wait_for_timeout(1200)
+    pg.click('#purposes a.detail'); pg.wait_for_selector('#handoff', state='visible', timeout=15000); pg.wait_for_timeout(300)
     check(pg.is_visible('#handoff') and 'From your wallet estimate' in pg.inner_text('#handoff'), 'the limit calculator says the values come from the wallet')
     check(pg.eval_on_selector('#mode-fwd', 'n => n.checked') and money(pg.input_value('#collateral')) == w['C'] and pg.input_value('#split') == str(w['key']),
           'prefilled: limits from €%s collateral at %s / %s' % (w['C'], w['key'], 100 - w['key']))
@@ -44,13 +44,13 @@ with sync_playwright() as pw:
     check(w['day'] in pg.inner_text('#day-tabs') or pg.eval_on_selector('#day-tabs [aria-selected="true"], #day-tabs .on', 'n => !!n') , 'the day that sets the amount is selected')
 
     # 2. Back
-    pg.click('#handoff-back'); pg.wait_for_timeout(1500)
+    pg.click('#handoff-back'); pg.wait_for_selector('#results', state='visible', timeout=15000); pg.wait_for_timeout(500)
     check(pg.is_visible('#results') and pg.is_hidden('#wizard') and pg.inner_text('#hero-value') == hero and pg.is_visible('#example'), 'Back reopens the same estimate (still the example): ' + hero)
 
     # 3. A changed setup taken back
-    pg.click('#purposes a.detail'); pg.wait_for_timeout(1200)
+    pg.click('#purposes a.detail'); pg.wait_for_selector('#handoff', state='visible', timeout=15000); pg.wait_for_timeout(300)
     pg.fill('#collateral', str(w['C'] - 10000)); pg.wait_for_timeout(400)
-    pg.click('#handoff-use'); pg.wait_for_timeout(1500)
+    pg.click('#handoff-use'); pg.wait_for_selector('#results', state='visible', timeout=15000); pg.wait_for_timeout(500)
     note = pg.inner_text('#purposes .carried') if pg.query_selector('#purposes .carried') else ''
     check(pg.is_visible('#results') and abs(ecc_value(pg) - (w['C'] - 10000)) <= 500, 'the wallet uses the carried collateral: %d' % ecc_value(pg))
     check('From your limit calculator' in note and pg.query_selector('#purposes .carried.short') is not None and 'may run out' in note, 'short by €10,000: flagged')
