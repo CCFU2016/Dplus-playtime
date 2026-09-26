@@ -540,6 +540,9 @@ Everything is then computed from the real series.
 
 ## 7. Presets (for approval: Q5)
 
+All three trade the equivalent of **about 50 GWh a year** (buys and sells on both markets, every day: about 137 MWh a day;
+Niki, 26 Sep 2026), so they compare like with like.
+
 Every value shows as "assumed" on the page. The prices are placeholders to check against current NL data before
 release; I haven't verified them against market data.
 
@@ -548,15 +551,15 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 
 | Input | Value | Why |
 |---|---|---|
-| Continuous, buy / sell | 60 / 60 MWh a day | About 2.5 MW each way around the clock: a small desk that ends each day flat |
-| Auctions, buy / sell | 15 / 15 MWh a day | A day-ahead position closed later |
+| Continuous, buy / sell | 55 / 55 MWh a day | About 2.3 MW each way around the clock: a small desk that ends each day flat |
+| Auctions, buy / sell | 14 / 14 MWh a day | A day-ahead position closed later |
 | Auction buy limit price | €150/MWh | Bids capped at a price the desk would really pay, not the market maximum |
 | Weekend and holiday trading | on | The cautious choice: weekend periods set the Friday limit |
 | Typical / stress price | €100 / €250 per MWh | A normal day and a spike day (normal price €100: Niki, 26 Sep 2026; it was €80) |
 | Stress 2–3-month average | €150 (1.5 × the normal price) | Security uses averages, which move less than spot |
 | Negative-price hours | 5%, at −€20 average | A few hundred negative hours a year |
 | s | 34% | Niki, 26 Sep 2026: buys and sells are mixed through the day, so the largest open position is assumed to be 66% of the day's buys (first 25%, then set to 66% / 33% for the two answers; the brief's cautious default is 0) |
-| Resting orders over 16:00 / net buying 16:00–update | €2,500 / €1,250 | A few open orders and some trading while ECC recalculates |
+| Resting orders over 16:00 / net buying 16:00–update | €2,300 / €1,150 | A few open orders and some trading while ECC recalculates |
 | Imbalance | 0.5% of traded volume, no bias, cv 0.5 | Only partial fills and slips at gate closure |
 | State-2 share / gap | 5% / €150 | Dual pricing is rare but expensive |
 | Bad days | 1 (normal week), 2 (tough week), €100 lost per MWh of open position | Niki, 26 Sep 2026: room for one or two bad days, not a bad week (section 3); traders only, the aggregator and asset presets set 0. The old stress share (5% of buys lost every day) is off |
@@ -567,9 +570,9 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 
 | Input | Value | Why |
 |---|---|---|
-| Nominated in from other BRPs | 150 MWh a day | Flex bought bilaterally from customers' assets |
-| Auctions, buy / sell | 0 / 120 MWh a day | Sells most of the flex day-ahead |
-| Continuous, buy / sell | 10 / 40 MWh a day | Sells the rest intraday and corrects |
+| Nominated in from other BRPs | 121 MWh a day | Flex bought bilaterally from customers' assets |
+| Auctions, buy / sell | 0 / 97 MWh a day | Sells most of the flex day-ahead |
+| Continuous, buy / sell | 8 / 32 MWh a day | Sells the rest intraday and corrects |
 | Non-delivery | 5% of nominated volume | By contract the aggregator carries it, as a short imbalance |
 | Imbalance | 3% of nominated volume plus non-delivery, bias short, cv 0.5 | Nominations are forecasts |
 | Weekend trading, prices | as for the financial trader | |
@@ -580,8 +583,8 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 | Input | Value | Why |
 |---|---|---|
 | Connections | one telemetry-metered connection, 30 MW (class 26–50, counts 26) | The park joins the Direct+ BRP |
-| Auctions, buy / sell | 0 / 90 MWh a day | Day-ahead sale of forecast output |
-| Continuous, buy / sell | 20 / 20 MWh a day | Battery shifting and forecast corrections |
+| Auctions, buy / sell | 0 / 95 MWh a day | Day-ahead sale of forecast output |
+| Continuous, buy / sell | 21 / 21 MWh a day | Battery shifting and forecast corrections |
 | Imbalance | 5% of production, bias long 0.2, cv 0.5 | Forecast error, slightly more output than sold |
 | Reconciliation D | monthly mean €0, σ €300 | Telemetry-metered connections reconcile little |
 | Reconciliation C | €0 | No profile connections (Q15) |

@@ -58,7 +58,7 @@ with sync_playwright() as pw:
     js = pg.evaluate('''() => { const a = WalletCalc.defaultAnswers('trader'); a.week = document.getElementById('week').value; const r = WalletCalc.compute(WalletCalc.fromAnswers(a)); return '€' + (Math.round(r.expected.total / 1000) * 1000).toLocaleString('en-GB'); }''')
     check(js in total, 'trader total equals the calculation for the same answers, rounded to €1,000: ' + js)
     core = pg.inner_text('#core')
-    check(all(k in core for k in ['Price', '€100', 'Bad day', '€100/MWh lost on about 55 MWh open', 'Held over the 16:00 cut', '30%', 'Largest open M7 position', '66% of a day', 'about 40 MWh', 'about 23 MWh', '60 buy / 60 sell MWh a day', '15 buy / 15 sell MWh a day', 'Split continuous / auctions', 'BRP collateral']), 'core assumptions sit next to what the money is for: ' + core.replace(chr(10), ' | '))
+    check(all(k in core for k in ['Price', '€100', 'Bad day', '€100/MWh lost on about 50 MWh open', 'Held over the 16:00 cut', '30%', 'Largest open M7 position', '66% of a day', 'about 36 MWh', 'about 21 MWh', '55 buy / 55 sell MWh a day', '14 buy / 14 sell MWh a day', 'Volume a year', 'about 50 GWh traded', 'Split continuous / auctions', 'BRP collateral']), 'core assumptions sit next to what the money is for: ' + core.replace(chr(10), ' | '))
     box = lambda sel: pg.eval_on_selector(sel, 'n => { const r = n.getBoundingClientRect(); return [r.top, r.left]; }')
     pt, cr = box('#purposes'), box('#core')
     check(cr[1] > pt[1] and abs(cr[0] - pt[0]) < 80, 'on a wide screen they are side by side')

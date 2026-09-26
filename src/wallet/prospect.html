@@ -847,6 +847,8 @@
   function renderCore(r, s) {
     var dl = clear($('core')), x = r.expected, add = function (k, v) { var d = el('div'); d.appendChild(el('dt', null, k)); d.appendChild(el('dd', null, v)); dl.appendChild(d); };
     var mwh = function (v) { return fmt.format(Math.round(v)) + ' MWh'; }, bs = function (b, x) { return fmt.format(b) + ' buy / ' + fmt.format(x) + ' sell MWh a day'; };
+    var perYear = (s.contBuy + s.contSell + s.aucBuy + s.aucSell) * (s.weekend ? 365 : 255) / 1000;   // 255: about the business days in a year
+    add('Volume a year', 'about ' + (perYear >= 10 ? fmt.format(Math.round(perYear)) : perYear.toFixed(1)) + ' GWh traded');
     add('M7 continuous', bs(s.contBuy, s.contSell));
     add('MATS auctions', bs(s.aucBuy, s.aucSell));
     if (ans.type === 'aggregator') add('Nominated from other BRPs', mwh(s.nominatedIn) + ' a day');

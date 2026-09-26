@@ -107,19 +107,20 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population',
     debitLagWeeks: 4
   };
-  // Presets approved by Direct+ "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page. The trader was
-  // resized the same day to about 150 MWh a day, like the other two, so the examples compare like with like.
+  // Presets approved by Direct+ "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page. All three trade the
+  // equivalent of about 50 GWh a year (buys and sells on both markets, every day): about 137 MWh a day (Direct+ decision,
+  // 26 Sep 2026), so the examples compare like with like.
   var PRESETS = {
     trader: { label: 'Financial trader', note: 'A small desk that ends each day flat.',
-      values: { contBuy: 60, contSell: 60, aucBuy: 15, aucSell: 15, aucLimitPrice: 150, restingCont: 2500, eveningCont: 1250, carryShare: 0.3,
+      values: { contBuy: 55, contSell: 55, aucBuy: 14, aucSell: 14, aucLimitPrice: 150, restingCont: 2300, eveningCont: 1150, carryShare: 0.3,
                 s: 0.34,   // largest open position 66% of the day's buys: buys and sells mixed through the day (Direct+ decision, 26 Sep 2026)
                 imbShare: 0.005, imbBase: 'traded', bias: 0 } },
     aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
-      values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000, carryShare: 0.3,
+      values: { contBuy: 8, contSell: 32, aucBuy: 0, aucSell: 97, nominatedIn: 121, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000, carryShare: 0.3,
                 badDays: 0, badDaysStress: 0,   // buying is a planned cost, paid through daily settlement, not a trading loss (Direct+ decision, 26 Sep 2026)
                 imbShare: 0.03, imbBase: 'nominated', bias: 0.3 } },
     asset: { label: 'Asset-controlling party', note: 'A 30 MW solar park with a 10 MW battery.',
-      values: { contBuy: 20, contSell: 20, aucBuy: 0, aucSell: 90, restingCont: 2000, eveningCont: 1000, carryShare: 0.3, connectionsMW: '30',
+      values: { contBuy: 21, contSell: 21, aucBuy: 0, aucSell: 95, restingCont: 2000, eveningCont: 1000, carryShare: 0.3, connectionsMW: '30',
                 badDays: 0, badDaysStress: 0,   // as for the aggregator: consumption and battery charging are planned costs
                 imbShare: 0.05, imbBase: 'production', bias: -0.2, shiftShare: 1, smartMean: 0, smartSd: 300 } }
   };

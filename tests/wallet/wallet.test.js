@@ -36,8 +36,8 @@ s.reading = 'flat';
 T.money(C.compute(s).expected.total, 229994.25, 'on your own as a BRP, flat €96,000 reading');
 // Marginal amounts from members with volume or connections.
 const ag = C.compute(C.preset('aggregator')).expected.brp, as = C.compute(C.preset('asset')).expected.brp;
-T.money(ag.security, 150 * 100 * 2, 'aggregator: 150 MWh a day with one counterparty, 2 × A at €100, no floors');
-T.money(as.security, 90 * 100 + 26 * 24 * 100, 'asset: A + B = 90 × 100 + 26 MW × 24 × 100');
+T.money(ag.security, 121 * 100 * 2, 'aggregator: 121 MWh a day with one counterparty, 2 × A at €100, no floors');
+T.money(as.security, 95 * 100 + 26 * 24 * 100, 'asset: A + B = 95 × 100 + 26 MW × 24 × 100');
 // A marginal share is never below €0, even when the draft's components are negative.
 s = C.preset('asset'); s.week = '2027-10-04'; s.bias = -1; s.cv = 0.1; s.imbShare = 0.5;
 let neg = C.compute(s).expected.brp;
@@ -91,11 +91,11 @@ Object.keys(C.PRESETS).forEach(id => {
 });
 let a = C.defaultAnswers('trader'); a.markets = 'continuous';
 let q = C.fromAnswers(a);
-T.eq([q.aucBuy, q.aucSell, q.contBuy], [0, 0, 60], 'continuous only: no auction volumes');
-a = C.defaultAnswers('trader'); a.contBuy = 120;
-T.eq([C.fromAnswers(a).restingCont, C.fromAnswers(a).eveningCont], [5000, 2500], 'resting orders and evening buying scale with continuous buying');
-T.eq(C.strategyVolumes('aggregator', 'flat'), { cont: { buy: 25, sell: 25 }, auc: { buy: 60, sell: 60 } }, 'a flat strategy splits volumes evenly');
-T.eq(C.strategyVolumes('trader', 'buyer'), { cont: { buy: 108, sell: 12 }, auc: { buy: 27, sell: 3 } }, 'a buyer strategy buys 90%');
+T.eq([q.aucBuy, q.aucSell, q.contBuy], [0, 0, 55], 'continuous only: no auction volumes');
+a = C.defaultAnswers('trader'); a.contBuy = 110;
+T.eq([C.fromAnswers(a).restingCont, C.fromAnswers(a).eveningCont], [4600, 2300], 'resting orders and evening buying scale with continuous buying (twice the buying, twice as much)');
+T.eq(C.strategyVolumes('aggregator', 'flat'), { cont: { buy: 20, sell: 20 }, auc: { buy: 49, sell: 49 } }, 'a flat strategy splits volumes evenly (97 MWh: 48.5 each, rounded)');
+T.eq(C.strategyVolumes('trader', 'buyer'), { cont: { buy: 99, sell: 11 }, auc: { buy: 25, sell: 3 } }, 'a buyer strategy buys 90%');
 a = C.defaultAnswers('asset'); a.capacityMW = 45; a.sites = 3;
 q = C.fromAnswers(a);
 T.eq([q.connectionsMW, q.smartSd, q.shiftShare], ['15, 15, 15', 450, 1], 'portfolio: equal sites, reconciliation spread from capacity, production with consumption shifts between periods');
@@ -110,9 +110,10 @@ T.eq([C.fromAnswers(a).weekend, C.fromAnswers(Object.assign(a, { weekend: 'both'
 a = C.defaultAnswers('trader'); a.carry = 'none';
 T.money(C.compute(C.fromAnswers(a)).expected.settlement.float, 0, 'no positions held over 16:00: no float');
 
-// The presets compare like with like: each moves about 150 MWh a day, and no wallet is an outlier.
+// The presets compare like with like: each trades about 50 GWh a year, and no wallet is an outlier.
 const vol = id => { const v = C.preset(id); return v.contBuy + v.contSell + v.aucBuy + v.aucSell; };
-T.eq(['trader', 'aggregator', 'asset'].map(vol), [150, 170, 130], 'presets: MWh a day traded');
+T.eq(['trader', 'aggregator', 'asset'].map(vol), [138, 137, 137], 'presets: MWh a day traded, about 50 GWh a year each');
+T.ok(['trader', 'aggregator', 'asset'].every(id => Math.abs(vol(id) * 365 / 1000 - 50) < 0.5), 'presets: 50 GWh a year within 0.5 GWh');
 T.eq([C.preset('trader').s, C.preset('aggregator').s, C.preset('asset').s], [0.34, 0, 0], 'the trader assumes its largest open position is 66% of its buys');
 const na = C.defaultAnswers('trader');
 T.eq([na.netting, C.fromAnswers(na).s], ['mixed', 0.34], 'trader answers: buys and sells mixed by default, largest open position 66%');
@@ -136,9 +137,9 @@ T.ok(cr.baseLimits.cont.bd === 50000 && cr.fixed.need > own.C, 'carried base lim
 T.eq(C.compute(C.preset('trader')).expected.ecc.fixed, null, 'without a carried amount nothing is fixed');
 // Bad days (Direct+ decision, 26 Sep 2026): room for 1 bad day (normal) or 2 (tough): open position × €100/MWh.
 const bt = C.compute(C.preset('trader'));
-T.money(bt.expected.settlement.openMWh, 0.66 * 60 + 15, 'trader: open position = 66% of 60 MWh M7 buys + 15 MWh auction buys');
-T.money(bt.expected.settlement.badDay, 54.6 * 100, 'trader, normal week: one bad day, 54.6 MWh × €100 = €5,460');
-T.money(bt.stress.settlement.badDay, 2 * 54.6 * 100, 'trader, tough week: two bad days, €10,920');
+T.money(bt.expected.settlement.openMWh, 0.66 * 55 + 14, 'trader: open position = 66% of 55 MWh M7 buys + 14 MWh auction buys');
+T.money(bt.expected.settlement.badDay, 50.3 * 100, 'trader, normal week: one bad day, 50.3 MWh × €100 = €5,030');
+T.money(bt.stress.settlement.badDay, 2 * 50.3 * 100, 'trader, tough week: two bad days, €10,060');
 T.money(bt.stress.settlement.flows, 0, 'no loss every day any more in a tough week');
 const ba = C.compute(C.preset('asset')).expected.settlement;
 T.money(ba.badDay, 0, 'asset owner: buying (battery, consumption) is a planned cost, no bad days');
