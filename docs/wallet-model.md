@@ -814,12 +814,12 @@ Everything else the brief states, I found in the sources as described:
 ## 12. The prospect questionnaire (`src/wallet/prospect.html`)
 
 A shareable page for prospects, built into `dist/wallet/direct-plus-wallet-prospect.html`. It asks seven questions
-and shows a plain-English estimate: what the money is for, where it sits in the wallet, when it's needed, what moves
+(Niki asked for portfolio questions rather than per-connection BRP details) and shows a plain-English estimate: what the money is for, where it sits in the wallet, when it's needed, what moves
 it, the answers, the assumptions and the sources. It can be printed or saved as a PDF.
 
 - **Calculation:** the same as the calculator (`WalletCalc.compute`).
 - **What it leaves out:** internal references, tags and the "on your own as a BRP" comparison (W11).
-- **Rounding:** the headline is rounded to €1,000; the table shows whole euros.
+- **Rounding:** every amount is shown to the nearest €1,000 (on the calculator page too): these are estimates, not exact figures (Niki, 26 Sep 2026).
 
 Answers map onto settings in `wallet.js` (`defaultAnswers`, `strategyVolumes`, `fromAnswers`). With each type's
 default answers the settings equal that type's preset exactly, and `tests/wallet/wallet.test.js` checks this.
@@ -834,7 +834,7 @@ default answers the settings equal that type's preset exactly, and `tests/wallet
 | Held over the 16:00 cut | Settlement float share: none 0, some 30%, most 70% |
 | Prices | Typical and stress price. The stress two-to-three-month average is 1.5 × typical (ASSUMPTION) |
 | Highest auction bid | `aucLimitPrice` (required when buying in auctions) |
-| Connections | Capacities for the current rule's B. Reconciliation spread of €10 per MW a month (ASSUMPTION), in D for smart-meter and telemetry, in C for profile |
+| Portfolio (solar, wind, battery, flexible demand, none), total capacity, number of sites | Capacity split over equal sites (ASSUMPTION) for the current rule's B. Reconciliation spread of €10 per MW a month (ASSUMPTION), in D: telemetry or smart meter, no profile metering (Q15). A battery means buying and selling in different periods (`shiftShare` 1). Solar or wind pre-selects "depends on a forecast" on the next question, battery or demand "normal" (`suggestBalance`); the prospect can change it |
 | How close, which way | Imbalance 0.5%, 3% or 5% of volume; bias 0, +0.3 (short) or −0.2 (long) |
 | Top-ups | Top-up rhythm (Direct+ accepts cash only, so there is no question about guarantees) |
 

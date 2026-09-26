@@ -245,11 +245,25 @@
       </fieldset>
 
       <fieldset class="step" data-step="5" hidden>
-        <legend><h2>Will you connect assets to the Direct+ BRP?</h2></legend>
-        <p class="why">Large connections count towards the BRP collateral under TenneT's rules, and metered volumes are reconciled months later.</p>
-        <div id="conns" class="q"></div>
-        <div><button type="button" class="linkbtn" id="add-conn">Add a connection</button></div>
-        <p class="hint">Leave this empty if you have no assets in the Direct+ BRP. Under TenneT's rule in force, connections below 2 MW don't count.</p>
+        <legend><h2>What's in your portfolio?</h2></legend>
+        <p class="why">Assets that join the Direct+ BRP add to the BRP collateral, and how well you can forecast them drives imbalance. Tick everything that applies.</p>
+        <div class="q"><span class="ql">Assets that join the Direct+ BRP</span>
+          <div class="choices cols">
+            <div class="choice"><input type="checkbox" name="asset" id="a-solar" value="solar"><label for="a-solar"><b>Solar</b></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-wind" value="wind"><label for="a-wind"><b>Wind</b></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-battery" value="battery"><label for="a-battery"><b>Battery storage</b></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-demand" value="demand"><label for="a-demand"><b>Flexible demand</b><span>For example an industrial process or heat pumps.</span></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-none" value="none"><label for="a-none"><b>None</b><span>I only trade.</span></label></div>
+          </div>
+        </div>
+        <div class="q" id="size-q"><span class="ql">How big is it?</span>
+          <div class="nums">
+            <div class="num"><label for="capacityMW">Total capacity</label><div class="in"><input type="number" id="capacityMW" min="0" step="1" data-a="capacityMW"><span class="unit">MW</span></div></div>
+            <div class="num"><label for="sites">Number of sites</label><div class="in"><input type="number" id="sites" min="1" step="1" data-a="sites"><span class="unit">sites</span></div></div>
+          </div>
+          <p class="hint">Under TenneT's rule in force, sites of 2 MW or more count towards the BRP collateral.</p>
+        </div>
+        <p class="note" id="pf-note" hidden></p>
       </fieldset>
 
       <fieldset class="step" data-step="6" hidden>
@@ -1311,6 +1325,15 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var LEAN = { neither: 0, short: 0.3, long: -0.2 };                      // bias
   var CARRY = { none: 0, some: 0.3, most: 0.7 };                          // purchases paid before their sale
   var RECONCILIATION_SD_PER_MW = 10;                                      // ASSUMPTION: € a month per MW connected
+  var ASSETS = ['solar', 'wind', 'battery', 'demand'];                   // portfolio answers
+  var NO_ASSETS = { solar: false, wind: false, battery: false, demand: false };
+  // How closely a portfolio can match its positions: weather-driven output needs a forecast.
+  function suggestBalance(type, portfolio) {
+    var pf = portfolio || NO_ASSETS;
+    if (pf.solar || pf.wind) return 'forecast';
+    if (pf.battery || pf.demand) return 'normal';
+    return type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast';
+  }
   // Buy and sell volumes (MWh a day) that a trading strategy suggests, starting from the member type's preset.
   function strategyVolumes(type, strategy) {
     var v = PRESETS[type].values, out = {};
@@ -1332,7 +1355,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       contBuy: vol.cont.buy, contSell: vol.cont.sell, aucBuy: vol.auc.buy, aucSell: vol.auc.sell,
       carry: type === 'trader' ? 'some' : 'none', nominatedIn: v.nominatedIn || 0, nonDelivery: v.nonDelivery || 0,
       price: BASE.price, stressPrice: BASE.stressPrice, aucLimitPrice: v.aucLimitPrice != null ? v.aucLimitPrice : BASE.aucLimitPrice,
-      connections: type === 'asset' ? [{ mw: 30, metering: 'telemetry' }] : [],
+      portfolio: type === 'asset' ? { solar: true, wind: false, battery: true, demand: false } : { solar: false, wind: false, battery: false, demand: false },
+      capacityMW: type === 'asset' ? 30 : 0, sites: type === 'asset' ? 1 : 0,
       balance: type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast',
       lean: type === 'aggregator' ? 'short' : type === 'asset' ? 'long' : 'neither',
       replenish: 'none', week: BASE.week
@@ -1351,10 +1375,15 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     s.carryShare = CARRY[a.carry] || 0;
     s.nominatedIn = a.type === 'aggregator' ? +a.nominatedIn || 0 : 0; s.nonDelivery = a.type === 'aggregator' ? +a.nonDelivery || 0 : 0;
     s.imbShare = BALANCE[a.balance]; s.imbBase = IMB_BASE[a.type]; s.bias = LEAN[a.lean];
-    var conns = (a.connections || []).filter(function (c) { return +c.mw > 0; });
-    s.connectionsMW = conns.map(function (c) { return +c.mw; }).join(', ');
-    s.profileMean = 0; s.smartMean = 0; s.profileSd = 0; s.smartSd = 0;
-    conns.forEach(function (c) { if (c.metering === 'profile') s.profileSd += RECONCILIATION_SD_PER_MW * c.mw; else s.smartSd += RECONCILIATION_SD_PER_MW * c.mw; });
+    // Portfolio: the capacity joining the Direct+ BRP, split over equal sites (ASSUMPTION), metered by telemetry or smart
+    // meter (reconciliation D; no profile metering for new connections after cSMA, Q15). A battery buys and sells in
+    // different settlement periods.
+    var pf = a.portfolio || NO_ASSETS, any = ASSETS.some(function (k) { return pf[k]; });
+    var cap = any ? +a.capacityMW || 0 : 0, n = any && cap > 0 ? Math.max(1, Math.round(+a.sites || 1)) : 0, sites = [];
+    for (var i = 0; i < n; i++) sites.push(Math.round(cap / n * 10) / 10);
+    s.connectionsMW = sites.join(', ');
+    s.profileMean = 0; s.smartMean = 0; s.profileSd = 0; s.smartSd = RECONCILIATION_SD_PER_MW * cap;
+    s.shiftShare = pf.battery ? 1 : 0;
     s.replenish = a.replenish;
     if (a.week) s.week = a.week;
     return s;
@@ -1483,7 +1512,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   }
 
   return { GROUPS: GROUPS, BASE: BASE, PRESETS: PRESETS, SEGMENTS: SEGMENTS, preset: preset, scenario: scenario, compute: compute,
-           strategyVolumes: strategyVolumes, defaultAnswers: defaultAnswers, fromAnswers: fromAnswers };
+           strategyVolumes: strategyVolumes, defaultAnswers: defaultAnswers, fromAnswers: fromAnswers, suggestBalance: suggestBalance };
 })(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
    typeof WalletBehaviour !== 'undefined' ? WalletBehaviour : require('./behaviour.js'),
    typeof WalletSettlement !== 'undefined' ? WalletSettlement : require('./settlement.js'),
@@ -1522,7 +1551,9 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     setRadio('type', ans.type); setRadio('markets', ans.markets); setRadio('weekend', ans.weekend ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
     setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('replenish', ans.replenish);
     Array.prototype.forEach.call(form.querySelectorAll('[data-a]'), function (i) { var v = ans[i.getAttribute('data-a')]; i.value = v == null ? '' : (i.hasAttribute('data-pct') ? Math.round(v * 1000) / 10 : v); });
-    renderConns(); visibility();
+    ASSET_KEYS.forEach(function (k) { $('a-' + k).checked = !!ans.portfolio[k]; });
+    $('a-none').checked = !anyAsset();
+    visibility();
   }
   function visibility() {
     Array.prototype.forEach.call(form.querySelectorAll('[data-market]'), function (n) {
@@ -1530,9 +1561,20 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       n.style.display = n.hidden ? 'none' : '';
     });
     Array.prototype.forEach.call(form.querySelectorAll('[data-type]'), function (n) { n.style.display = ans.type === n.getAttribute('data-type') ? '' : 'none'; });
+    $('size-q').style.display = anyAsset() ? '' : 'none';
   }
+  var ASSET_KEYS = ['solar', 'wind', 'battery', 'demand'];
+  function anyAsset() { return ASSET_KEYS.some(function (k) { return ans.portfolio[k]; }); }
   form.addEventListener('change', function (e) {
     var t = e.target, name = t.name;
+    if (name === 'asset') {
+      if (t.value === 'none') { if (t.checked) ASSET_KEYS.forEach(function (k) { ans.portfolio[k] = false; }); }
+      else ans.portfolio[t.value] = t.checked;
+      if (anyAsset() && !(ans.capacityMW > 0)) { ans.capacityMW = 10; ans.sites = 1; }
+      var sug = C.suggestBalance(ans.type, ans.portfolio);
+      if (sug !== ans.balance) { ans.balance = sug; var pn = $('pf-note'); pn.textContent = 'We set the next question, how closely you match your positions, to fit this portfolio. Change it there if needed.'; pn.hidden = false; }
+      fill(); return;
+    }
     if (t.type === 'radio') {
       if (name === 'type') {
         var week = ans.week; ans = C.defaultAnswers(t.value); ans.week = week; fill();
@@ -1557,26 +1599,6 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   });
   function note(text) { var n = $('vol-note'); n.textContent = text; n.hidden = false; }
 
-  // connections
-  function renderConns() {
-    var box = clear($('conns'));
-    if (!ans.connections.length) box.appendChild(el('p', 'hint', 'No connections added.'));
-    ans.connections.forEach(function (c, i) {
-      var row = el('div', 'conn');
-      var n = el('div', 'num'), lab = el('label', null, 'Connection ' + (i + 1) + ': capacity'), inw = el('div', 'in'), inp = el('input');
-      inp.type = 'number'; inp.min = '0'; inp.step = '1'; inp.value = c.mw; inp.id = 'conn-' + i; lab.htmlFor = inp.id;
-      inp.addEventListener('input', function () { c.mw = parseFloat(inp.value) || 0; });
-      inw.appendChild(inp); inw.appendChild(el('span', 'unit', 'MW')); n.appendChild(lab); n.appendChild(inw); row.appendChild(n);
-      var sel = el('select'); [['telemetry', 'Telemetry-metered'], ['smart', 'Smart meter'], ['profile', 'Profile']].forEach(function (o) { var op = el('option', null, o[1]); op.value = o[0]; sel.appendChild(op); });
-      sel.value = c.metering; sel.setAttribute('aria-label', 'Connection ' + (i + 1) + ': metering');
-      sel.addEventListener('change', function () { c.metering = sel.value; });
-      row.appendChild(sel);
-      var rm = el('button', 'linkbtn', 'Remove'); rm.type = 'button'; rm.addEventListener('click', function () { ans.connections.splice(i, 1); renderConns(); });
-      row.appendChild(rm);
-      box.appendChild(row);
-    });
-  }
-  $('add-conn').addEventListener('click', function () { ans.connections.push({ mw: 10, metering: 'telemetry' }); renderConns(); });
 
   // ---------- steps ----------
   function validate(s) {
@@ -1591,6 +1613,10 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       if (!(ans.price > 0) || !(ans.stressPrice > 0)) return 'Please fill in both prices.';
       if (ans.stressPrice < ans.price) return 'The tough-week price should be at least the normal price.';
       if (ans.markets !== 'continuous' && ans.aucBuy > 0 && !(ans.aucLimitPrice > 0)) return 'Please fill in the highest price you\'d bid in auctions.';
+    }
+    if (s === 5 && anyAsset()) {
+      if (!(ans.capacityMW > 0)) return 'Please fill in the total capacity.';
+      if (!(ans.sites >= 1) || Math.round(ans.sites) !== ans.sites) return 'Please fill in the number of sites (a whole number, at least 1).';
     }
     return null;
   }
@@ -1724,7 +1750,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     add('Held over the 16:00 cut', { none: 'No', some: 'About a third of buys', most: 'About two thirds of buys' }[ans.carry]);
     add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh');
     if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eurP(s.aucLimitPrice) + '/MWh');
-    add('Connections', s.connectionsMW ? s.connectionsMW + ' MW' : 'None');
+    var names = { solar: 'solar', wind: 'wind', battery: 'battery storage', demand: 'flexible demand' }, have = ASSET_KEYS.filter(function (k) { return ans.portfolio[k]; }).map(function (k) { return names[k]; });
+    add('Portfolio', have.length ? have.join(', ').replace(/^./, function (c) { return c.toUpperCase(); }) + ', ' + fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : '') : 'None');
     add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
     add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
   }
@@ -1736,7 +1763,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
     add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum.');
     add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions. A tough week takes a high but not extreme imbalance week.');
-    if (s.connectionsMW) add('Reconciliation of metered volumes is assumed to vary by about €' + 10 + ' per MW a month.');
+    if (s.connectionsMW) add('Your capacity is spread evenly over your sites, all metered by telemetry or smart meter; reconciliation of metered volumes varies by about €10 per MW a month.');
     add('Nothing nets between Direct+ members: the estimate is for you alone. Fees and VAT are not included.');
   }
 

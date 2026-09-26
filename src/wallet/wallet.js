@@ -125,6 +125,15 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var LEAN = { neither: 0, short: 0.3, long: -0.2 };                      // bias
   var CARRY = { none: 0, some: 0.3, most: 0.7 };                          // purchases paid before their sale
   var RECONCILIATION_SD_PER_MW = 10;                                      // ASSUMPTION: € a month per MW connected
+  var ASSETS = ['solar', 'wind', 'battery', 'demand'];                   // portfolio answers
+  var NO_ASSETS = { solar: false, wind: false, battery: false, demand: false };
+  // How closely a portfolio can match its positions: weather-driven output needs a forecast.
+  function suggestBalance(type, portfolio) {
+    var pf = portfolio || NO_ASSETS;
+    if (pf.solar || pf.wind) return 'forecast';
+    if (pf.battery || pf.demand) return 'normal';
+    return type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast';
+  }
   // Buy and sell volumes (MWh a day) that a trading strategy suggests, starting from the member type's preset.
   function strategyVolumes(type, strategy) {
     var v = PRESETS[type].values, out = {};
@@ -146,7 +155,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       contBuy: vol.cont.buy, contSell: vol.cont.sell, aucBuy: vol.auc.buy, aucSell: vol.auc.sell,
       carry: type === 'trader' ? 'some' : 'none', nominatedIn: v.nominatedIn || 0, nonDelivery: v.nonDelivery || 0,
       price: BASE.price, stressPrice: BASE.stressPrice, aucLimitPrice: v.aucLimitPrice != null ? v.aucLimitPrice : BASE.aucLimitPrice,
-      connections: type === 'asset' ? [{ mw: 30, metering: 'telemetry' }] : [],
+      portfolio: type === 'asset' ? { solar: true, wind: false, battery: true, demand: false } : { solar: false, wind: false, battery: false, demand: false },
+      capacityMW: type === 'asset' ? 30 : 0, sites: type === 'asset' ? 1 : 0,
       balance: type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast',
       lean: type === 'aggregator' ? 'short' : type === 'asset' ? 'long' : 'neither',
       replenish: 'none', week: BASE.week
@@ -165,10 +175,15 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     s.carryShare = CARRY[a.carry] || 0;
     s.nominatedIn = a.type === 'aggregator' ? +a.nominatedIn || 0 : 0; s.nonDelivery = a.type === 'aggregator' ? +a.nonDelivery || 0 : 0;
     s.imbShare = BALANCE[a.balance]; s.imbBase = IMB_BASE[a.type]; s.bias = LEAN[a.lean];
-    var conns = (a.connections || []).filter(function (c) { return +c.mw > 0; });
-    s.connectionsMW = conns.map(function (c) { return +c.mw; }).join(', ');
-    s.profileMean = 0; s.smartMean = 0; s.profileSd = 0; s.smartSd = 0;
-    conns.forEach(function (c) { if (c.metering === 'profile') s.profileSd += RECONCILIATION_SD_PER_MW * c.mw; else s.smartSd += RECONCILIATION_SD_PER_MW * c.mw; });
+    // Portfolio: the capacity joining the Direct+ BRP, split over equal sites (ASSUMPTION), metered by telemetry or smart
+    // meter (reconciliation D; no profile metering for new connections after cSMA, Q15). A battery buys and sells in
+    // different settlement periods.
+    var pf = a.portfolio || NO_ASSETS, any = ASSETS.some(function (k) { return pf[k]; });
+    var cap = any ? +a.capacityMW || 0 : 0, n = any && cap > 0 ? Math.max(1, Math.round(+a.sites || 1)) : 0, sites = [];
+    for (var i = 0; i < n; i++) sites.push(Math.round(cap / n * 10) / 10);
+    s.connectionsMW = sites.join(', ');
+    s.profileMean = 0; s.smartMean = 0; s.profileSd = 0; s.smartSd = RECONCILIATION_SD_PER_MW * cap;
+    s.shiftShare = pf.battery ? 1 : 0;
     s.replenish = a.replenish;
     if (a.week) s.week = a.week;
     return s;
@@ -297,7 +312,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   }
 
   return { GROUPS: GROUPS, BASE: BASE, PRESETS: PRESETS, SEGMENTS: SEGMENTS, preset: preset, scenario: scenario, compute: compute,
-           strategyVolumes: strategyVolumes, defaultAnswers: defaultAnswers, fromAnswers: fromAnswers };
+           strategyVolumes: strategyVolumes, defaultAnswers: defaultAnswers, fromAnswers: fromAnswers, suggestBalance: suggestBalance };
 })(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
    typeof WalletBehaviour !== 'undefined' ? WalletBehaviour : require('./behaviour.js'),
    typeof WalletSettlement !== 'undefined' ? WalletSettlement : require('./settlement.js'),

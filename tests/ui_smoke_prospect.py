@@ -38,6 +38,17 @@ with sync_playwright() as pw:
     pg.click('#edit'); pg.wait_for_timeout(200)
     h2 = walk(pg, 'trader', {3: lambda p: p.click('label[for="c-none"]')})
     check(h2 != h, 'an answer changes the estimate: ' + h + ' -> ' + h2)
+    # Portfolio: a trader with a 20 MW wind farm sees the size question and gets BRP collateral (one site in the
+    # 11-25 MW class counts 11 MW: 11 × 24 × €80 = €21,120, rounded to €21,000).
+    pg.click('#edit'); pg.wait_for_timeout(200)
+    def wind(p):
+        check(p.is_hidden('#size-q'), 'no assets: the size question is hidden')
+        p.click('label[for="a-wind"]'); p.wait_for_timeout(100)
+        check(p.is_visible('#size-q') and p.is_visible('#pf-note'), 'ticking wind shows the size question and the balancing note')
+        p.fill('#capacityMW', '20'); p.dispatch_event('#capacityMW', 'input'); p.fill('#sites', '1'); p.dispatch_event('#sites', 'input')
+    walk(pg, 'trader', {5: wind})
+    brp = pg.eval_on_selector_all('#purposes tbody tr', 'rs => rs.map(r => r.innerText)')
+    check(any(r.startswith('BRP collateral') and '€21,000' in r for r in brp), 'wind farm adds BRP collateral: ' + str([r.split(chr(10))[0] + ' ' + r.split(chr(9))[-2:].__str__() for r in brp if r.startswith('BRP')]))
     # Validation: a tough-week price below the normal price is refused.
     pg.click('#edit'); pg.wait_for_timeout(200)
     for step in range(1, 4): pg.click('#next'); pg.wait_for_timeout(100)

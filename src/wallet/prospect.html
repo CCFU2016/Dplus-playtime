@@ -233,11 +233,25 @@
       </fieldset>
 
       <fieldset class="step" data-step="5" hidden>
-        <legend><h2>Will you connect assets to the Direct+ BRP?</h2></legend>
-        <p class="why">Large connections count towards the BRP collateral under TenneT's rules, and metered volumes are reconciled months later.</p>
-        <div id="conns" class="q"></div>
-        <div><button type="button" class="linkbtn" id="add-conn">Add a connection</button></div>
-        <p class="hint">Leave this empty if you have no assets in the Direct+ BRP. Under TenneT's rule in force, connections below 2 MW don't count.</p>
+        <legend><h2>What's in your portfolio?</h2></legend>
+        <p class="why">Assets that join the Direct+ BRP add to the BRP collateral, and how well you can forecast them drives imbalance. Tick everything that applies.</p>
+        <div class="q"><span class="ql">Assets that join the Direct+ BRP</span>
+          <div class="choices cols">
+            <div class="choice"><input type="checkbox" name="asset" id="a-solar" value="solar"><label for="a-solar"><b>Solar</b></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-wind" value="wind"><label for="a-wind"><b>Wind</b></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-battery" value="battery"><label for="a-battery"><b>Battery storage</b></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-demand" value="demand"><label for="a-demand"><b>Flexible demand</b><span>For example an industrial process or heat pumps.</span></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-none" value="none"><label for="a-none"><b>None</b><span>I only trade.</span></label></div>
+          </div>
+        </div>
+        <div class="q" id="size-q"><span class="ql">How big is it?</span>
+          <div class="nums">
+            <div class="num"><label for="capacityMW">Total capacity</label><div class="in"><input type="number" id="capacityMW" min="0" step="1" data-a="capacityMW"><span class="unit">MW</span></div></div>
+            <div class="num"><label for="sites">Number of sites</label><div class="in"><input type="number" id="sites" min="1" step="1" data-a="sites"><span class="unit">sites</span></div></div>
+          </div>
+          <p class="hint">Under TenneT's rule in force, sites of 2 MW or more count towards the BRP collateral.</p>
+        </div>
+        <p class="note" id="pf-note" hidden></p>
       </fieldset>
 
       <fieldset class="step" data-step="6" hidden>
@@ -370,7 +384,9 @@
     setRadio('type', ans.type); setRadio('markets', ans.markets); setRadio('weekend', ans.weekend ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
     setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('replenish', ans.replenish);
     Array.prototype.forEach.call(form.querySelectorAll('[data-a]'), function (i) { var v = ans[i.getAttribute('data-a')]; i.value = v == null ? '' : (i.hasAttribute('data-pct') ? Math.round(v * 1000) / 10 : v); });
-    renderConns(); visibility();
+    ASSET_KEYS.forEach(function (k) { $('a-' + k).checked = !!ans.portfolio[k]; });
+    $('a-none').checked = !anyAsset();
+    visibility();
   }
   function visibility() {
     Array.prototype.forEach.call(form.querySelectorAll('[data-market]'), function (n) {
@@ -378,9 +394,20 @@
       n.style.display = n.hidden ? 'none' : '';
     });
     Array.prototype.forEach.call(form.querySelectorAll('[data-type]'), function (n) { n.style.display = ans.type === n.getAttribute('data-type') ? '' : 'none'; });
+    $('size-q').style.display = anyAsset() ? '' : 'none';
   }
+  var ASSET_KEYS = ['solar', 'wind', 'battery', 'demand'];
+  function anyAsset() { return ASSET_KEYS.some(function (k) { return ans.portfolio[k]; }); }
   form.addEventListener('change', function (e) {
     var t = e.target, name = t.name;
+    if (name === 'asset') {
+      if (t.value === 'none') { if (t.checked) ASSET_KEYS.forEach(function (k) { ans.portfolio[k] = false; }); }
+      else ans.portfolio[t.value] = t.checked;
+      if (anyAsset() && !(ans.capacityMW > 0)) { ans.capacityMW = 10; ans.sites = 1; }
+      var sug = C.suggestBalance(ans.type, ans.portfolio);
+      if (sug !== ans.balance) { ans.balance = sug; var pn = $('pf-note'); pn.textContent = 'We set the next question, how closely you match your positions, to fit this portfolio. Change it there if needed.'; pn.hidden = false; }
+      fill(); return;
+    }
     if (t.type === 'radio') {
       if (name === 'type') {
         var week = ans.week; ans = C.defaultAnswers(t.value); ans.week = week; fill();
@@ -405,26 +432,6 @@
   });
   function note(text) { var n = $('vol-note'); n.textContent = text; n.hidden = false; }
 
-  // connections
-  function renderConns() {
-    var box = clear($('conns'));
-    if (!ans.connections.length) box.appendChild(el('p', 'hint', 'No connections added.'));
-    ans.connections.forEach(function (c, i) {
-      var row = el('div', 'conn');
-      var n = el('div', 'num'), lab = el('label', null, 'Connection ' + (i + 1) + ': capacity'), inw = el('div', 'in'), inp = el('input');
-      inp.type = 'number'; inp.min = '0'; inp.step = '1'; inp.value = c.mw; inp.id = 'conn-' + i; lab.htmlFor = inp.id;
-      inp.addEventListener('input', function () { c.mw = parseFloat(inp.value) || 0; });
-      inw.appendChild(inp); inw.appendChild(el('span', 'unit', 'MW')); n.appendChild(lab); n.appendChild(inw); row.appendChild(n);
-      var sel = el('select'); [['telemetry', 'Telemetry-metered'], ['smart', 'Smart meter'], ['profile', 'Profile']].forEach(function (o) { var op = el('option', null, o[1]); op.value = o[0]; sel.appendChild(op); });
-      sel.value = c.metering; sel.setAttribute('aria-label', 'Connection ' + (i + 1) + ': metering');
-      sel.addEventListener('change', function () { c.metering = sel.value; });
-      row.appendChild(sel);
-      var rm = el('button', 'linkbtn', 'Remove'); rm.type = 'button'; rm.addEventListener('click', function () { ans.connections.splice(i, 1); renderConns(); });
-      row.appendChild(rm);
-      box.appendChild(row);
-    });
-  }
-  $('add-conn').addEventListener('click', function () { ans.connections.push({ mw: 10, metering: 'telemetry' }); renderConns(); });
 
   // ---------- steps ----------
   function validate(s) {
@@ -439,6 +446,10 @@
       if (!(ans.price > 0) || !(ans.stressPrice > 0)) return 'Please fill in both prices.';
       if (ans.stressPrice < ans.price) return 'The tough-week price should be at least the normal price.';
       if (ans.markets !== 'continuous' && ans.aucBuy > 0 && !(ans.aucLimitPrice > 0)) return 'Please fill in the highest price you\'d bid in auctions.';
+    }
+    if (s === 5 && anyAsset()) {
+      if (!(ans.capacityMW > 0)) return 'Please fill in the total capacity.';
+      if (!(ans.sites >= 1) || Math.round(ans.sites) !== ans.sites) return 'Please fill in the number of sites (a whole number, at least 1).';
     }
     return null;
   }
@@ -572,7 +583,8 @@
     add('Held over the 16:00 cut', { none: 'No', some: 'About a third of buys', most: 'About two thirds of buys' }[ans.carry]);
     add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh');
     if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eurP(s.aucLimitPrice) + '/MWh');
-    add('Connections', s.connectionsMW ? s.connectionsMW + ' MW' : 'None');
+    var names = { solar: 'solar', wind: 'wind', battery: 'battery storage', demand: 'flexible demand' }, have = ASSET_KEYS.filter(function (k) { return ans.portfolio[k]; }).map(function (k) { return names[k]; });
+    add('Portfolio', have.length ? have.join(', ').replace(/^./, function (c) { return c.toUpperCase(); }) + ', ' + fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : '') : 'None');
     add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
     add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
   }
@@ -584,7 +596,7 @@
     add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
     add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum.');
     add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions. A tough week takes a high but not extreme imbalance week.');
-    if (s.connectionsMW) add('Reconciliation of metered volumes is assumed to vary by about €' + 10 + ' per MW a month.');
+    if (s.connectionsMW) add('Your capacity is spread evenly over your sites, all metered by telemetry or smart meter; reconciliation of metered volumes varies by about €10 per MW a month.');
     add('Nothing nets between Direct+ members: the estimate is for you alone. Fees and VAT are not included.');
   }
 

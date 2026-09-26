@@ -78,9 +78,15 @@ a = C.defaultAnswers('trader'); a.contBuy = 120;
 T.eq([C.fromAnswers(a).restingCont, C.fromAnswers(a).eveningCont], [5000, 2500], 'resting orders and evening buying scale with continuous buying');
 T.eq(C.strategyVolumes('aggregator', 'flat'), { cont: { buy: 25, sell: 25 }, auc: { buy: 60, sell: 60 } }, 'a flat strategy splits volumes evenly');
 T.eq(C.strategyVolumes('trader', 'buyer'), { cont: { buy: 432, sell: 48 }, auc: { buy: 180, sell: 20 } }, 'a buyer strategy buys 90%');
-a = C.defaultAnswers('asset'); a.connections = [{ mw: 30, metering: 'telemetry' }, { mw: 12, metering: 'profile' }];
+a = C.defaultAnswers('asset'); a.capacityMW = 45; a.sites = 3;
 q = C.fromAnswers(a);
-T.eq([q.connectionsMW, q.smartSd, q.profileSd], ['30, 12', 300, 120], 'connections: capacities, and reconciliation spread by metering type');
+T.eq([q.connectionsMW, q.smartSd, q.shiftShare], ['15, 15, 15', 450, 1], 'portfolio: equal sites, reconciliation spread from capacity, a battery shifts between periods');
+a = C.defaultAnswers('trader'); a.portfolio = { solar: false, wind: true, battery: false, demand: false }; a.capacityMW = 20; a.sites = 1;
+q = C.fromAnswers(a);
+T.eq([q.connectionsMW, q.shiftShare], ['20', 0], 'a trader with a wind farm: one 20 MW site, no shifting');
+a.portfolio = { solar: false, wind: false, battery: false, demand: false };
+T.eq(C.fromAnswers(a).connectionsMW, '', 'no assets ticked: capacity is ignored');
+T.eq([C.suggestBalance('trader', { wind: true }), C.suggestBalance('asset', { battery: true }), C.suggestBalance('trader', {})], ['forecast', 'normal', 'tight'], 'the portfolio suggests how closely positions are matched');
 a = C.defaultAnswers('trader'); a.carry = 'none';
 T.money(C.compute(C.fromAnswers(a)).expected.settlement.float, 0, 'no positions held over 16:00: no float');
 
