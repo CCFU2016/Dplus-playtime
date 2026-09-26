@@ -183,6 +183,7 @@
   .view-switch button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
   tbody tr.off td { background: var(--band); }
   td.span-note { text-align: left; white-space: normal; }
+  td.weekend-block { vertical-align: middle; background: var(--band); border-left: 3px solid var(--cont); }
   table { border-collapse: collapse; width: 100%; min-width: 640px; font-variant-numeric: tabular-nums; }
   th, td { padding: 8px 8px; text-align: right; }
   td { white-space: nowrap; }
@@ -1181,10 +1182,13 @@ var LimitEngine = (function () {
         tr.appendChild(m);
         tr.appendChild(el('td', null, eur(r.cont.l16)));
         var ev = el('td', null, eur(r.cont.l18)); if (r.gap1 > 1) ev.appendChild(el('div', 'small-split', 'until ' + dLabel(r.nextBD) + ' morning')); tr.appendChild(ev);
-      } else {
-        var all = el('td', 'gl span-note'); all.colSpan = 3;
-        all.appendChild(el('b', null, eur(pc.cont.l18) + ' all day'));
-        all.appendChild(el('div', 'small-split', dLabel(prev) + '\'s evening limit, until ' + dLabel(pc.nextBD) + ' morning'));
+      } else if (i === 0 || E.isBD(new Date(d.getTime() - 864e5))) {
+        // M7 doesn't reset on weekends and holidays: one limit for the whole stretch, so one cell across those days.
+        var n = 0; while (n < end - i && !E.isBD(new Date(d.getTime() + n * 864e5))) n++;
+        var weekendOnly = n === 2 && d.getUTCDay() === 6;
+        var all = el('td', 'gl span-note weekend-block'); all.colSpan = 3; all.rowSpan = n;
+        all.appendChild(el('b', null, eur(pc.cont.l18) + (n === 1 ? ' all day' : weekendOnly ? ' for the whole weekend' : ' across these ' + n + ' days')));
+        all.appendChild(el('div', 'small-split', (n > 1 ? 'One limit, not per day: ' : '') + dLabel(prev) + '\'s evening limit, until ' + dLabel(pc.nextBD) + ' morning'));
         tr.appendChild(all);
       }
       var a = el('td', 'gl', auc ? eur(auc.limit) : '–');
