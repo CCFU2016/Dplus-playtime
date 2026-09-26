@@ -195,7 +195,7 @@
       <div class="bars" id="bars"></div>
       <div class="legend" id="legend"></div>
       <div class="table-wrap"><table id="purpose-table"></table></div>
-      <p class="small muted">Amounts are rounded to the nearest €1 000: they are estimates, not exact figures. All members sit in one wallet at one connected bank, and each member's need is worked out on its own: nothing nets between members (Direct+ contract).</p>
+      <p class="small muted">Amounts are rounded to the nearest €1,000: they are estimates, not exact figures. All members sit in one wallet at one connected bank, and each member's need is worked out on its own: nothing nets between members (Direct+ contract).</p>
     </section>
 
     <section class="parts" id="parts"></section>
@@ -255,11 +255,10 @@
   'use strict';
   var E = LimitEngine, C = WalletCalc;
   var $ = function (id) { return document.getElementById(id); };
-  // Thousands separated by a no-break space (500 000), not a comma or period: readers use either as a separator.
-  var fmt = (function (nf) { return { format: function (v) { return nf.format(v).replace(/,/g, '\u00a0'); } }; })(new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 }));
-  // Amounts are rounded to the nearest €1 000: these are estimates, not exact figures (Direct+ decision, 26 Sep 2026). Prices and
+  var fmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
+  // Amounts are rounded to the nearest €1,000: these are estimates, not exact figures (Direct+ decision, 26 Sep 2026). Prices and
   // amounts typed in are shown as entered (eurP).
-  function eur(v) { var a = Math.abs(v); if (a < 0.5) return '€0'; if (a < 1000) return 'under €1 000'; return (v < 0 ? '−€' : '€') + fmt.format(Math.round(a / 1000) * 1000); }
+  function eur(v) { var a = Math.abs(v); if (a < 0.5) return '€0'; if (a < 1000) return 'under €1,000'; return (v < 0 ? '−€' : '€') + fmt.format(Math.round(a / 1000) * 1000); }
   function eurP(v) { return (v < 0 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }
   function eurDiff(d) { var r = Math.round(d / 1000) * 1000; return r === 0 ? 'about the same' : (r > 0 ? '+€' : '−€') + fmt.format(Math.abs(r)); }
   function eurShort(v) {
@@ -478,11 +477,11 @@
     if (br.basis === 'marginal') {
       brpText = br.security < 0.5 && br.rule === 'current'
         ? 'Your marginal collateral: you add no net volume with other BRPs and no large connections to the Direct+ BRP, so under ' + ruleName + ' it is €0. There is no minimum for members.'
-        : 'Your marginal collateral under ' + ruleName + ': ' + (br.rule === 'current' ? (br.current.twoA ? '2 × A' : 'A + B') : '3A + 4B + 6C + 6D') + ' on your own figures. There is no minimum for members: the €96 000 and the 50 MW floors apply once to the Direct+ BRP.';
+        : 'Your marginal collateral under ' + ruleName + ': ' + (br.rule === 'current' ? (br.current.twoA ? '2 × A' : 'A + B') : '3A + 4B + 6C + 6D') + ' on your own figures. There is no minimum for members: the €96,000 and the 50 MW floors apply once to the Direct+ BRP.';
     } else {
       brpText = br.rule === 'current'
-        ? (st.reading === '1200' && br.volume < 1200 ? 'On your own as a BRP, under ' + ruleName + ' the 50 MW floor sets it: 2 × 1 200 MWh × ' + eurP(Math.max(br.price, 40)) + '/MWh.' : 'On your own as a BRP, under ' + ruleName + ': ' + (br.current.twoA ? '2 × A' : 'A + B') + '.')
-        : (br.draft.sum < 96000 ? 'On your own as a BRP, under ' + ruleName + ' the €96 000 minimum applies: 3A + 4B + 6C + 6D is ' + eur(br.draft.sum) + '.' : 'On your own as a BRP, under ' + ruleName + ': 3A + 4B + 6C + 6D.');
+        ? (st.reading === '1200' && br.volume < 1200 ? 'On your own as a BRP, under ' + ruleName + ' the 50 MW floor sets it: 2 × 1,200 MWh × ' + eurP(Math.max(br.price, 40)) + '/MWh.' : 'On your own as a BRP, under ' + ruleName + ': ' + (br.current.twoA ? '2 × A' : 'A + B') + '.')
+        : (br.draft.sum < 96000 ? 'On your own as a BRP, under ' + ruleName + ' the €96,000 minimum applies: 3A + 4B + 6C + 6D is ' + eur(br.draft.sum) + '.' : 'On your own as a BRP, under ' + ruleName + ': 3A + 4B + 6C + 6D.');
     }
     card('var(--p-brp)', br.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security on your own', x.brp.security, y.brp.security, brpText,
       br.rule === 'current' ? [['perPeriod', 'How daily net volume is read'], ['connectionsMW', 'Large connections']] : [['imbShare', 'Imbalance'], ['bias', 'Short or long bias']]);
@@ -541,7 +540,7 @@
     } else {
       [['A (trading, × 3)', 'A'], ['B (imbalance, × 4)', 'B'], ['C (profile reconciliation, × 6)', 'C'], ['D (smart meter and telemetry, × 6)', 'D']].forEach(function (k) { row(tb, [{ t: k[0] }, { t: eur(d[k[1]]), cls: 'r' }, { t: eur(ds[k[1]]), cls: 'r' }]); });
       row(tb, [{ t: '3A + 4B + 6C + 6D' }, { t: eur(d.sum), cls: 'r' }, { t: eur(ds.sum), cls: 'r' }]);
-      row(tb, [{ t: br.basis === 'marginal' ? 'Your marginal collateral (no minimum, not below €0)' : 'Security (minimum €96 000)' }, { t: eur(d.security), cls: 'r' }, { t: eur(ds.security), cls: 'r' }]).className = 'total';
+      row(tb, [{ t: br.basis === 'marginal' ? 'Your marginal collateral (no minimum, not below €0)' : 'Security (minimum €96,000)' }, { t: eur(d.security), cls: 'r' }, { t: eur(ds.security), cls: 'r' }]).className = 'total';
     }
     t.appendChild(tb);
     renderRamp(br.ramp);

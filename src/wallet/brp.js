@@ -15,7 +15,7 @@ var WalletBrp = (function () {
       volumeWeeks: { value: 6, src: 'SC 2026 art. 10.8(5) and (6): "in de zes voorafgaande weken"' },
       classes: { value: [[2, 10, 2], [11, 25, 11], [26, 50, 26]], src: 'SC 2026 art. 10.8(8)-(9): classes 2-10, 11-25, 26-50 MW, each counted at "de laagste capaciteit van die klasse"; above 50 MW actual capacity, (10)' },
       nemo: { value: 100000, src: 'SC 2026 art. 10.8(14)' },
-      flatMinimum: { value: 96000, src: 'TenneT BRP recognition page (not retrieved); INTERPRETATION "flat €96 000"' }
+      flatMinimum: { value: 96000, src: 'TenneT BRP recognition page (not retrieved); INTERPRETATION "flat €96,000"' }
     },
     draft: {
       label: 'ACM draft decision ACM/25/196985 of 25 Aug 2026, art. 10.8 (from 1 Jan 2027 once final)',
@@ -85,8 +85,8 @@ var WalletBrp = (function () {
        reading: '1200' | 'flat',             INTERPRETATION of the 50 MW floor (wallet-model §4.1); default '1200'
        floors,                               false: no volume floors and no minimum (a Direct+ member's marginal share)
        nemo }
-     '1200': the 50 MW floor is 50 × 24 = 1 200 MWh, on A (first and down) and on B. 'flat': no volume floors, and a
-     €96 000 minimum on the total. The €40 price floor always applies: it sets the price of the BRP's own calculation. */
+     '1200': the 50 MW floor is 50 × 24 = 1,200 MWh, on A (first and down) and on B. 'flat': no volume floors, and a
+     €96,000 minimum on the total. The €40 price floor always applies: it sets the price of the BRP's own calculation. */
   function current(o) {
     if (o.nemo) return { rule: 'current', nemo: true, security: C.nemo.value };
     var floor = o.reading === 'flat' || o.floors === false ? 0 : C.volumeFloorMW.value * C.hours.value;
@@ -117,7 +117,7 @@ var WalletBrp = (function () {
   /* Draft rule (ACM draft art. 10.8). o = { A | (volume2m, price2m), weekly | B, profile | C, smart | D, sigma, nemo,
      minimum }. Components come from invoice histories, or are given directly (B, C, D: the parametric model).
        A = realised highest daily net volume over two months × average day-ahead reference price over two months;
-       minimum: apply the €96 000 per member (default true; wallet-model §4.4). */
+       minimum: apply the €96,000 per member (default true; wallet-model §4.4). */
   function draft(o) {
     if (o.nemo) return { rule: 'draft', nemo: true, security: D.nemo.value };
     var w = D.weights.value;

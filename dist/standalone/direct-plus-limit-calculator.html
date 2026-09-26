@@ -280,13 +280,13 @@
 
       <div class="field" id="fwd-fields">
         <label for="collateral">Collateral posted</label>
-        <div class="money"><span>€</span><input id="collateral" type="text" inputmode="numeric" data-step="10000" value="500&#160;000" spellcheck="false"></div>
+        <div class="money"><span>€</span><input id="collateral" type="text" inputmode="numeric" data-step="10000" value="500,000" spellcheck="false"></div>
       </div>
 
       <div id="inv-fields" class="field" hidden style="gap:14px">
         <div class="field">
           <label for="t-cont">M7 continuous limit you need</label>
-          <div class="money"><span>€</span><input id="t-cont" type="text" inputmode="numeric" data-step="10000" value="150&#160;000" spellcheck="false"></div>
+          <div class="money"><span>€</span><input id="t-cont" type="text" inputmode="numeric" data-step="10000" value="150,000" spellcheck="false"></div>
           <div class="radio-row" role="radiogroup" aria-label="When the M7 continuous limit must be available">
             <label><input type="radio" name="t-cont-when" id="t-cont-18" value="l18" checked> From around 18:00, before the next morning's settlement</label>
             <label><input type="radio" name="t-cont-when" id="t-cont-09" value="l09"> After the next morning's settlement</label>
@@ -294,7 +294,7 @@
         </div>
         <div class="field">
           <label for="t-da">MATS auctions limit you need, at each day-ahead auction</label>
-          <div class="money"><span>€</span><input id="t-da" type="text" inputmode="numeric" data-step="10000" value="100&#160;000" spellcheck="false"></div>
+          <div class="money"><span>€</span><input id="t-da" type="text" inputmode="numeric" data-step="10000" value="100,000" spellcheck="false"></div>
           <label class="check"><input type="checkbox" id="t-da-nonbd" checked> Also at weekend and holiday auctions</label>
         </div>
         <div class="field">
@@ -322,23 +322,23 @@
 
       <div class="field">
         <label for="open-risk">Unsettled net purchases (open risk)</label>
-        <div class="money"><span>€</span><input id="open-risk" type="text" inputmode="numeric" data-step="10000" value="100&#160;000" spellcheck="false"></div>
+        <div class="money"><span>€</span><input id="open-risk" type="text" inputmode="numeric" data-step="10000" value="100,000" spellcheck="false"></div>
         <p class="hint">What you bought in the last trading day (volume × price, sales netted), paid the next morning. It never goes below zero.</p>
       </div>
 
       <fieldset class="market">
         <legend><span class="swatch sw-cont"></span>M7 continuous</legend>
         <div class="pair">
-          <div class="field"><label for="c-bd">Base limit, business day</label><div class="money"><span>€</span><input id="c-bd" type="text" inputmode="numeric" data-step="1000" value="20&#160;000" spellcheck="false"></div></div>
-          <div class="field"><label for="c-nbd">Base limit, non-business day</label><div class="money"><span>€</span><input id="c-nbd" type="text" inputmode="numeric" data-step="1000" value="10&#160;000" spellcheck="false"></div></div>
+          <div class="field"><label for="c-bd">Base limit, business day</label><div class="money"><span>€</span><input id="c-bd" type="text" inputmode="numeric" data-step="1000" value="20,000" spellcheck="false"></div></div>
+          <div class="field"><label for="c-nbd">Base limit, non-business day</label><div class="money"><span>€</span><input id="c-nbd" type="text" inputmode="numeric" data-step="1000" value="10,000" spellcheck="false"></div></div>
         </div>
       </fieldset>
 
       <fieldset class="market">
         <legend><span class="swatch sw-da"></span>MATS auctions</legend>
         <div class="pair">
-          <div class="field"><label for="a-bd">Base limit, business day</label><div class="money"><span>€</span><input id="a-bd" type="text" inputmode="numeric" data-step="1000" value="10&#160;000" spellcheck="false"></div></div>
-          <div class="field"><label for="a-nbd">Base limit, non-business day</label><div class="money"><span>€</span><input id="a-nbd" type="text" inputmode="numeric" data-step="1000" value="10&#160;000" spellcheck="false"></div></div>
+          <div class="field"><label for="a-bd">Base limit, business day</label><div class="money"><span>€</span><input id="a-bd" type="text" inputmode="numeric" data-step="1000" value="10,000" spellcheck="false"></div></div>
+          <div class="field"><label for="a-nbd">Base limit, non-business day</label><div class="money"><span>€</span><input id="a-nbd" type="text" inputmode="numeric" data-step="1000" value="10,000" spellcheck="false"></div></div>
         </div>
       </fieldset>
 
@@ -706,8 +706,7 @@ var LimitEngine = (function () {
   'use strict';
   var E = LimitEngine;
   var $ = function (id) { return document.getElementById(id); };
-  // Thousands separated by a no-break space (500 000), not a comma or period: readers use either as a separator.
-  var fmtInt = (function (nf) { return { format: function (v) { return nf.format(v).replace(/,/g, '\u00a0'); } }; })(new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 }));
+  var fmtInt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
   function eur(v) { return (v < 0 ? '−€' : '€') + fmtInt.format(Math.abs(Math.round(v))); }
   function eurShort(v) {
     var a = Math.abs(v), s = v < 0 ? '−€' : '€';
