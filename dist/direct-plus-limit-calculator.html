@@ -393,7 +393,7 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
           <li><b>16:00:</b> each market's limit resets to its base limit, the fixed amount you set to bridge the time until the evening update. Resting orders above it, including bids for future auctions, are deleted.</li>
           <li><b>Reserved for base limits:</b> ECC holds back today's base limit and the one it will hand out at 16:00 on the next business day, for both markets, because that one goes live before the next calculation can see today's trades.</li>
           <li><b>M7 continuous</b> does not reset on weekends or holidays: the base limit before them is BD + NBD per non-business day, and the evening limit must last until the next business morning. Reset days are always 1.</li>
-          <li><b>MATS auctions</b> reset every calendar day. Before a weekend or holiday each auction day gets max(BD, NBD) as base limit and an equal share of the dynamic limit (÷ 3 on a Friday). On the next business day, the day-ahead auction is back at the full limit if those auctions went unused.</li>
+          <li><b>MATS auctions</b> reset every calendar day. Before a weekend or holiday each auction day gets max(BD, NBD) as base limit and an equal share of the dynamic limit: ÷ 3 on a Friday, because its calculation lasts until Monday, so the Saturday and Sunday auctions each get a third. On the next business day, the day-ahead auction is back at the full limit if those auctions went unused.</li>
           <li><b>Around 18:00 (best effort, no guaranteed time):</b> the dynamic limit is added to what is left of the base limit.</li>
           <li><b>By 10:45 next business day:</b> once yesterday's purchases are paid, that amount comes back, split by your key. If collateral was short, this calculator assumes the payment first refills the reserve; ECC's materials do not say.</li>
         </ol>
@@ -710,6 +710,12 @@ var LimitEngine = (function () {
     return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (withYear ? ' ' + d.getUTCFullYear() : '');
   }
   function dayNote(n) { return n === 'Weekend' ? 'weekend' : n; }
+  var WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  function shareAuctions(r) { return r.da.auctions.filter(function (a) { return !a.settled; }); }
+  function shareDaysShort(sh) {
+    var d = sh.map(function (a) { return WD[E.parse(a.date).getUTCDay()]; });
+    return d.length > 2 ? d[0] + '–' + d[d.length - 1] : d.join(', ');
+  }
   function dShort(iso) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate(); }
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   function num(id) { var v = parseFloat($(id).value.replace(/[^\d.]/g, '')); return isFinite(v) && v > 0 ? v : 0; }
@@ -1029,8 +1035,11 @@ var LimitEngine = (function () {
 
     var mk2 = el('div', 'mk'); mk2.appendChild(el('span', 'swatch sw-da')); mk2.appendChild(document.createTextNode('MATS auctions')); box.appendChild(mk2);
     box.appendChild(cell('', eur(r.da.l16), r.gap1 > 1 ? 'Per auction day (max of BD, NBD)' : 'Base limit'));
-    var aucDays = r.da.auctions.map(function (a) { return dShort(a.date); }).join(', ');
-    box.appendChild(cell('', eur(r.da.l18), r.gap1 > 1 ? 'Per auction: ' + aucDays + ' (÷ ' + r.gap1 + ')' : 'Per auction'));
+    var sh = shareAuctions(r), onlyWeekend = sh.every(function (a) { return a.note === 'Weekend'; });
+    box.appendChild(cell('', eur(r.da.l18), r.gap1 > 1
+      ? 'Per ' + (onlyWeekend ? 'weekend' : 'weekend or holiday') + ' auction: ' + sh.map(function (a) { return dShort(a.date); }).join(', ') +
+        ' · ÷ ' + r.gap1 + ' because ' + WDL[E.parse(r.date).getUTCDay()] + '\'s calculation lasts until ' + WDL[E.parse(r.nextBD).getUTCDay()]
+      : 'Per auction'));
     box.appendChild(cell('', eur(r.da.l09), 'At ' + dShort(r.nextBD) + '\'s 12:00 auction' + (r.gap1 > 1 ? ', full limit again if the weekend auctions went unused' : '')));
   }
 
@@ -1118,7 +1127,7 @@ var LimitEngine = (function () {
       tr.appendChild(el('td', 'gl', eur(r.cont.l16)));
       tr.appendChild(el('td', r === lowC ? 'low' : null, eur(r.cont.l18)));
       tr.appendChild(el('td', null, eur(r.cont.l09)));
-      var a18 = el('td', 'gl' + (r === lowA ? ' low' : ''), eur(r.da.l18) + (r.gap1 > 1 ? ' × ' + r.gap1 : ''));
+      var a18 = el('td', 'gl' + (r === lowA ? ' low' : ''), eur(r.da.l18) + (r.gap1 > 1 ? ' × ' + shareAuctions(r).length + ' (' + shareDaysShort(shareAuctions(r)) + ')' : ''));
       tr.appendChild(a18);
       tr.appendChild(el('td', null, eur(r.da.l09)));
       tb.appendChild(tr);

@@ -26,7 +26,13 @@ with sync_playwright() as pw:
     pg.select_option('#week', '2027-03-22'); pg.wait_for_timeout(400)
     tabs = pg.inner_text('#day-tabs')
     check('Thu 25' in tabs and 'Mar' in tabs and 'Good Friday' in pg.inner_text('#week-note'), 'picking Easter jumps to the week of 22 Mar 2027: ' + tabs.replace(chr(10), ' '))
+    week = pg.inner_text('#week-table')
+    check('× 4 (Fri–Mon)' in week and '× 5' not in week, 'Easter week table: the Thursday share covers 4 auctions (Fri–Mon), not 5')
+    check('because Thursday\'s calculation lasts until Tuesday' in pg.inner_text('#cycle') and 'Mon 29' in pg.inner_text('#cycle'), 'Easter panel: ÷ 5 until Tuesday, Easter Monday among the shared auctions')
     pg.select_option('#week', '2026-10-05'); pg.wait_for_timeout(400)
+    week = pg.inner_text('#week-table'); cyc = pg.inner_text('#cycle')
+    check('€50,000 × 2 (Sat, Sun)' in week and '× 3' not in week, 'weekend in the week table: €50,000 × 2 (Sat, Sun)')
+    check('Per weekend auction: Sat 10, Sun 11 · ÷ 3 because Friday\'s calculation lasts until Monday' in cyc and 'Mon 12 ·' not in cyc, 'Friday panel: weekend auctions only, ÷ 3 explained')
 
     # Market names: M7 and MATS everywhere, explained once in the header.
     text = pg.inner_text('body')
