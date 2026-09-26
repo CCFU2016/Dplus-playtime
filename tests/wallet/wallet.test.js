@@ -112,9 +112,9 @@ T.money(C.compute(C.fromAnswers(a)).expected.settlement.float, 0, 'no positions 
 // The presets compare like with like: each moves about 150 MWh a day, and no wallet is an outlier.
 const vol = id => { const v = C.preset(id); return v.contBuy + v.contSell + v.aucBuy + v.aucSell; };
 T.eq(['trader', 'aggregator', 'asset'].map(vol), [150, 170, 130], 'presets: MWh a day traded');
-T.eq([C.preset('trader').s, C.preset('aggregator').s, C.preset('asset').s], [0.25, 0, 0], 'the trader assumes a quarter of its buys offset at the peak');
+T.eq([C.preset('trader').s, C.preset('aggregator').s, C.preset('asset').s], [0.34, 0, 0], 'the trader assumes its largest open position is 66% of its buys');
 const na = C.defaultAnswers('trader');
-T.eq([na.netting, C.fromAnswers(na).s], ['mixed', 0.25], 'trader answers: buys and sells mixed by default, a quarter offset');
+T.eq([na.netting, C.fromAnswers(na).s], ['mixed', 0.34], 'trader answers: buys and sells mixed by default, largest open position 66%');
 const nt = ['block', 'mixed', 'flat'].map(n => C.compute(C.fromAnswers(Object.assign(C.defaultAnswers('trader'), { netting: n }))).expected.total);
 T.ok(nt[0] > nt[1] && nt[1] > nt[2], 'more offsetting, less wallet: ' + nt.map(Math.round).join(' / '));
 T.eq(C.fromAnswers(Object.assign(C.defaultAnswers('asset'), { netting: 'flat' })).s, 0, 'the netting answer only applies to traders');

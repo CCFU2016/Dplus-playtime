@@ -1197,7 +1197,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var PRESETS = {
     trader: { label: 'Financial trader', note: 'A small desk that ends each day flat.',
       values: { contBuy: 60, contSell: 60, aucBuy: 15, aucSell: 15, aucLimitPrice: 150, restingCont: 2500, eveningCont: 1250, carryShare: 0.3,
-                s: 0.25,   // a quarter of the day's buys already offset by sells at the peak: many small trades both ways (Direct+ decision, 26 Sep 2026)
+                s: 0.34,   // largest open position 66% of the day's buys: buys and sells mixed through the day (Direct+ decision, 26 Sep 2026)
                 imbShare: 0.005, imbBase: 'traded', bias: 0 } },
     aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
       values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000, carryShare: 0.3,
@@ -1221,7 +1221,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var BALANCE = { tight: 0.005, normal: 0.03, forecast: 0.05 };          // imbalance as a share of volume
   var LEAN = { neither: 0, short: 0.3, long: -0.2 };                      // bias
   var CARRY = { none: 0, some: 0.3, most: 0.7 };                          // purchases paid before their sale
-  var NETTING = { block: 0, mixed: 0.25, flat: 0.5 };                     // traders: share of buys offset by sells at the peak
+  var NETTING = { block: 0, mixed: 0.34, flat: 0.67 };                    // traders: share of buys offset at the peak (largest open position 100%, 66%, 33%)
   var RECONCILIATION_SD_PER_MW = 10;                                      // ASSUMPTION: € a month per MW connected
   var ASSETS = ['production', 'consumption'];                             // portfolio answers (Direct+ decision: production vs consumption)
   var NO_ASSETS = { production: false, consumption: false };

@@ -246,8 +246,8 @@
           <p class="hint">ECC's trading limit is used by your largest open position during the day, not by every trade. The more your buys and sells alternate, the smaller that position and the less limit you need.</p>
           <div class="choices">
             <div class="choice"><input type="radio" name="netting" id="n-block" value="block"><label for="n-block"><b>I build a position, then close it</b><span>Most buying comes before the selling: your largest open position is all of the day's buys.</span></label></div>
-            <div class="choice"><input type="radio" name="netting" id="n-mixed" value="mixed"><label for="n-mixed"><b>Buys and sells are mixed</b><span>Your largest open position is about three quarters of the day's buys.</span></label></div>
-            <div class="choice"><input type="radio" name="netting" id="n-flat" value="flat"><label for="n-flat"><b>Many small trades, close to flat all day</b><span>Your largest open position is about half of the day's buys.</span></label></div>
+            <div class="choice"><input type="radio" name="netting" id="n-mixed" value="mixed"><label for="n-mixed"><b>Buys and sells are mixed</b><span>Your largest open position is about two thirds (66%) of the day's buys.</span></label></div>
+            <div class="choice"><input type="radio" name="netting" id="n-flat" value="flat"><label for="n-flat"><b>Many small trades, close to flat all day</b><span>Your largest open position is about a third (33%) of the day's buys.</span></label></div>
           </div>
         </div>
         <div class="q" data-type="aggregator"><span class="ql">Flexibility from your customers</span>
@@ -1362,7 +1362,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var PRESETS = {
     trader: { label: 'Financial trader', note: 'A small desk that ends each day flat.',
       values: { contBuy: 60, contSell: 60, aucBuy: 15, aucSell: 15, aucLimitPrice: 150, restingCont: 2500, eveningCont: 1250, carryShare: 0.3,
-                s: 0.25,   // a quarter of the day's buys already offset by sells at the peak: many small trades both ways (Direct+ decision, 26 Sep 2026)
+                s: 0.34,   // largest open position 66% of the day's buys: buys and sells mixed through the day (Direct+ decision, 26 Sep 2026)
                 imbShare: 0.005, imbBase: 'traded', bias: 0 } },
     aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
       values: { contBuy: 10, contSell: 40, aucBuy: 0, aucSell: 120, nominatedIn: 150, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000, carryShare: 0.3,
@@ -1386,7 +1386,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var BALANCE = { tight: 0.005, normal: 0.03, forecast: 0.05 };          // imbalance as a share of volume
   var LEAN = { neither: 0, short: 0.3, long: -0.2 };                      // bias
   var CARRY = { none: 0, some: 0.3, most: 0.7 };                          // purchases paid before their sale
-  var NETTING = { block: 0, mixed: 0.25, flat: 0.5 };                     // traders: share of buys offset by sells at the peak
+  var NETTING = { block: 0, mixed: 0.34, flat: 0.67 };                    // traders: share of buys offset at the peak (largest open position 100%, 66%, 33%)
   var RECONCILIATION_SD_PER_MW = 10;                                      // ASSUMPTION: € a month per MW connected
   var ASSETS = ['production', 'consumption'];                             // portfolio answers (Direct+ decision: production vs consumption)
   var NO_ASSETS = { production: false, consumption: false };
@@ -1979,7 +1979,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     add('Weekends and holidays', { yes: 'Yes', no: 'No', both: 'Show me both' }[ans.weekend]);
     add('Continuous intraday, buy / sell', fmt.format(s.contBuy) + ' / ' + fmt.format(s.contSell) + ' MWh a day');
     add('Auctions (day-ahead + intraday), buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
-    if (ans.type === 'trader') add('Continuous trades through the day', { block: 'Build a position, then close it (largest open position: all of a day\'s buys)', mixed: 'Buys and sells mixed (largest open position: 75% of a day\'s buys)', flat: 'Many small trades, close to flat (largest open position: 50% of a day\'s buys)' }[ans.netting]);
+    if (ans.type === 'trader') add('Continuous trades through the day', { block: 'Build a position, then close it (largest open position: all of a day\'s buys)', mixed: 'Buys and sells mixed (largest open position: 66% of a day\'s buys)', flat: 'Many small trades, close to flat (largest open position: 33% of a day\'s buys)' }[ans.netting]);
     if (ans.type === 'aggregator') add('Nominated from other BRPs', fmt.format(s.nominatedIn) + ' MWh a day, ' + Math.round(s.nonDelivery * 100) + '% may not be delivered');
     if (ans.tough) add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh'); else add('Normal price', eurP(s.price) + ' per MWh');
     add('Tough week', ans.tough ? 'Shown' : 'Not shown');
