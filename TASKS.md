@@ -3,8 +3,8 @@
 Work top to bottom. Run `npm test` before and after each task. One commit per task.
 
 ## 1. Get green
-- [ ] `npm test` passes, and so does `npm run test:ui` (install python playwright if needed).
-- [ ] `npm run build` reproduces `dist/` with no diff: `git status` stays clean.
+- [x] `npm test` passes, and so does `npm run test:ui` (install python playwright if needed).
+- [x] `npm run build` reproduces `dist/` with no diff: `git status` stays clean.
 
 ## 2. Generalise the engine to any number of markets (no number changes)
 - [ ] Replace the fixed `cont` / `da` parameters with a list of markets. Each market has a definition taken from `reference/ecc/markets_table.csv`: reset rule (`business day` / `day`), auction flag, own trading calendar, currency.
