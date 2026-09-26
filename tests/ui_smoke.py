@@ -3,7 +3,7 @@ and still shows the known sizing result for the deck example (week of 5 Oct 2026
 cheapest split: EUR 602,986 at 33/67). Also checks the market names (M7, MATS), the amounts'
 thousands separators and arrow-key steps, and the phone layout. Needs: pip install playwright
 (Chromium already installed)."""
-import pathlib, sys
+import pathlib, re, sys
 from playwright.sync_api import sync_playwright
 f = (pathlib.Path(__file__).parent.parent / 'dist/standalone/direct-plus-limit-calculator.html').resolve().as_uri()
 checks = []
@@ -21,18 +21,20 @@ with sync_playwright() as pw:
     opts = pg.eval_on_selector_all('#week option', 'os => os.map(o => [o.value, o.textContent])')
     print('     weeks:', opts)
     check(opts[0] == ['2026-10-05', 'A standard week, no holidays'] and pg.input_value('#week') == '2026-10-05', 'the standard week is selected: 5 Oct 2026')
-    check('Showing Mon 5 – Fri 9 Oct 2026' in pg.inner_text('#week-note'), 'the note says which dates are shown')
+    check(pg.inner_text('#week-note').startswith('A standard week'), 'the note says it is a standard week')
+    plain = pg.inner_text('#day-tabs') + pg.inner_text('#cycle') + pg.inner_text('#week-table') + pg.inner_text('#tiles')
+    check(not re.search(r'\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \d{1,2}\b(?!:)', plain + pg.inner_text('#auction-chart')) and 'Oct' not in pg.inner_text('#day-tabs'), 'a standard week shows weekdays, no dates')
     check([o[0] for o in opts[1:]] == ['2026-12-21', '2026-12-28', '2027-03-22'] and [o[1] for o in opts[1:]] == ['Christmas · Fri 25 Dec 2026', 'New Year · Fri 1 Jan 2027', 'Easter · 26–29 Mar 2027'], 'holiday weeks: Christmas, New Year, Easter 2027 (Easter as one option)')
     pg.select_option('#week', '2027-03-22'); pg.wait_for_timeout(400)
     tabs = pg.inner_text('#day-tabs')
-    check('Thu 25' in tabs and 'Mar' in tabs and 'Good Friday' in pg.inner_text('#week-note'), 'picking Easter jumps to the week of 22 Mar 2027: ' + tabs.replace(chr(10), ' '))
+    check('Thu 25' in tabs and 'Mar' in tabs and 'Good Friday' in pg.inner_text('#week-note'), 'picking Easter jumps to the week of 22 Mar 2027, with dates: ' + tabs.replace(chr(10), ' '))
     week = pg.inner_text('#week-table')
     check('× 4 (Fri–Mon)' in week and '× 5' not in week, 'Easter week table: the Thursday share covers 4 auctions (Fri–Mon), not 5')
     check('because Thursday\'s calculation lasts until Tuesday' in pg.inner_text('#cycle') and 'Mon 29' in pg.inner_text('#cycle'), 'Easter panel: ÷ 5 until Tuesday, Easter Monday among the shared auctions')
     pg.select_option('#week', '2026-10-05'); pg.wait_for_timeout(400)
     week = pg.inner_text('#week-table'); cyc = pg.inner_text('#cycle')
     check('€50,000 × 2 (Sat, Sun)' in week and '× 3' not in week, 'weekend in the week table: €50,000 × 2 (Sat, Sun)')
-    check('Per weekend auction: Sat 10, Sun 11 · ÷ 3 because Friday\'s calculation lasts until Monday' in cyc and 'Mon 12 ·' not in cyc, 'Friday panel: weekend auctions only, ÷ 3 explained')
+    check('Per weekend auction: Sat, Sun · ÷ 3 because Friday\'s calculation lasts until Monday' in cyc and 'Mon ·' not in cyc, 'Friday panel: weekend auctions only, ÷ 3 explained')
 
     # Market names: M7 and MATS everywhere, explained once in the header.
     text = pg.inner_text('body')
@@ -79,6 +81,10 @@ with sync_playwright() as pw:
     week = pg.inner_text('#week-table')
     check(len(tiles) == 3 and '580,282' in tiles[0] and '350,323' in tiles[0] and '390,323' in tiles[0] and '602,986' in tiles[1] and '454,591' in tiles[2], 'optimised by day: ' + ' | '.join(tiles))
     check('COLLATERAL THAT DAY' in week.upper(), 'the week table has the collateral-that-day column')
+    heads = pg.eval_on_selector_all('#week-table thead tr:last-child th', 'hs => hs.map(h => h.innerText.trim())')
+    check(heads.count('16:00') == 2, 'the week table shows the 16:00 base limit for M7 and for MATS: ' + ' | '.join(heads))
+    first = pg.eval_on_selector_all('#week-table tbody tr:first-child td', 'ts => ts.map(t => t.innerText.replace(/\\n/g, " "))')
+    check(any('M7 €' in c and '+ MATS €' in c for c in first), 'the reservation shows its M7 + MATS split: ' + ' | '.join(first))
 
     # Phone width: nothing wider than the screen.
     pg.set_viewport_size({'width': 390, 'height': 844}); pg.wait_for_timeout(300)

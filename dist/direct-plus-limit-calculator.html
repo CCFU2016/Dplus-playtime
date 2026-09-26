@@ -370,7 +370,7 @@
 
       <section class="panel card">
         <h2>This week, day by day</h2>
-        <p class="sub">Each row is one of ECC's evening calculations. "After settlement" is the limit once the previous day's purchases have been paid, by 10:45 on the next business day.</p>
+        <p class="sub">Each row is one of ECC's evening calculations. "Reserved for base limits" holds today's base limit and the next business day's, for M7 and MATS together: the next one goes live at 16:00, before ECC's next calculation has seen today's trades (before a weekend, MATS reserves one for each auction day). "After settlement" is the limit once the previous day's purchases have been paid, by 10:45 on the next business day.</p>
         <div class="table-wrap"><table id="week-table"></table></div>
       </section>
 
@@ -717,8 +717,12 @@ var LimitEngine = (function () {
   }
   var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   var MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // In a standard week (no ECC holiday from the Friday before to the Monday after) dates don't matter: the page names
+  // weekdays only ("Friday", "Mon"). Holiday weeks keep their dates. Set while a week is drawn (render, the wallet banner).
+  var plainWeek = false;
   function dLabel(iso, withYear) {
     var d = E.parse(iso);
+    if (plainWeek) return WDL[d.getUTCDay()];
     return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (withYear ? ' ' + d.getUTCFullYear() : '');
   }
   function dayNote(n) { return n === 'Weekend' ? 'weekend' : n; }
@@ -728,7 +732,7 @@ var LimitEngine = (function () {
     var d = sh.map(function (a) { return WD[E.parse(a.date).getUTCDay()]; });
     return d.length > 2 ? d[0] + '–' + d[d.length - 1] : d.join(', ');
   }
-  function dShort(iso) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate(); }
+  function dShort(iso) { var d = E.parse(iso); return plainWeek ? WD[d.getUTCDay()] : WD[d.getUTCDay()] + ' ' + d.getUTCDate(); }
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   function num(id) { var v = parseFloat($(id).value.replace(/[^\d.]/g, '')); return isFinite(v) && v > 0 ? v : 0; }
 
@@ -794,12 +798,12 @@ var LimitEngine = (function () {
   var addDays = function (iso, n) { return E.iso(new Date(E.parse(iso).getTime() + n * 864e5)); };
   // A standard week: from next Monday, the first week whose weekdays, the Friday before and the Monday after are all
   // ECC business days, so no calculation in it covers a holiday.
+  function quietWeek(mon) {
+    for (var i = -3; i <= 7; i++) { var d = E.parse(addDays(mon, i)), w = d.getUTCDay(); if (w !== 0 && w !== 6 && !E.isBD(d)) return false; }
+    return true;
+  }
   function standardWeek() {
-    for (var mon = nextMondayIso(); addDays(mon, 7) <= E.MAX_DATE; mon = addDays(mon, 7)) {
-      var ok = true;
-      for (var i = -3; i <= 7 && ok; i++) { var d = E.parse(addDays(mon, i)), w = d.getUTCDay(); if (w !== 0 && w !== 6 && !E.isBD(d)) ok = false; }
-      if (ok) return mon;
-    }
+    for (var mon = nextMondayIso(); addDays(mon, 7) <= E.MAX_DATE; mon = addDays(mon, 7)) if (quietWeek(mon)) return mon;
     return nextMondayIso();
   }
   // Weekday ECC holidays in the next 12 months (up to the end of the calendar). Each goes to the week holding the last
@@ -840,6 +844,10 @@ var LimitEngine = (function () {
     var mon = $('week').value, fri = addDays(mon, 4), a = E.parse(mon), b = E.parse(fri);
     var span = 'Mon ' + a.getUTCDate() + (a.getUTCMonth() === b.getUTCMonth() ? '' : ' ' + MO[a.getUTCMonth()]) + ' – Fri ' + b.getUTCDate() + ' ' + MO[b.getUTCMonth()] + ' ' + b.getUTCFullYear();
     var hs = weekHolidays[mon];
+    if (!hs && quietWeek(mon)) {
+      $('week-note').textContent = (addedWeeks[mon] ? 'The week of your wallet estimate, a standard week' : 'A standard week') + ': every day is an ECC business day, and the Friday calculation covers the weekend.';
+      return;
+    }
     if (!hs && addedWeeks[mon]) {
       var near = [];
       for (var i = -3; i <= 7; i++) { var iso = addDays(mon, i), w = E.parse(iso).getUTCDay(); if (w !== 0 && w !== 6 && !E.isBD(E.parse(iso))) near.push(iso); }
@@ -1039,7 +1047,7 @@ var LimitEngine = (function () {
       var b = el('button', 'tab'); b.type = 'button'; b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', r.date === selected ? 'true' : 'false');
       b.appendChild(document.createTextNode(dShort(r.date)));
-      b.appendChild(el('small', null, r.gap1 > 1 ? 'to ' + dShort(r.nextBD) : MO[E.parse(r.date).getUTCMonth()]));
+      if (r.gap1 > 1 || !plainWeek) b.appendChild(el('small', null, r.gap1 > 1 ? 'to ' + dShort(r.nextBD) : MO[E.parse(r.date).getUTCMonth()]));
       b.addEventListener('click', function () { selected = r.date; render(); });
       box.appendChild(b);
     });
@@ -1129,10 +1137,10 @@ var LimitEngine = (function () {
     var daily = res.inv && res.inv.daily;
     g.appendChild(el('th', null, '')); if (daily) g.appendChild(el('th', null, '')); g.appendChild(el('th', null, '')); g.appendChild(el('th', null, ''));
     var gc = el('th', 'gl'); gc.colSpan = 3; var sc = el('span'); sc.appendChild(el('span', 'swatch sw-cont')); sc.appendChild(document.createTextNode('M7 continuous')); gc.appendChild(sc); gc.style.textAlign = 'left'; g.appendChild(gc);
-    var ga = el('th', 'gl'); ga.colSpan = 2; var sa = el('span'); sa.appendChild(el('span', 'swatch sw-da')); sa.appendChild(document.createTextNode('MATS auctions')); ga.appendChild(sa); ga.style.textAlign = 'left'; g.appendChild(ga);
+    var ga = el('th', 'gl'); ga.colSpan = 3; var sa = el('span'); sa.appendChild(el('span', 'swatch sw-da')); sa.appendChild(document.createTextNode('MATS auctions')); ga.appendChild(sa); ga.style.textAlign = 'left'; g.appendChild(ga);
     thead.appendChild(g);
     var h = el('tr');
-    var cols = ['Calculation day'].concat(daily ? ['Collateral that day'] : []).concat(['Reserved for base limits', 'Excess collateral', '16:00', 'From 18:00', 'After settlement', 'Per auction from 18:00', 'Next business day\'s auction']);
+    var cols = ['Calculation day'].concat(daily ? ['Collateral that day'] : []).concat(['Reserved for base limits', 'Excess collateral', '16:00', 'From 18:00', 'After settlement', '16:00', 'Per auction from 18:00', 'Next business day\'s auction']);
     var off = daily ? 1 : 0;
     cols.forEach(function (x, i) {
       var th = el('th', (i === 3 + off || i === 6 + off) ? 'gl' : null, x); th.scope = 'col'; h.appendChild(th);
@@ -1148,12 +1156,14 @@ var LimitEngine = (function () {
       if (r.excess < 0) d.appendChild(el('span', 'pill crit', 'Shortfall'));
       tr.appendChild(d);
       if (daily) { var cc = el('td', null, eur(r.p.C)); cc.appendChild(el('div', 'small-split', r.p.cont.key + ' / ' + r.p.da.key)); tr.appendChild(cc); }
-      tr.appendChild(el('td', null, eur(r.blr)));
+      // Today's and the next business day's base limits, for both markets: split so it adds up to what is reserved.
+      var rc = el('td', null, eur(r.blr)); rc.appendChild(el('div', 'small-split', 'M7 ' + eurShort(r.blrC) + ' + MATS ' + eurShort(r.blrA))); tr.appendChild(rc);
       tr.appendChild(el('td', r.excess < 0 ? 'neg' : null, eur(r.excess)));
       tr.appendChild(el('td', 'gl', eur(r.cont.l16)));
       tr.appendChild(el('td', r === lowC ? 'low' : null, eur(r.cont.l18)));
       tr.appendChild(el('td', null, eur(r.cont.l09)));
-      var a18 = el('td', 'gl' + (r === lowA ? ' low' : ''), eur(r.da.l18) + (r.gap1 > 1 ? ' × ' + shareAuctions(r).length + ' (' + shareDaysShort(shareAuctions(r)) + ')' : ''));
+      var a16 = el('td', 'gl', eur(r.da.l16)); if (r.gap1 > 1) a16.appendChild(el('div', 'small-split', 'per auction day')); tr.appendChild(a16);
+      var a18 = el('td', (r === lowA ? 'low' : null), eur(r.da.l18) + (r.gap1 > 1 ? ' × ' + shareAuctions(r).length + ' (' + shareDaysShort(shareAuctions(r)) + ')' : ''));
       tr.appendChild(a18);
       tr.appendChild(el('td', null, eur(r.da.l09)));
       tb.appendChild(tr);
@@ -1279,10 +1289,12 @@ var LimitEngine = (function () {
     [['collateral', w.C], ['open-risk', w.or], ['c-bd', w.cbd], ['c-nbd', w.cnbd], ['a-bd', w.abd], ['a-nbd', w.anbd]].forEach(function (f) { $(f[0]).value = fmtInt.format(Math.max(0, +f[1] || 0)); });
     $('split').value = w.key;
     if (w.day) selected = w.day;
-    $('handoff-text').textContent = 'Collateral ' + eur(w.C) + ' at a ' + w.key + ' / ' + (100 - w.key) + ' split, with the base limits and open risk (' + eur(w.or) + ') of your wallet estimate, for the week of ' + dLabel(w.week, true) + '.' +
+    plainWeek = quietWeek(w.week);
+    $('handoff-text').textContent = 'Collateral ' + eur(w.C) + ' at a ' + w.key + ' / ' + (100 - w.key) + ' split, with the base limits and open risk (' + eur(w.or) + ') of your wallet estimate, for ' + (plainWeek ? 'a standard week' : 'the week of ' + dLabel(w.week, true)) + '.' +
       (w.daily ? ' Your wallet adjusts the collateral every business day; this is its highest day.' : '') +
       (w.day ? ' On ' + dLabel(w.day) + '\'s calculation, the one that sets the amount, your trading needs M7 continuous ' + eur(w.tc) + ' from 18:00' + (w.ta > 0 ? ' and MATS auctions ' + eur(w.ta) + ' per auction' : '') + '.' : '') +
       ' Change anything here, then take it back to the wallet.';
+    plainWeek = false;
   })();
 
   // ---------- main render ----------
@@ -1298,6 +1310,10 @@ var LimitEngine = (function () {
     var s = readState();
     syncForm(s);
     var res = compute(s); lastRes = res;
+    plainWeek = quietWeek(s.week);
+    try { draw(res); } finally { plainWeek = false; }
+  }
+  function draw(res) {
     renderTiles(res);
     renderAlert(res);
     renderTabs(res);
@@ -1317,7 +1333,7 @@ var LimitEngine = (function () {
   $('setup').addEventListener('submit', function (e) { e.preventDefault(); });
   $('week').addEventListener('change', function () { selected = null; weekNote(); });
   var ro = null;
-  if (window.ResizeObserver) { ro = new ResizeObserver(function () { if (lastRes) renderAuctions(lastRes); }); ro.observe($('auction-chart')); }
+  if (window.ResizeObserver) { ro = new ResizeObserver(function () { if (!lastRes) return; plainWeek = quietWeek(lastRes.s.week); try { renderAuctions(lastRes); } finally { plainWeek = false; } }); ro.observe($('auction-chart')); }
   render();
 })();
 </script>
