@@ -113,14 +113,16 @@ var WalletBrp = (function () {
   function componentB(weekly, sigma) { var s = stats(weekly, D.weeksB.value, sigma); return s.mean + D.sigmaB.value * s.sd; }
   function componentCD(monthly, sigma) { var s = stats(monthly, D.monthsCD.value, sigma); return s.mean + D.sigmaCD.value * s.sd; }
 
-  /* Draft rule (ACM draft art. 10.8). o = { A | (volume2m, price2m), weekly, profile, smart, sigma, nemo, minimum }
+  /* Draft rule (ACM draft art. 10.8). o = { A | (volume2m, price2m), weekly | B, profile | C, smart | D, sigma, nemo,
+     minimum }. Components come from invoice histories, or are given directly (B, C, D: the parametric model).
        A = realised highest daily net volume over two months × average day-ahead reference price over two months;
        minimum: apply the €96,000 per member (default true; wallet-model §4.4). */
   function draft(o) {
     if (o.nemo) return { rule: 'draft', nemo: true, security: D.nemo.value };
     var w = D.weights.value;
     var A = o.A != null ? o.A : (o.volume2m || 0) * (o.price2m || 0);
-    var B = componentB(o.weekly || [], o.sigma), Cc = componentCD(o.profile || [], o.sigma), Dc = componentCD(o.smart || [], o.sigma);
+    var B = o.B != null ? o.B : componentB(o.weekly || [], o.sigma);
+    var Cc = o.C != null ? o.C : componentCD(o.profile || [], o.sigma), Dc = o.D != null ? o.D : componentCD(o.smart || [], o.sigma);
     var sum = w.A * A + w.B * B + w.C * Cc + w.D * Dc;
     return { rule: 'draft', A: A, B: B, C: Cc, D: Dc, sum: sum, security: o.minimum === false ? sum : Math.max(sum, D.minimum.value) };
   }
@@ -131,13 +133,25 @@ var WalletBrp = (function () {
        B: the first weekly invoice about four weeks after delivery (ACM draft para 15);
        C: month M's profile reconciliation is paid in month M+5 (SC 2026 art. 10.26(4)-(5));
        D: month M's smart-meter/telemetry reconciliation on the first working day of month M+6 (art. 10.27(13)).
-     s = { A, weekly, profile, smart, sigma, minimum, lagWeeks }: steady-state amounts per invoice (€). */
+     s = { A, weekly, weeklySd, profile, profileSd, smart, smartSd, sigma, minimum, lagWeeks }: mean (and standard
+     deviation) of one invoice in steady state, €. With k real invoices of mean μ and deviation σ in a window of n, and
+     the rest €0, the component is taken at its expected mean and spread: p·μ + f·√(p(σ² + μ²) − (p·μ)²), p = k/n.
+     With σ = 0 this is exactly the constant-invoice window (stats() on k copies and n − k zeros). */
+  function expectedComponent(k, n, mean, sd, factor, sigma) {
+    var p = Math.min(k, n) / n, v = Math.max(0, p * (sd * sd + mean * mean) - p * mean * p * mean);
+    if (sigma === 'sample') v = v * n / (n - 1);
+    return p * mean + factor * Math.sqrt(v);
+  }
   function rampUp(s, months) {
     var out = [], lag = s.lagWeeks == null ? 4 : s.lagWeeks, peak = null;
     for (var m = 1; m <= (months || 18); m++) {
       var weeks = Math.floor((m - 1) * 52 / 12), kB = Math.max(0, weeks - lag);
-      var kC = Math.max(0, m - 6), kD = Math.max(0, m - 7), fill = function (x, k) { var a = []; for (var i = 0; i < k; i++) a.push(x); return a; };
-      var r = draft({ A: m >= 2 ? s.A || 0 : 0, weekly: fill(s.weekly || 0, kB), profile: fill(s.profile || 0, kC), smart: fill(s.smart || 0, kD), sigma: s.sigma, minimum: s.minimum });
+      var kC = Math.max(0, m - 6), kD = Math.max(0, m - 7);
+      var r = draft({ A: m >= 2 ? s.A || 0 : 0,
+                      B: expectedComponent(kB, D.weeksB.value, s.weekly || 0, s.weeklySd || 0, D.sigmaB.value, s.sigma),
+                      C: expectedComponent(kC, D.monthsCD.value, s.profile || 0, s.profileSd || 0, D.sigmaCD.value, s.sigma),
+                      D: expectedComponent(kD, D.monthsCD.value, s.smart || 0, s.smartSd || 0, D.sigmaCD.value, s.sigma),
+                      minimum: s.minimum });
       r.month = m; r.invoices = { B: Math.min(kB, 10), C: Math.min(kC, 12), D: Math.min(kD, 12) };
       out.push(r);
       if (!peak || r.security > peak.security) peak = r;

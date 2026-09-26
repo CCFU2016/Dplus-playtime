@@ -110,10 +110,11 @@ var WalletTennet = (function () {
      o = { weeklyVolume (MWh traded, nominated or produced a week), share, bias (−1 long … +1 short), price (typical
      imbalance price €/MWh), statePrice2Share, stateGap2 (€/MWh), cv }. A normal model: it understates NL imbalance-price
      tails, and says so on the page. */
+  /* shortVolume (MWh a week, optional) is imbalance that is always short, such as an aggregator's non-delivery. */
   function weekly(o) {
-    var V = o.weeklyVolume * o.share, delta = (o.statePrice2Share || 0) * (o.stateGap2 || 0), b = o.bias || 0;
-    var mu = V * (b * o.price + (1 - Math.abs(b)) * delta / 2), sigma = (o.cv == null ? 0.5 : o.cv) * V * o.price;
-    return { volume: V, delta: delta, mu: mu, sigma: sigma, B: mu + 2 * sigma };
+    var V = o.weeklyVolume * o.share, Vs = o.shortVolume || 0, delta = (o.statePrice2Share || 0) * (o.stateGap2 || 0), b = o.bias || 0;
+    var mu = V * (b * o.price + (1 - Math.abs(b)) * delta / 2) + Vs * o.price, sigma = (o.cv == null ? 0.5 : o.cv) * (V + Vs) * o.price;
+    return { volume: V + Vs, delta: delta, mu: mu, sigma: sigma, B: mu + 2 * sigma };
   }
   // Seeded pseudo-random numbers (mulberry32) and standard normals (Box-Muller), so the stress end is reproducible.
   // Math.imul is ES2015; the fallback keeps the module ES5.
