@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
   :root {
-    --bg: #f3f5f8; --surface: #ffffff; --surface-2: #eef1f5; --ink: #121a24; --ink-2: #445061; --muted: #6b7686;
+    --bg: #f3f5f8; --surface: #ffffff; --surface-2: #eef1f5; --ex-bg: #fff5da; --ex-ink: #5c3d00; --ex-rule: #eda100; --ink: #121a24; --ink-2: #445061; --muted: #6b7686;
     --rule: #dbe0e7; --rule-strong: #b7c0cc; --critical: #c3362c; --critical-bg: #fbeceb; --focus: #2a78d6;
     --select-bg: #121a24; --select-ink: #ffffff; --accent-bg: #eaf2fc;
     /* wallet segments: validated categorical slots (light, on #ffffff) */
@@ -27,7 +27,7 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
+      --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ex-bg: #2b2208; --ex-ink: #ffe4a3; --ex-rule: #c98500; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
       --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --focus: #6fa8f0;
       --select-bg: #eef2f6; --select-ink: #0d1116; --accent-bg: #16263a;
       --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500;
@@ -35,7 +35,7 @@
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
+    --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ex-bg: #2b2208; --ex-ink: #ffe4a3; --ex-rule: #c98500; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
     --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --focus: #6fa8f0;
     --select-bg: #eef2f6; --select-ink: #0d1116; --accent-bg: #16263a;
     --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500;
@@ -93,6 +93,13 @@
   .error { font-size: 13.5px; color: var(--critical); }
   .conn { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
   .conn select { border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); padding: 8px 10px; }
+  .skip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule); }
+  .skip span { font-size: 13.5px; color: var(--muted); }
+  .example { display: grid; gap: 8px; justify-items: start; padding: 18px 20px; border: 2px solid var(--ex-rule); border-left-width: 8px; border-radius: 10px; background: var(--ex-bg); color: var(--ex-ink); }
+  .example[hidden] { display: none; }
+  .example b { font-size: clamp(19px, 2.6vw, 23px); line-height: 1.2; font-weight: 700; }
+  .example p { margin: 0; font-size: 15px; max-width: 70ch; }
+  .example .btn { background: var(--ex-ink); border-color: var(--ex-ink); color: var(--ex-bg); }
   .linkbtn { border: 0; background: none; padding: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13.5px; color: var(--ink); text-align: left; }
   .nav { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--rule); padding-top: 16px; }
 
@@ -180,6 +187,7 @@
           <div class="choice"><input type="radio" name="type" id="t-aggregator" value="aggregator"><label for="t-aggregator"><b>Aggregator</b><span>You sell flexibility from customers' assets that stay with their own balance responsible party.</span></label></div>
           <div class="choice"><input type="radio" name="type" id="t-asset" value="asset"><label for="t-asset"><b>Asset owner</b><span>You own or control production, storage or consumption that joins the Direct+ balance responsible party.</span></label></div>
         </div>
+        <div class="skip"><button type="button" class="btn ghost" id="skip">Skip the questions, show an example</button><span>Typical answers for the type you picked (a trader if none), for show only.</span></div>
       </fieldset>
 
       <fieldset class="step" data-step="2" hidden>
@@ -305,8 +313,14 @@
   </section>
 
   <section id="results" class="results" aria-live="polite" hidden>
+    <div class="example" id="example" role="note" hidden>
+      <b>Example figures, for show only</b>
+      <p id="example-text"></p>
+      <button type="button" class="btn no-print" id="example-own">Answer the questions for your own estimate</button>
+    </div>
+
     <div class="bar-head">
-      <h2>Your estimate</h2>
+      <h2 id="results-title">Your estimate</h2>
       <div class="controls no-print">
         <label>Week shown<select id="week"></select></label>
         <label>Collateral<select id="cmode"><option value="static">The same all week</option><option value="daily">Adjusted every business day</option></select></label>
@@ -352,7 +366,7 @@
     </div>
 
     <div class="two">
-      <div class="panel card"><h3>Your answers</h3><dl id="answers"></dl><div class="no-print"><button type="button" class="linkbtn" id="edit2">Change my answers</button></div></div>
+      <div class="panel card"><h3 id="answers-title">Your answers</h3><dl id="answers"></dl><div class="no-print"><button type="button" class="linkbtn" id="edit2">Change my answers</button></div></div>
       <div class="panel card"><h3>What we assumed</h3><ul class="plain" id="assumed"></ul></div>
     </div>
 
@@ -1561,7 +1575,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   WEEKS.forEach(function (w) { var o = el('option', null, w[1]); o.value = w[0]; $('week').appendChild(o); });
 
   // ---------- answers ----------
-  var ans = C.defaultAnswers('trader'), step = 1, STEPS = 7, last = null;
+  var ans = C.defaultAnswers('trader'), step = 1, STEPS = 7, last = null, example = false;
   ans.week = WEEKS[0][0];
   var form = $('q');
   function setRadio(name, v) { var r = form.querySelector('input[name="' + name + '"][value="' + v + '"]'); if (r) r.checked = true; }
@@ -1652,10 +1666,17 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var err = validate(step);
     if (err) { $('step-error').textContent = err; $('step-error').hidden = false; return; }
     if (step < STEPS) { show(step + 1); $('wizard').scrollIntoView({ block: 'start' }); return; }
-    results();
+    example = false; results();
+  });
+  // Skip: straight to the results with the typical answers for the chosen type, marked as an example throughout.
+  $('skip').addEventListener('click', function () {
+    var t = form.querySelector('input[name="type"]:checked'), week = ans.week;
+    ans = C.defaultAnswers(t ? t.value : 'trader'); ans.week = week; fill();
+    example = true; results(); window.scrollTo(0, 0);
   });
   $('back').addEventListener('click', function () { if (step > 1) show(step - 1); });
   function edit() { $('results').hidden = true; $('wizard').hidden = false; show(1); window.scrollTo(0, 0); }
+  $('example-own').addEventListener('click', edit);
   $('edit').addEventListener('click', edit); $('edit2').addEventListener('click', edit);
   $('print').addEventListener('click', function () { window.print(); });
   $('week').addEventListener('change', function () { ans.week = $('week').value; results(); });
@@ -1693,9 +1714,16 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var primary = runs[runs.length - 1], s = primary.s;
     last = primary.full;
     $('wizard').hidden = true; $('results').hidden = false; $('week').value = ans.week; $('topup').value = ans.replenish; $('cmode').value = ans.collateral;
+    $('example').hidden = !example;
+    $('example-text').textContent = 'These numbers use typical answers for ' + { trader: 'a trader', aggregator: 'an aggregator', asset: 'an asset owner' }[ans.type] +
+      ', not your plans. They show what the estimate looks like; your own wallet needs can be very different.';
+    $('results-title').textContent = example ? 'Example estimate' : 'Your estimate';
+    $('answers-title').textContent = example ? 'Example answers' : 'Your answers';
+    $('edit').textContent = example ? 'Answer the questions' : 'Change my answers';
+    $('edit2').textContent = example ? 'Answer the questions' : 'Change my answers';
     var cols = runs.map(function (r) { return { label: r.label || 'Normal week', res: r.exp }; });
     if (ans.tough) runs.forEach(function (r) { cols.push({ label: r.label ? r.label + ', tough week' : 'Tough week', res: r.str }); });
-    $('hero-label').textContent = 'Money your Direct+ wallet needs, for the week of ' + dLabel(s.week, true);
+    $('hero-label').textContent = (example ? 'Example: money a typical ' + TYPE[ans.type].toLowerCase() + '\'s Direct+ wallet needs' : 'Money your Direct+ wallet needs') + ', for the week of ' + dLabel(s.week, true);
     var hv = clear($('hero-value')), normals = runs.map(function (r) { return r.exp.total; });
     var lo = Math.min.apply(null, normals), hi = Math.max.apply(null, normals);
     if (ans.collateral === 'daily') {
