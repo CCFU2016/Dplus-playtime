@@ -828,13 +828,13 @@ default answers the settings equal that type's preset exactly, and `tests/wallet
 | Question | Settings |
 |---|---|
 | Which describes you best? | Preset: trader, aggregator or asset owner |
-| Markets, weekends | Volumes of markets not traded are set to 0. Weekends: yes, no, or **show me both**, which runs the estimate twice (business days only and also at weekends) and shows them side by side |
+| Weekends (no separate markets question) | Niki (26 Sep 2026): no markets question; 0 volume means a market isn't traded. Day-ahead and intraday auctions are one market (MATS, one ECC limit, `EPEX_AUCTION_EUR`, manual §3.10), continuous is the other (M7). Weekends: yes, no, or **show me both**, which runs the estimate twice (business days only and also at weekends) and shows them side by side |
 | Strategy | Fills the volumes. The type's own strategy keeps the preset; otherwise each market's total is split evenly (close positions), 10/90 (mainly sell) or 90/10 (mainly buy) |
 | Volumes | Buys and sells per market. Orders resting over 16:00 and evening buying scale with continuous buying (the preset's ratio) |
 | Aggregators: nominated in, not delivered | `nominatedIn`, `nonDelivery` |
 | (not asked) Held over the 16:00 cut | Niki asked to drop this question to reduce complexity (26 Sep 2026). Every prospect is assumed to hold some positions over the cut: settlement float share 30%, listed under "What we assumed" |
 | Prices, tough week | Typical price. The **tough week is optional** (off by default); only when chosen is its price asked and shown. The stress two-to-three-month average is 1.5 × typical (ASSUMPTION) |
-| Highest auction bid | `aucLimitPrice` (required when buying in auctions) |
+| Highest auction bid | `aucLimitPrice`, asked only when there are auction buys |
 | Portfolio: production, consumption or none; total capacity; number of sites | Niki: "production vs consumption". Capacity is split over equal sites (ASSUMPTION) for the current rule's B. Reconciliation spread is €10 per MW a month (ASSUMPTION), in D: telemetry or smart meter, no profile metering (Q15). Production together with consumption (e.g. solar with a battery) means buying and selling in different periods (`shiftShare` 1). Production pre-selects "depends on a forecast" on the next question, consumption only "normal" (`suggestBalance`); the prospect can change it |
 | How close, which way | Imbalance 0.5%, 3% or 5% of volume; bias 0, +0.3 (short) or −0.2 (long) |
 | Top-ups | Top-up rhythm (Direct+ accepts cash only, so there is no question about guarantees). The estimate also compares all three rhythms (not during the week, every Monday, every business day) and has a top-up selector, so a prospect sees what topping up more often changes |

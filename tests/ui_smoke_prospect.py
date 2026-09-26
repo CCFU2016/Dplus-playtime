@@ -69,6 +69,14 @@ with sync_playwright() as pw:
     check('during the week' in h and 'around the weekend' in h, 'daily collateral: weekday and weekend amounts: ' + h)
     pg.select_option('#cmode', 'static'); pg.wait_for_timeout(1500)
     check('during the week' not in pg.inner_text('#hero-value'), 'the collateral selector switches back to static: ' + pg.inner_text('#hero-value'))
+    # No separate markets question: 0 volume means a market isn't traded, and the auction bid price is only asked
+    # when there are auction buys (day-ahead and intraday auctions share one ECC limit).
+    def no_auction_buys(p):
+        p.fill('#aucBuy', '0'); p.dispatch_event('#aucBuy', 'input'); p.wait_for_timeout(100)
+    def bid_hidden(p):
+        check(p.is_hidden('#bid-q'), 'no auction buys: the bid-price question is not asked')
+    walk(pg, 'trader', {3: no_auction_buys, 4: bid_hidden})
+    check(pg.is_visible('#results'), 'an estimate without auction buys')
     # Validation: with a tough week, a tough-week price below the normal price is refused.
     pg.click('#edit'); pg.wait_for_timeout(200)
     for step in range(1, 4): pg.click('#next'); pg.wait_for_timeout(100)

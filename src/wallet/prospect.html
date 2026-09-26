@@ -171,14 +171,7 @@
       </fieldset>
 
       <fieldset class="step" data-step="2" hidden>
-        <legend><h2>Where will you trade?</h2></legend>
-        <div class="q"><span class="ql">Markets on EPEX SPOT (Netherlands)</span>
-          <div class="choices">
-            <div class="choice"><input type="radio" name="markets" id="m-both" value="both"><label for="m-both"><b>Continuous intraday and auctions</b><span>Trading on the intraday order book as well as in the day-ahead and intraday auctions.</span></label></div>
-            <div class="choice"><input type="radio" name="markets" id="m-cont" value="continuous"><label for="m-cont"><b>Continuous intraday only</b></label></div>
-            <div class="choice"><input type="radio" name="markets" id="m-auc" value="auctions"><label for="m-auc"><b>Auctions only</b><span>Day-ahead and intraday auctions.</span></label></div>
-          </div>
-        </div>
+        <legend><h2>When will you trade?</h2></legend>
         <div class="q"><span class="ql">Will you also trade at weekends and on public holidays?</span>
           <div class="choices cols">
             <div class="choice"><input type="radio" name="weekend" id="w-yes" value="yes"><label for="w-yes"><b>Yes</b></label></div>
@@ -200,11 +193,12 @@
           <p class="note" id="vol-note" hidden></p>
         </div>
         <div class="q"><span class="ql">Your volumes on a normal day</span>
+          <p class="hint">Enter 0 for a market you don't trade. Day-ahead and intraday auctions share one ECC limit, so enter them together.</p>
           <div class="nums">
-            <div class="num" data-market="continuous"><label for="contBuy">Continuous: buy</label><div class="in"><input type="number" id="contBuy" min="0" step="10" data-a="contBuy"><span class="unit">MWh a day</span></div></div>
-            <div class="num" data-market="continuous"><label for="contSell">Continuous: sell</label><div class="in"><input type="number" id="contSell" min="0" step="10" data-a="contSell"><span class="unit">MWh a day</span></div></div>
-            <div class="num" data-market="auctions"><label for="aucBuy">Auctions: buy</label><div class="in"><input type="number" id="aucBuy" min="0" step="10" data-a="aucBuy"><span class="unit">MWh a day</span></div></div>
-            <div class="num" data-market="auctions"><label for="aucSell">Auctions: sell</label><div class="in"><input type="number" id="aucSell" min="0" step="10" data-a="aucSell"><span class="unit">MWh a day</span></div></div>
+            <div class="num"><label for="contBuy">Continuous intraday (M7): buy</label><div class="in"><input type="number" id="contBuy" min="0" step="10" data-a="contBuy"><span class="unit">MWh a day</span></div></div>
+            <div class="num"><label for="contSell">Continuous intraday (M7): sell</label><div class="in"><input type="number" id="contSell" min="0" step="10" data-a="contSell"><span class="unit">MWh a day</span></div></div>
+            <div class="num"><label for="aucBuy">Auctions, day-ahead + intraday (MATS): buy</label><div class="in"><input type="number" id="aucBuy" min="0" step="10" data-a="aucBuy"><span class="unit">MWh a day</span></div></div>
+            <div class="num"><label for="aucSell">Auctions, day-ahead + intraday (MATS): sell</label><div class="in"><input type="number" id="aucSell" min="0" step="10" data-a="aucSell"><span class="unit">MWh a day</span></div></div>
           </div>
         </div>
         <div class="q" data-type="aggregator"><span class="ql">Flexibility from your customers</span>
@@ -219,7 +213,7 @@
         <legend><h2>Which prices do you plan with?</h2></legend>
         <div class="nums">
           <div class="num"><label for="price">A normal price</label><div class="in"><input type="number" id="price" min="1" step="5" data-a="price"><span class="unit">€/MWh</span></div></div>
-          <div class="num" data-market="auctions"><label for="aucLimitPrice">The highest price you'd bid in auctions</label><div class="in"><input type="number" id="aucLimitPrice" min="1" step="10" data-a="aucLimitPrice"><span class="unit">€/MWh</span></div></div>
+          <div class="num" id="bid-q"><label for="aucLimitPrice">The highest price you'd bid in auctions</label><div class="in"><input type="number" id="aucLimitPrice" min="1" step="10" data-a="aucLimitPrice"><span class="unit">€/MWh</span></div></div>
         </div>
         <p class="hint">Your trading limits grow with prices. In auctions, ECC counts each buy order at its highest price × quantity.</p>
         <div class="q"><span class="ql">Do you also want to see a tough week?</span>
@@ -395,7 +389,7 @@
   var form = $('q');
   function setRadio(name, v) { var r = form.querySelector('input[name="' + name + '"][value="' + v + '"]'); if (r) r.checked = true; }
   function fill() {
-    setRadio('type', ans.type); setRadio('markets', ans.markets); setRadio('weekend', ans.weekend); setRadio('tough', ans.tough ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
+    setRadio('type', ans.type); setRadio('weekend', ans.weekend); setRadio('tough', ans.tough ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
     setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('replenish', ans.replenish);
     Array.prototype.forEach.call(form.querySelectorAll('[data-a]'), function (i) { var v = ans[i.getAttribute('data-a')]; i.value = v == null ? '' : (i.hasAttribute('data-pct') ? Math.round(v * 1000) / 10 : v); });
     ASSET_KEYS.forEach(function (k) { $('a-' + k).checked = !!ans.portfolio[k]; });
@@ -404,10 +398,7 @@
     visibility();
   }
   function visibility() {
-    Array.prototype.forEach.call(form.querySelectorAll('[data-market]'), function (n) {
-      var m = n.getAttribute('data-market'); n.hidden = ans.markets !== 'both' && ans.markets !== m;
-      n.style.display = n.hidden ? 'none' : '';
-    });
+    $('bid-q').style.display = ans.aucBuy > 0 ? '' : 'none';
     Array.prototype.forEach.call(form.querySelectorAll('[data-type]'), function (n) { n.style.display = ans.type === n.getAttribute('data-type') ? '' : 'none'; });
     $('size-q').style.display = anyAsset() ? '' : 'none';
     $('tough-price').style.display = ans.tough ? '' : 'none';
@@ -445,6 +436,7 @@
     if (!k) return;
     var v = t.value === '' ? null : parseFloat(t.value);
     ans[k] = v == null || !isFinite(v) ? null : (t.hasAttribute('data-pct') ? v / 100 : v);
+    if (k === 'aucBuy') visibility();
   });
   function note(text) { var n = $('vol-note'); n.textContent = text; n.hidden = false; }
 
@@ -453,7 +445,7 @@
   function validate(s) {
     var bad = function (k) { return ans[k] == null || !(ans[k] >= 0); };
     if (s === 3) {
-      var ks = []; if (ans.markets !== 'auctions') ks.push('contBuy', 'contSell'); if (ans.markets !== 'continuous') ks.push('aucBuy', 'aucSell');
+      var ks = ['contBuy', 'contSell', 'aucBuy', 'aucSell'];
       if (ans.type === 'aggregator') ks.push('nominatedIn', 'nonDelivery');
       if (ks.some(bad)) return 'Please fill in every volume (0 is fine).';
       if (ans.type === 'aggregator' && ans.nonDelivery > 1) return 'The share not delivered can\'t be over 100%.';
@@ -462,7 +454,7 @@
       if (!(ans.price > 0)) return 'Please fill in the normal price.';
       if (ans.tough && !(ans.stressPrice > 0)) return 'Please fill in the tough-week price.';
       if (ans.tough && ans.stressPrice < ans.price) return 'The tough-week price should be at least the normal price.';
-      if (ans.markets !== 'continuous' && ans.aucBuy > 0 && !(ans.aucLimitPrice > 0)) return 'Please fill in the highest price you\'d bid in auctions.';
+      if (ans.aucBuy > 0 && !(ans.aucLimitPrice > 0)) return 'Please fill in the highest price you\'d bid in auctions.';
     }
     if (s === 5 && anyAsset()) {
       if (!(ans.capacityMW > 0)) return 'Please fill in the total capacity.';
@@ -635,14 +627,13 @@
   function renderAnswers(s) {
     var dl = clear($('answers')), add = function (k, v) { dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, v)); };
     add('You are', TYPE[ans.type]);
-    add('Markets', ans.markets === 'both' ? 'Continuous and auctions' : ans.markets === 'continuous' ? 'Continuous only' : 'Auctions only');
     add('Weekends and holidays', { yes: 'Yes', no: 'No', both: 'Show me both' }[ans.weekend]);
-    if (ans.markets !== 'auctions') add('Continuous, buy / sell', fmt.format(s.contBuy) + ' / ' + fmt.format(s.contSell) + ' MWh a day');
-    if (ans.markets !== 'continuous') add('Auctions, buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
+    add('Continuous intraday, buy / sell', fmt.format(s.contBuy) + ' / ' + fmt.format(s.contSell) + ' MWh a day');
+    add('Auctions (day-ahead + intraday), buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
     if (ans.type === 'aggregator') add('Nominated from other BRPs', fmt.format(s.nominatedIn) + ' MWh a day, ' + Math.round(s.nonDelivery * 100) + '% may not be delivered');
     if (ans.tough) add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh'); else add('Normal price', eurP(s.price) + ' per MWh');
     add('Tough week', ans.tough ? 'Shown' : 'Not shown');
-    if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eurP(s.aucLimitPrice) + '/MWh');
+    if (s.aucBuy > 0) add('Highest auction bid', eurP(s.aucLimitPrice) + '/MWh');
     var names = { production: 'production', consumption: 'consumption' }, have = ASSET_KEYS.filter(function (k) { return ans.portfolio[k]; }).map(function (k) { return names[k]; });
     add('Portfolio', have.length ? have.join(', ').replace(/^./, function (c) { return c.toUpperCase(); }) + ', ' + fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : '') : 'None');
     add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
