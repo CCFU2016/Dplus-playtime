@@ -38,7 +38,7 @@ Settings page, tagged "Assumed", "Interpretation" or "ECC setting", with its sou
 | W8 | TenneT's "inzake rekening" formula for today's rule: is the €96,000 on TenneT's page a flat minimum, or 2 × 50 MW × 24 h × €40? How often is it recalculated? | TenneT | 1,200 MWh reading; toggle "flat €96,000" |
 | W9 | Can new connections in the Direct+ BRP still be profile-allocated after cSMA (1 May 2026), or is C always zero? | TenneT / Niki | Per member input, €0 for the presets |
 | W10 | VAT: is any flow not reverse-charged for some member types? | Niki | Not modelled |
-| W11 | Show "standalone BRP vs through Direct+" on a member-facing page? Members now pay as their own BRP, so the two are the same unless the €96,000 minimum is waived per member. | Niki | Not shown; "apply the minimum per member" setting on |
+| W11 | Show "on your own as a BRP" next to the Direct+ marginal collateral on the member-facing page? The difference can be large: for the financial-trader preset in October 2026 it is €0 vs €192,000. | Niki | Not shown; available as the "Basis" setting |
 | W12 | The pooled wallet: ECC asks that the settlement account be "on the name of the applicant" and "used exclusively for ECC clearing" (connected-bank document p.6). How does the pooled Direct+ wallet meet that (for example, sub-accounts per member)? | Direct+ / ECC | Labelled "Direct+ contract" |
 
 Readings of the TenneT texts that the page leaves switchable: the per-period net volume (i or ii); one counterparty

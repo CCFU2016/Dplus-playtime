@@ -71,13 +71,13 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('smartMean', 'Smart-meter and telemetry reconciliation: average monthly invoice', '€', 'number', 'ASSUMPTION', 'Component D of the draft'),
       f('smartSd', 'Smart-meter and telemetry reconciliation: monthly σ', '€', 'number', 'ASSUMPTION', 'Component D of the draft')
     ] },
-    { id: 'brp', title: 'BRP security', note: 'You pay what you would as your own BRP (Direct+).', fields: [
+    { id: 'brp', title: 'BRP security', note: 'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum.', fields: [
+      f('brpBasis', 'Basis', '', 'select', 'Direct+ contract', 'Direct+ (Niki, 26 Sep 2026): no minimum for members, only the marginal collateral; the €96,000 minimum and the 50 MW floors apply once to the Direct+ BRP. ASSUMPTION: the rule\'s formula on your own figures, never below €0; netting inside the Direct+ portfolio is not modelled', { options: [['marginal', 'Direct+: your marginal collateral'], ['standalone', 'On your own as a BRP (with the minimum), for comparison']] }),
       f('rule', 'Rule', '', 'select', 'input', 'The draft takes effect on 1 January 2027 once ACM decides (ACM draft Artikel II B)', { options: [['auto', 'By date (the draft from 2027)'], ['current', 'Rule in force now'], ['draft', 'ACM draft']] }),
-      f('reading', 'The current rule\'s 50 MW floor', '', 'select', 'INTERPRETATION', 'SC 2026 art. 10.8(3), (6), (11); the €96,000 minimum is on TenneT\'s page only (Q14)', { options: [['1200', '50 MW × 24 h = 1,200 MWh'], ['flat', 'A flat €96,000 minimum']] }),
+      f('reading', 'The current rule\'s 50 MW floor (on your own as a BRP)', '', 'select', 'INTERPRETATION', 'SC 2026 art. 10.8(3), (6), (11); the €96,000 minimum is on TenneT\'s page only (Q14). Not used for the marginal basis', { options: [['1200', '50 MW × 24 h = 1,200 MWh'], ['flat', 'A flat €96,000 minimum']] }),
       f('perPeriod', 'Daily net volume', '', 'select', 'INTERPRETATION', '"voor alle uren gedurende één kalenderdag" (current) / "één etmaal" (draft)', { options: [['i', '(i) Net over the day'], ['ii', '(ii) Net per settlement period, added up']] }),
       f('counterparties', 'Counterparties', '', 'select', 'INTERPRETATION', '"met enige andere balanceringsverantwoordelijke" (current), "met een andere" (draft)', { options: [['max', 'The largest single counterparty'], ['total', 'All counterparties netted']] }),
       f('sigma', 'Standard deviation', '', 'select', 'INTERPRETATION', 'ACM draft art. 10.8(3)-(5) does not say which', { options: [['population', 'Population'], ['sample', 'Sample']] }),
-      f('minimumPerMember', 'Apply the €96,000 minimum per member', '', 'bool', 'ASSUMPTION', 'The literal reading of "as your own BRP"; Direct+ contract'),
       f('brpForm', 'Security held as', '', 'select', 'input', 'SC 2026 art. 10.8(1): a guarantee, optionally with a deposit; draft art. 10.8(9): balance, guarantee or both', { options: [['guarantee', 'Bank guarantee'], ['deposit', 'Cash in the account']] })
     ] },
     { id: 'tennet', title: 'TenneT account', fields: [
@@ -95,7 +95,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     lossShare: 0.05, replenish: 'none', feesPerWindow: 0,
     imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
     connectionsMW: '', between: 'down', profileMean: 0, profileSd: 0, smartMean: 0, smartSd: 0,
-    rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population', minimumPerMember: true, brpForm: 'guarantee',
+    brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population', brpForm: 'guarantee',
     debitLagWeeks: 4
   };
   // Presets approved by Niki "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page.
@@ -165,26 +165,35 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     });
     var form = L.form(split.C, st.eccForm === 'guarantee', num(st.cap));
 
-    // Part 3: BRP security, the member as its own BRP
+    // Part 3: BRP security on the member's own figures. Direct+ members put up their marginal collateral: no minimum and
+    // no volume floors, which apply once to the Direct+ BRP (Niki, 26 Sep 2026). 'standalone' is the member as its own
+    // BRP, with both, for comparison.
+    var marginal = st.brpBasis !== 'standalone';
     var bx = (st.contBuy + st.aucBuy) * vm, sx = (st.contSell + st.aucSell) * vm, nom = st.nominatedIn * vm;
     var shift = st.perPeriod === 'ii' ? st.shiftShare : 0;
     var vol = function (buy, sell) { return Math.abs(buy - sell) + 2 * Math.min(buy, sell) * shift; };
     var V = st.counterparties === 'total' ? vol(bx + nom, sx) : Math.max(vol(bx, sx), nom);
     var pAvg = hot ? st.stressAvgPrice : st.price;
     var ruleId = st.rule === 'auto' ? R.ruleFor(isoDays[0]) : st.rule;
-    var cur = R.current({ kind: 'first', expected: V, price3m: pAvg, capacityMW: R.countedCapacity(listMW(st.connectionsMW), st.between), reading: st.reading });
-    var floor = st.reading === 'flat' ? 0 : 1200, pFl = Math.max(pAvg, 40);
+    var cur = R.current({ kind: 'first', expected: V, price3m: pAvg, capacityMW: R.countedCapacity(listMW(st.connectionsMW), st.between), reading: st.reading, floors: !marginal });
+    var floor = marginal || st.reading === 'flat' ? 0 : 1200, pFl = Math.max(pAvg, 40);
     cur.Aup = V * pFl; cur.Adown = Math.max(V, floor) * pFl;
     var base = st.imbBase === 'nominated' ? nom : st.imbBase === 'production' ? Math.max(sx - bx, 0) : bx + sx;
     var wk = W.weekly({ weeklyVolume: base * 7, share: st.imbShare * im, bias: st.bias, price: st.price * fp, statePrice2Share: st.state2Share,
                         stateGap2: st.state2Gap, cv: st.cv, shortVolume: st.nonDelivery * nom * 7 * im });
     var Bc = o.stress ? W.stressB(wk.mu, wk.sigma, { sigmaType: st.sigma }) : wk.B;
     var Cc = st.profileMean + 0.5 * st.profileSd, Dc = st.smartMean + 0.5 * st.smartSd;
-    var dr = R.draft({ A: V * pAvg, B: Bc, C: Cc, D: Dc, minimum: st.minimumPerMember !== false });
+    var dr = R.draft({ A: V * pAvg, B: Bc, C: Cc, D: Dc, minimum: !marginal });
+    // ASSUMPTION: a marginal share never goes below €0, even when the draft's components are negative.
+    if (marginal) { cur.security = Math.max(cur.security, 0); dr.security = Math.max(dr.security, 0); }
     var byRule = { current: cur, draft: dr };
     var security = byRule[ruleId].security;
     var ramp = R.rampUp({ A: V * pAvg, weekly: wk.mu, weeklySd: wk.sigma, profile: st.profileMean, profileSd: st.profileSd, smart: st.smartMean,
-                          smartSd: st.smartSd, sigma: st.sigma, minimum: st.minimumPerMember !== false, lagWeeks: +st.debitLagWeeks });
+                          smartSd: st.smartSd, sigma: st.sigma, minimum: !marginal, lagWeeks: +st.debitLagWeeks });
+    if (marginal) {
+      ramp.peak = null;
+      ramp.months.forEach(function (mo) { mo.security = Math.max(mo.security, 0); if (!ramp.peak || mo.security > ramp.peak.security) ramp.peak = mo; });
+    }
     var exit = W.exitTail(sunday(isoDays[0]), { profile: st.profileMean !== 0 || st.profileSd > 0, smart: st.smartMean !== 0 || st.smartSd > 0 });
 
     // Part 4: TenneT account
@@ -196,7 +205,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       { id: 'ecc', label: 'ECC trading collateral', segment: 'trading', value: split.C, form: st.eccForm === 'guarantee' ? 'Bank guarantee' : 'Cash', formRule: 'Cash or guarantee', confidence: 'Estimate · ECC rule' },
       { id: 'fund', label: 'ECC default fund', segment: 'available', value: form.defaultFund, form: 'Cash', formRule: 'Cash only', confidence: 'ECC rule' },
       { id: 'settlement', label: 'ECC settlement', segment: 'available', value: cash.need, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
-      { id: 'brp', label: 'BRP security (TenneT)', segment: 'brp', value: security, form: st.brpForm === 'guarantee' ? 'Bank guarantee' : 'Cash', formRule: 'Cash or guarantee', confidence: (ruleId === 'current' ? 'TenneT rule' : 'Draft rule') + ' · Direct+ contract' },
+      { id: 'brp', label: marginal ? 'BRP collateral (marginal)' : 'BRP security (TenneT)', segment: 'brp', value: security, form: st.brpForm === 'guarantee' ? 'Bank guarantee' : 'Cash', formRule: 'Cash or guarantee', confidence: (ruleId === 'current' ? 'TenneT rule' : 'Draft rule') + ' · Direct+ contract' },
       { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate' }
     ];
     var total = 0, seg = {};
@@ -205,7 +214,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       total: total, parts: parts, segments: seg,
       ecc: { key: split.key, C: split.C, form: form, targets: tg, baseLimits: bl, binding: binding, windows: ws },
       settlement: { windows: ws, need: cash.need, path: cash.path },
-      brp: { rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
+      brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
       tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }
     };
   }

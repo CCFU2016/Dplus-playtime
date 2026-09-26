@@ -398,18 +398,24 @@ S = max(3A + 4B + 6C + 6D, 96,000)
   - For aggregators, each bilateral counterparty and the exchange are separate counterparties.
 - **Price.** Default: the arithmetic mean of NL day-ahead prices over the period (three months current, two months draft).
 
-### 4.4 How the security reaches a member: as if it were its own BRP (Niki, 26 Sep 2026)
+### 4.4 How the security reaches a member: marginal collateral, no minimum (Niki, 26 Sep 2026)
 
 The Direct+ BRP is a **commercial BRP**, not EPEX SPOT's NEMO recognition. Each member pays what is equal to its share
-**as if it were its own BRP**.
+as if it were its own BRP. Then, the same day: **"there is no minimum for Direct+ members, it's only the marginal
+collateral."**
 
-**Security** is therefore computed on the member's own figures: its own A, its own imbalance and reconciliation
-invoices, and its own connections.
-- The ramp-up applies to a new member.
-- The €96,000 minimum applies per member, which is the literal reading of "as if its own BRP". A setting, "apply the minimum per member" (default on), lets Niki switch it off if the commercial terms differ.
-- The NEMO rule stays in `brp.js` because both texts have it, but it doesn't apply to Direct+ members.
+**Marginal collateral** (the default, "Basis" on the Settings page) is the rule's formula on the member's own figures,
+without a minimum and without the volume floors. The €96,000 minimum and the 50 MW floors apply once, to the Direct+
+BRP.
+- **Current rule:** A = the member's own daily net volume × max(3-month price, €40), with no 50 MW floor. B = its own counted capacity × 24 × the same price, with no floor. The member pays 2A if 2A ≥ B, else A + B. The €40 price floor stays, because it prices the BRP's own calculation.
+- **Draft:** 3A + 4B + 6C + 6D on the member's own figures, with no minimum.
+- **ASSUMPTION:** never below €0. A member whose imbalance tends to earn money adds nothing rather than a negative amount.
+- **ASSUMPTION:** netting inside the Direct+ portfolio (a member's imbalance offsetting another's) is not modelled. The member's own spread is used, which usually overstates its true marginal share.
+- **Ramp-up:** the series still shows how a new member's own components build up.
+- **Comparison basis:** "On your own as a BRP" applies the minimum and floors, as in the brief's standalone mode. It's a Settings option only and isn't shown on the wallet view by default, because whether to show that comparison to members is open (W11).
+- **NEMO:** the rule stays in `brp.js` because both texts have it, but it doesn't apply to Direct+ members.
 
-The brief's other two modes (a share of the aggregate BRP security, and a pricelist amount) are dropped.
+The brief's pricelist mode is dropped.
 
 ---
 
@@ -569,7 +575,7 @@ release; I haven't verified them against market data.
 
 ## 8. Worked example: financial trader, week of Monday 5 October 2026
 
-This uses the financial-trader preset above, the member as its own BRP (section 4.4), everything as cash unless stated, and
+This uses the financial-trader preset above, Direct+ marginal BRP collateral (section 4.4), everything as cash unless stated, and
 replenishment none. A throwaway script repeated each step with the engine, and every figure matches.
 
 ### 8.1 Part 1: ECC collateral
@@ -633,17 +639,24 @@ replenishment none. A throwaway script repeated each step with the engine, and e
 - **Stress need:** with no replenishment, the peak cumulative outflow is **€29,750**.
 - **Open risk:** OR(D) equals these amounts, and OR(Friday) = €4,250 feeds section 8.1.
 
-### 8.3 Part 3: BRP security (standalone; 5 October 2026, so the current rule)
+### 8.3 Part 3: BRP collateral (marginal; 5 October 2026, so the current rule)
 
 The trader is flat in every settlement period, so the realised net volume with the exchange's BRP is 0 under both
 readings.
 
+**Marginal collateral** (Direct+, section 4.4):
+- A = 0 × €80 = 0.
+- B = 0 (no connections).
+- 2A ≥ B, so **€0**, both typical and stress.
+
+**On your own as a BRP, for comparison** (the minimum and floors apply):
+
 | Reading | A | B | Security, typical (€80) | Stress (average €120) |
 |---|---|---|---|---|
-| 1,200 MWh (default) | 1,200 × 80 = 96,000 (the 50 MW floor) | 1,200 × 80 = 96,000 (the 50 MW floor, no connections) | 2A ≥ B → **€192,000** | 2 × 1,200 × 120 = **€288,000** |
+| 1,200 MWh | 1,200 × 80 = 96,000 (the 50 MW floor) | 1,200 × 80 = 96,000 (the 50 MW floor, no connections) | 2A ≥ B → **€192,000** | 2 × 1,200 × 120 = **€288,000** |
 | Flat €96,000 | 0 | 0 | **€96,000** | **€96,000** |
 
-**Draft rule, for comparison** (from 1 January 2027): A = 0 and C = D = 0.
+**Draft rule** (from 1 January 2027): A = 0 and C = D = 0, so only 4B counts.
 
 **Imbalance:**
 - V_w = 0.5% × 680 MWh × 7 = 23.8 MWh.
@@ -652,32 +665,34 @@ readings.
 - σ_w = 0.5 × 23.8 × 80 = **€952**.
 
 **B:**
-- Typical: B = 89.25 + 2 × 952 = **€1,993.25**, so 4B = 7,973 → **€96,000** (the minimum).
-- Stress: σ_w = 2,975, B = 6,039.25, 4B = 24,157 → **€96,000**.
+- Typical: B = 89.25 + 2 × 952 = **€1,993.25**, so 4B = **€7,973**. That is the marginal collateral under the draft; on your own as a BRP, the €96,000 minimum.
+- Stress: σ_w = 2,975. The page takes B's stress end as the 95th percentile of the seeded simulation: B = 8,288.51, so 4B = **€33,154** (on your own: €96,000).
 
-The ramp-up series is €96,000 in every month from 1 to 18. With no connections, the exit tail is about four weeks.
+Under the draft, the marginal ramp-up series builds to €7,973 by month 5: B has 0, 0, 4, 9 and then 10 real invoices in its window. On your own as a BRP it stays at €96,000. With no connections, the exit tail is about four weeks.
 
 ### 8.4 Part 4: TenneT account
 
 - **Week of 5–11 October:** it will be invoiced about four weeks later, in the week of 2 November 2026. The exact debit day is Q11.
 - **Cash for the invoice:** expected €89.25; stress (μ + 2σ at €250) **€6,039.25**.
-- **Current rule:** the security (€192,000 or €96,000) is held as a guarantee. The TenneT account needs only the invoice amount.
+- **Current rule:** the marginal collateral is €0. On your own as a BRP it would be €192,000 or €96,000, held as a guarantee. Either way, the account needs only the invoice amount.
 
 ### 8.5 The total
 
-Member as its own BRP, rule in force on 5 October 2026, collateral and security as cash or guarantee (no default fund):
+Direct+ marginal collateral, rule in force on 5 October 2026, collateral as cash (no default fund). Pinned by
+`tests/wallet/wallet.test.js` and shown on the page:
 
-| Purpose | Account | Form | Label | Expected | Stress |
+| Purpose | Wallet segment | Form | Label | Expected | Stress |
 |---|---|---|---|---|---|
-| 1. ECC collateral | ECC (O10) | cash or guarantee | ECC rule / Estimate | 125,745 | 406,594 |
-| 2. ECC settlement | connected account | cash | ECC rule / Estimate | 0 + fees | 29,750 |
-| 3. BRP security (1,200 MWh reading) | TenneT | guarantee (+ deposit) | TenneT rule / INTERPRETATION | 192,000 | 288,000 |
-| 4. Imbalance invoices | TenneT account | cash | Estimate | 89.25 | 6,039.25 |
-| **Total** | | | | **€317,834** | **€730,383** |
+| 1. ECC collateral | Trading collateral (at ECC) | cash or guarantee | Estimate · ECC rule | 125,745 | 406,594 |
+| 2. ECC settlement | Available balance | cash | Estimate · ECC rule | 0 + fees | 29,750 |
+| 3. BRP collateral (marginal) | BRP collateral | cash or guarantee | TenneT rule · Direct+ contract | 0 | 0 |
+| 4. Imbalance invoices | Available balance | cash | Estimate | 89.25 | 6,039.25 |
+| **Total** | | | | **€125,834** | **€442,383** |
 
-- **Flat €96,000 reading, or the draft rule from 2027:** €221,834 to €538,383.
+- **The same week with dates in 2027 (the draft):** the BRP collateral is €7,973 to €33,154.
+- **On your own as a BRP, for comparison:** €317,834 to €730,383 with the 1,200 MWh reading, or €221,834 to €538,383 with the flat €96,000.
 - **ECC collateral as a guarantee:** add €5,030 to €16,264 of cash for the default fund.
-- **Largest single driver:** the BRP-security reading. Section 11 asks for TenneT's own formula (Q14).
+- **Largest driver for this trader:** the ECC collateral, and within it the Friday period and the weekend auctions.
 
 ---
 
@@ -752,6 +767,7 @@ Everything else the brief states, I found in the sources as described:
    - Flag for Niki, not for the calculator: ECC's CBA p.6 asks that the settlement account be "on the name of the applicant" and "used exclusively for ECC clearing". A pooled account works if that is squared with ECC (for example with per-member sub-accounts). The page labels the pooling as Direct+ contract and doesn't describe ECC's account rules beyond that.
 3. **Rule timing:** both options. For dates from 1 January 2027 the page defaults to the draft, and shows the current rule's figure beside it (and the other way round before 2027). The manual selector stays.
 4. **Imbalance and reconciliation:** each member pays its own, as if it were its own BRP. Part 4 uses the member's own invoices.
+   - Same day, later: **no minimum for Direct+ members, only the marginal collateral.** BRP security is the rule on the member's own figures, without the €96,000 minimum or the 50 MW floors (section 4.4).
 5. **Presets:** not approved; waiting for Niki. Phases 1–4 don't use them.
 
 ### 11.2 The original gate questions (from the brief)

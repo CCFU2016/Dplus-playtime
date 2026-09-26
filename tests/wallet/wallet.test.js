@@ -2,20 +2,38 @@
 const C = require('../../src/wallet/wallet.js');
 const T = require('./assert.js')('wallet');
 
-// The worked example (§8.5): financial trader, week of 5 Oct 2026, rule in force, 1,200 MWh reading, all cash.
+// The worked example (§8.5): financial trader, week of 5 Oct 2026, rule in force, all cash. Direct+ members put up
+// their marginal BRP collateral, with no minimum (Niki, 26 Sep 2026): a flat trader without connections adds nothing.
 const ft = C.compute(C.preset('trader'));
-T.money(ft.expected.total, 317834.25, 'financial trader: expected total');
-T.money(ft.stress.total, 730383.25, 'financial trader: stress total');
-T.eq(ft.expected.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 125745], ['fund', 0], ['settlement', 0], ['brp', 192000], ['invoices', 89.25]], 'financial trader: expected parts');
-T.eq(ft.stress.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 406594], ['fund', 0], ['settlement', 29750], ['brp', 288000], ['invoices', 6039.25]], 'financial trader: stress parts');
+T.money(ft.expected.total, 125834.25, 'financial trader: expected total');
+T.money(ft.stress.total, 442383.25, 'financial trader: stress total');
+T.eq(ft.expected.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 125745], ['fund', 0], ['settlement', 0], ['brp', 0], ['invoices', 89.25]], 'financial trader: expected parts');
+T.eq(ft.stress.parts.map(p => [p.id, Math.round(p.value * 100) / 100]), [['ecc', 406594], ['fund', 0], ['settlement', 29750], ['brp', 0], ['invoices', 6039.25]], 'financial trader: stress parts');
 T.eq([ft.expected.ecc.key, ft.expected.ecc.binding.date], [53, '2026-10-09'], 'financial trader: 53/47, the Friday calculation sets the amount');
-T.eq(ft.expected.brp.rule, 'current', 'October 2026: the rule in force');
-T.money(ft.expected.brp.draft.security, 96000, 'financial trader: the draft would give the €96,000 minimum');
+T.eq([ft.expected.brp.rule, ft.expected.brp.basis], ['current', 'marginal'], 'October 2026: the rule in force, marginal collateral');
+T.money(ft.expected.brp.draft.security, 7973, 'financial trader: under the draft, 4B = 4 × 1,993.25 and no minimum');
 T.money(ft.expected.segments.trading + ft.expected.segments.brp + ft.expected.segments.available, ft.expected.total, 'segments add up to the total');
 
+// On your own as a BRP (for comparison): the minimum and the 50 MW floors apply.
+let s = C.preset('trader'); s.brpBasis = 'standalone';
+let sa = C.compute(s);
+T.money(sa.expected.total, 317834.25, 'on your own as a BRP: expected (1,200 MWh reading: 2 × 1,200 × €80)');
+T.money(sa.stress.total, 730383.25, 'on your own as a BRP: stress');
+T.money(sa.expected.brp.draft.security, 96000, 'on your own as a BRP, the draft gives the €96,000 minimum');
+s.reading = 'flat';
+T.money(C.compute(s).expected.total, 221834.25, 'on your own as a BRP, flat €96,000 reading');
+// Marginal amounts from members with volume or connections.
+const ag = C.compute(C.preset('aggregator')).expected.brp, as = C.compute(C.preset('asset')).expected.brp;
+T.money(ag.security, 150 * 80 * 2, 'aggregator: 150 MWh a day with one counterparty, 2 × A, no floors');
+T.money(as.security, 90 * 80 + 26 * 24 * 80, 'asset: A + B = 90 × 80 + 26 MW × 24 × 80');
+// A marginal share is never below €0, even when the draft's components are negative.
+s = C.preset('asset'); s.week = '2027-10-04'; s.bias = -1; s.cv = 0.1; s.imbShare = 0.5;
+let neg = C.compute(s).expected.brp;
+T.ok(neg.draft.sum < 0 && neg.security === 0, 'a member whose imbalance earns money adds €0, not a negative amount');
+
 // Choices move the right parts.
-let s = C.preset('trader'); s.reading = 'flat';
-T.money(C.compute(s).expected.total, 221834.25, 'flat €96,000 reading');
+s = C.preset('trader'); s.reading = 'flat';
+T.money(C.compute(s).expected.total, 125834.25, 'the 50 MW reading does not affect the marginal basis');
 s = C.preset('trader'); s.eccForm = 'guarantee';
 T.money(C.compute(s).expected.parts[1].value, 5029.8, 'a guarantee adds a 4% default-fund contribution');
 s = C.preset('trader'); s.week = '2027-03-22';

@@ -47,7 +47,7 @@ guarantee, and by when. Brief: `docs/wallet-brief.md`. Model, sources and the wo
 - **Engine:** the wallet uses only the engine's public API, in its two-market form. **Never edit `src/engine.js` or `src/page.html` for the wallet**: `tests/ecc_dist_unchanged.test.js` pins the ECC pages' bytes.
 - **Settings:** every setting (label, unit, kind, tag, source) is listed once in `wallet.js` (`GROUPS`). The Settings view and the "Assumptions and sources" table are generated from it. A new setting goes there, with its source. Presets (`PRESETS`) are approved by Niki for now.
 - **Sources:** rule parameters carry their source (`brp.js` `RULES`). Say "TenneT" on this page (Niki, 26 Sep 2026); the Direct+ videos say "the TSO" instead.
-- **Member model (Niki, 26 Sep 2026):** each member pays as if it were its own BRP (security, imbalance, reconciliation). The wallet pools all members at one connected bank; nothing nets between members.
+- **Member model (Niki, 26 Sep 2026):** each member pays its own imbalance and reconciliation, and puts up only its **marginal** BRP collateral: the rule on its own figures, with no €96,000 minimum and no 50 MW floors (those apply once to the Direct+ BRP), never below €0. "On your own as a BRP" (with the minimum) is a Settings option for comparison. The wallet pools all members at one connected bank; nothing nets between members.
 - **Tests:** `tests/wallet/` (run by `npm test`; money compares with |Δ| < €0.005) and `tests/ui_smoke_wallet.py` (run by `npm run test:ui`). `tests/wallet/wallet.test.js` pins the worked example of `docs/wallet-model.md` §8. If a change moves those numbers, update the model document in the same change.
 
 ## Outside this repo

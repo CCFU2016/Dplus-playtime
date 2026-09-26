@@ -83,19 +83,20 @@ var WalletBrp = (function () {
        daily,                                the last six weeks of daily highs (MWh), for 'up' and 'down'
        capacityMW,                           counted capacity of large connections (countedCapacity)
        reading: '1200' | 'flat',             INTERPRETATION of the 50 MW floor (wallet-model §4.1); default '1200'
+       floors,                               false: no volume floors and no minimum (a Direct+ member's marginal share)
        nemo }
      '1200': the 50 MW floor is 50 × 24 = 1,200 MWh, on A (first and down) and on B. 'flat': no volume floors, and a
-     €96,000 minimum on the total. */
+     €96,000 minimum on the total. The €40 price floor always applies: it sets the price of the BRP's own calculation. */
   function current(o) {
     if (o.nemo) return { rule: 'current', nemo: true, security: C.nemo.value };
-    var floor = o.reading === 'flat' ? 0 : C.volumeFloorMW.value * C.hours.value;
+    var floor = o.reading === 'flat' || o.floors === false ? 0 : C.volumeFloorMW.value * C.hours.value;
     var price = Math.max(o.price3m, C.priceFloor.value), daily = o.daily || [], V;
     if (o.kind === 'up') V = Math.max.apply(null, daily.length ? daily : [0]);
     else if (o.kind === 'down') V = Math.max(daily.reduce(function (s, x) { return s + x; }, 0) / (daily.length || 1), floor);
     else V = Math.max(o.expected || 0, floor);
     var A = V * price, B = Math.max((o.capacityMW || 0) * C.hours.value, floor) * price;
     var security = 2 * A >= B ? 2 * A : A + B;
-    if (o.reading === 'flat') security = Math.max(security, C.flatMinimum.value);
+    if (o.reading === 'flat' && o.floors !== false) security = Math.max(security, C.flatMinimum.value);
     return { rule: 'current', volume: V, price: price, A: A, B: B, twoA: 2 * A >= B, security: security };
   }
 
