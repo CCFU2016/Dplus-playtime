@@ -35,6 +35,12 @@ with sync_playwright() as pw:
     check(pg.is_visible('#results') and pg.is_hidden('#wizard') and re.fullmatch(HERO, ex_hero) is not None, 'skip shows an estimate straight away: ' + ex_hero)
     check(pg.is_visible('#example') and 'for show only' in pg.inner_text('#example') and 'a trader' in pg.inner_text('#example'), 'the example banner says the figures are for show')
     check(pg.inner_text('#results-title') == 'Example estimate' and pg.inner_text('#hero-label').startswith('Example:') and pg.inner_text('#answers-title') == 'Example answers', 'title, hero and answers say example')
+    ex = {}
+    for m in ['aggregator', 'asset', 'trader']:
+        pg.click('[data-extype="%s"]' % m); pg.wait_for_timeout(1200)
+        ex[m] = pg.inner_text('#hero-value')
+        check(pg.get_attribute('[data-extype="%s"]' % m, 'aria-pressed') == 'true' and pg.is_visible('#example'), 'the example switches to ' + m + ': ' + ex[m])
+    check(len(set(ex.values())) == 3 and ex['trader'] == ex_hero, 'each type shows its own example; back to the trader gives the first one again')
     pg.click('#example-own'); pg.wait_for_timeout(200)
     check(pg.is_visible('#wizard') and pg.is_visible('.step[data-step="1"]'), 'the banner button goes back to question 1')
     pg.click('label[for="t-asset"]'); pg.click('#skip'); pg.wait_for_timeout(1500)

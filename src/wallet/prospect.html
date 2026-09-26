@@ -88,6 +88,11 @@
   .example[hidden] { display: none; }
   .example b { font-size: clamp(19px, 2.6vw, 23px); line-height: 1.2; font-weight: 700; }
   .example p { margin: 0; font-size: 15px; max-width: 70ch; }
+  .ex-types { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  .ex-types span { font-size: 14px; font-weight: 600; margin-right: 4px; }
+  .ex-types button { border: 1.5px solid var(--ex-ink); background: transparent; color: var(--ex-ink); border-radius: 999px; padding: 5px 14px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .ex-types button[aria-pressed="true"] { background: var(--ex-ink); color: var(--ex-bg); }
+  .ex-types button:focus-visible { outline: 2px solid var(--ex-ink); outline-offset: 2px; }
   .example .btn { background: var(--ex-ink); border-color: var(--ex-ink); color: var(--ex-bg); }
   .linkbtn { border: 0; background: none; padding: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13.5px; color: var(--ink); text-align: left; }
   .nav { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--rule); padding-top: 16px; }
@@ -175,7 +180,7 @@
           <div class="choice"><input type="radio" name="type" id="t-aggregator" value="aggregator"><label for="t-aggregator"><b>Aggregator</b><span>You sell flexibility from customers' assets that stay with their own balance responsible party.</span></label></div>
           <div class="choice"><input type="radio" name="type" id="t-asset" value="asset"><label for="t-asset"><b>Asset owner</b><span>You own or control production, storage or consumption that joins the Direct+ balance responsible party.</span></label></div>
         </div>
-        <div class="skip"><button type="button" class="btn ghost" id="skip">Skip the questions, show an example</button><span>Typical answers for the type you picked (a trader if none), for show only.</span></div>
+        <div class="skip"><button type="button" class="btn ghost" id="skip">Skip the questions, show an example</button><span>Typical answers, for show only. You can switch between trader, aggregator and asset owner there.</span></div>
       </fieldset>
 
       <fieldset class="step" data-step="2" hidden>
@@ -304,6 +309,12 @@
     <div class="example" id="example" role="note" hidden>
       <b>Example figures, for show only</b>
       <p id="example-text"></p>
+      <div class="ex-types no-print" role="group" aria-label="Show the example for">
+        <span>Show the example for</span>
+        <button type="button" data-extype="trader">Trader</button>
+        <button type="button" data-extype="aggregator">Aggregator</button>
+        <button type="button" data-extype="asset">Asset owner</button>
+      </div>
       <button type="button" class="btn no-print" id="example-own">Answer the questions for your own estimate</button>
     </div>
 
@@ -500,6 +511,15 @@
   $('back').addEventListener('click', function () { if (step > 1) show(step - 1); });
   function edit() { $('results').hidden = true; $('wizard').hidden = false; show(1); window.scrollTo(0, 0); }
   $('example-own').addEventListener('click', edit);
+  // Switch the example between member types: that type's typical answers, keeping the week, collateral and top-ups shown.
+  Array.prototype.forEach.call(document.querySelectorAll('[data-extype]'), function (b) {
+    b.addEventListener('click', function () {
+      var keep = { week: ans.week, collateral: ans.collateral, replenish: ans.replenish };
+      ans = C.defaultAnswers(b.getAttribute('data-extype'));
+      for (var k in keep) ans[k] = keep[k];
+      fill(); example = true; results();
+    });
+  });
   $('edit').addEventListener('click', edit); $('edit2').addEventListener('click', edit);
   $('print').addEventListener('click', function () { window.print(); });
   $('week').addEventListener('change', function () { ans.week = $('week').value; results(); });
@@ -538,6 +558,7 @@
     last = primary.full;
     $('wizard').hidden = true; $('results').hidden = false; $('week').value = ans.week; $('topup').value = ans.replenish; $('cmode').value = ans.collateral;
     $('example').hidden = !example;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-extype]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-extype') === ans.type)); });
     $('example-text').textContent = 'These numbers use typical answers for ' + { trader: 'a trader', aggregator: 'an aggregator', asset: 'an asset owner' }[ans.type] +
       ', not your plans. They show what the estimate looks like; your own wallet needs can be very different.';
     $('results-title').textContent = example ? 'Example estimate' : 'Your estimate';
