@@ -1,0 +1,63 @@
+Source: https://www.ecc.de/en/access/dcp-clearing-members/dcp-risk-management (redirected to https://www.ecc.de/en/services-operations/direct-clearing-participants/dcp-risk-management) | Retrieved: 2026-09-26
+Verbatim text of the page's <main> element, extracted with Python html.parser from the saved HTML (scripts/styles/nav/header/footer removed; whitespace normalised; document link targets shown as [link: ...]).
+
+DCP Risk Management
+European Commodity Clearing
+Services & Operations
+Direct Clearing Participants
+DCP Risk Management
+DCP Limit Calculation – ECC Webinar
+Florian Dorgerloh, Senior Clearing Operations Officer, explains in this webinar the basics of Base limits and how the DCP dynamic limit calculation works.
+Notice: To activate the video, please click on the picture. Please note that after activation your data will be forwarded to YouTube.
+DCP Limit Tool – Tutorial*
+In our tutorial on the DCP Limit Tool, Florian Dorgerloh, Senior Clearing Operations Officer, introduces you to the main functions. The tutorial covers:
+Overview of the interface
+Limit and collateral simulation for a single market
+Optimise limits and collaterals for multiple markets
+Market calendar & public holidays
+Notice: To activate the video, please click on the picture. Please note that after activation your data will be forwarded to YouTube.
+*DISCLAIMER
+The information presented in this video tutorial does not constitute investment advice or an invitation to trade in goods or financial instruments but are for informational and educational purposes only. They do not constitute professional consulting advice but merely provide general information as starting point for your own considerations relating to your specific situation. Consequently, we assume no responsibility for any decisions made in relation to the content of this video. Also, we provide no guarantee, warranty or assurance that the information published is up-to-date and reserve the right to amend or supplement the information at any time without prior notice.
+Swipe left to see more
+| Publishing date | Title | File
+| 2025-07-07 | DCP Limit Tool | xlsm (558 KB) [link: /fileadmin/ECC/Access/DCP_Simulation_Tool/DCP_SimulationTool4Clients.xlsm]
+| 2024-12-21 | Installation Guide DCP Limit Tool | pdf (237 KB) [link: /fileadmin/ECC/Access/DCP_Simulation_Tool/Installation_Guide_DCP_Limit_Tool_2024-12-21.pdf]
+Limit Management
+For the DCP model, pre-collateralised trading limits are set with the exchange for each market. DCP members can execute trades as long as their exposure stays below the collateralised trading limits.
+The trading limit of a DCP member is derived from the collateral amount the DCP member posts with ECC. Twice a business day, the exact outstanding risk exposure will be determined and taken from the collateral position. The remainder becomes available for the trading limit distribution. This so-called “Dynamic Limit” gives DCP members a high degree of trading flexibility, making most of the posted collateral available for trading.
+The maximum total limit granted to a DCP member is limited by the Cap Limit. The Cap Limit is determined on the basis of the member’s overall risk profile. Even if a DCP member deposits more collateral than the Cap Limit, the maximum collateral considered for the trading limit calculation is the amount of the Cap Limit, not more. ECC derives the respective Cap Limit on the basis of the applicant's financial strength and internally defined credit-risk-based criteria. The Cap Limit is calculated as part of the KYC process and reassessed once a year for each member.
+A DCP member communicates the limit distribution preferences and (optional) base-limit, by submitting the form “O09 Limit Adjustment”.
+The DCP member can see the trading limit set for each market in the ECC Member Area.
+For submitting the form as well as for support concerning the limit management process, please contact the Direct Clearing Team (contact at the bottom of this page).
+Swipe left to see more
+| Publishing date | Title | File
+| 2025-07-07 | DCP Limit Slide Deck | pdf (409 KB) [link: /fileadmin/ECC/Downloads/Access/DCP_Clearing_Members/20250507_DCP_Client_second_Introduction_Slidedecks_.pdf]
+Collateral Management
+To collateralise the trading limits, DCP members can deposit collateral with ECC as defined in the Clearing Conditions
+Currently accepted collaterals for DCP members are:
+Cash funds in EUR and GBP
+Bank Guarantee in EUR and GBP (by ECC approved guarantors and using ECC approved bank guarantee wording template for DCP members; for further information please refer to Bank Guarantees as Collateral)
+For bank guarantees there is a bank-guarantee-only collateral limit of currently 40 million EUR. i.e., trading limits up to 40 million EUR can be covered by bank guarantees only. For trading limits exceeding 40 million EUR, the excess amount must be backed by a minimum of 50% in cash collateral. For example, if a client wants to deposit 50 million EUR as collateral with the maximum guarantee amount possible, the client needs to deposit a guarantee valuing 45 million EUR and 5 million EUR cash collateral.
+All collaterals for a DCP member are booked in a delivery account in ECC’s settlement system (SMSS). For each margin type and currency, a separate delivery account is set up. The member can monitor the balance of collateral accounts via ECC’s Member Area.
+Collateral definitions in SMSS
+List of delivery accounts
+| SMSS Collateral Management | Description
+| HLDNG_CASH_MRGN_EUR | Cash deposited at ECC in the collateral account and in currency Euro.
+| HLDNG_CASH_FUND_EUR | Cash deposited at ECC in the clearing fund account and in currency Euro.
+| HLDNG_CASH_MRGN_GBP | Cash deposited at ECC in the collateral account and in currency British Pound.
+| HLDNG_CASH_FUND_GBP | Cash deposited at ECC in the clearing fund account and in currency British Pound.
+| HLDNG_CASH_CAP_EUR | Maximum allowable limit for participant at which collaterals are capped.
+| GUARANTEE_XXXX_EUR_DMS | Guarantee provided from an accepted guarantor – guarantee amount will be booked at the collateral account in Euro. Were XXXX is the shortcode of the relevant guarantor
+| GUARANTEE_XXXX_GBP_DMS | Guarantee provided from an accepted guarantor – guarantee amount will be booked at the collateral account in British Pound. Were XXXX is the shortcode of the relevant guarantor
+Cash Collateral payments resulting from adjustments of collateral are shown in ECC’s payment reports and will be settled according to the payment process for DCP members.
+A DCP member communicates these collateral changes, by submitting “O10 Cash Deposit and Release”. For submitting the form as well as for support concerning the collateral management process, please contact the Direct Clearing Team (contact at the bottom of this page).
+Default Fund
+DCP members are required to contribute to the ECC default fund according to section 3.7 of the ECC Clearing Conditions. Accepted contribution for the ECC default fund is Euro and British Pound cash only. In case of a DCP member default, its collateral and default fund contribution are used to cover the resulting shortfall. If that is not sufficient, ECC’s dedicated own resources and subsequently the default fund contribution of all other DCP members is used. Finally, the remaining default fund is used.
+A minimum default fund contribution is required of every DCP member trading on markets with delivery risk (currently only UK Power Spot markets) or posting guarantees as collateral. The default fund contribution is either a minimum of 4% of the total collateral for the market with delivery risk or respectively 4% of the guarantee value.
+ECC performs daily stress tests. If the calculated shortfall from the stress test exceeds the DCP member’s clearing fund contribution including ECC’s dedicated own resources, the amount of exceedance is allocated to the DCP member as an additional clearing fund contribution proportional to their current shortfall.
+Direct Clearing
+For all questions concerning Direct Clearing processes (limit, collateral and payment)
+Available from 7:30 am to 7:00 pm CET
++49 341 24680-444 direct.clearing@ecc.de
+Learn more on Bank Guarantees as Collateral
+ACCESS HERE

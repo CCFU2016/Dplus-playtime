@@ -1,0 +1,64 @@
+Source: https://www.ecc.de/en/access/dcp-clearing-members/dcp-payments (redirected to https://www.ecc.de/en/services-operations/direct-clearing-participants/dcp-payments) | Retrieved: 2026-09-26
+Verbatim text of the page's <main> element, extracted with Python html.parser from the saved HTML (scripts/styles/nav/header/footer removed; whitespace normalised; document link targets shown as [link: ...]).
+
+DCP Payments
+European Commodity Clearing
+Services & Operations
+Direct Clearing Participants
+DCP Payments
+Payment Cycle
+ECC performs the financial settlement for all energy transactions contracted on ECC‘s partner exchanges.
+The payment and delivery have strict timelines. On each business day ECC initiates the collections and payments from/to the members bank accounts.
+Financial settlement at ECC encompasses both EUR and GBP payments, providing a comprehensive solution for members. ECC has established a daily booking cut-off time at 16:00:00 CET (T+0), which determines the settlement timeline. Trades concluded before this cut-off are financially settled in the morning of the following T2/UK business days, while others follow with a one-day delay.
+To streamline operations, commodity amounts from all trades are netted into a single net payment amount per DCP member and Connected Bank. These figures are diligently reported in daily Payment Reports accessible through the ECC Member Area.
+EUR payments are processed until 8:00 a.m. CET (T+1) on T2 operating days. GBP payments follow a fixed overnight schedule on UK business days and are processed at 9:00 a.m. CET (T+1).
+All fees incurred for DCP settlement can be found in our price list.
+Admission Procedure - Technical Account Connection
+General Information
+For seamless settlement, DCP members must maintain accounts with Connected Banks that meet specific requirements, including a connection with ECC's House Bank, ABN AMRO Bank. For EUR payments, the Connected Bank should also participate directly in T2, the EUR central bank payment system. For GBP payments the Connected Bank must be able to handle CHAPS transactions.
+Payments between ECC and DCP members via the Connected Bank infrastructure rely on SWIFT messages. These SWIFT messages are generated from ECC's clearing system and sent through ECC's House Bank, ABN AMRO Bank (BIC: ABNANL2A), to the Connected Bank of the DCP member. This secure and efficient system ensures smooth financial settlement operations.
+Steps of the Technical Connection
+Step 1: BIC Code Search
+The DCP searches for a bank independently. If the BIC code has been confirmed by ECC and therefore fulfils all ECC conditions, it can be used as a Connected Bank for ECC Clearing.
+To support the search for a BIC code, you can find some Connected Banks below.
+Step 2: Account Opening and Data Transmission
+The DCP independently opens an account with the confirmed bank and transmits the account data to ECC for set-up in ECC's systems.
+Step 3: Setup on ECC Side
+ECC inserts the account data into the systems used by ECC.
+Step 4: Debit and Credit Test Payment
+Once the setup has been completed, the ECC first instructs a debit and then a credit test payment. If both are successfully completed, the technical setup is finalised.
+Once the KYC process and the balancing group contracts have been finalised, the go-live date of Member Readiness is communicated.
+Before the first trade, the DCP is required to subscribe to all necessary reports in the Member Area and to deposit the desired collateral amount with ECC.
+Swipe left to see more
+| Publishing date | Title | File
+| 2025-12-08 | DCP Connected Bank Presentation | pdf (247 KB) [link: /fileadmin/ECC/Downloads/Access/DCP_Clearing_Members/20251208_Connected_Bank_-_Account_Setup_DCP_-_EUR___GBP_-_2025_2026_updated.pdf]
+Payment Set-up for nEHS-DCP Clients
+For clients that only participate in the sale of nEHS certificates and maintain a dedicated nEHS-DCP membership with ECC, the payment set-up differs from the standard DCP model. Please find more information here.
+Connected Banks
+Connected Banks are institutions which maintain one or more Settlement Accounts for DCP members and have an agreement with ABN AMRO Bank
+The following table contains a list of financial intermediaries that currently offer the service of a Connected Bank to DCP members of ECC. Please be advised that the decision to accept a company as a client for its payment services rests with the Connected Bank alone.
+Is your preferred bank not on the list? ABN AMRO Bank maintains a large network of Connected Banks. Please reach out to our Direct Clearing Team (direct.clearing@ecc.de) to check whether your preferred bank’s BIC codes are connected to ABN AMRO Bank and whether your bank is a direct participant in T2 or can participate in CHAPS payments (GBP payments).
+| Bank | Country | BIC | Eur | GBP | Contact
+| AB Swedbank | LTU | HABALT22XXX | Yes | No | verslas@swedbank.lt
+| AS SEB Bank (Skandinaviska Enskilda Banken AB) SEB Group | EST | EEUHEE2XXXX | Yes | No | cm.clientservices@seb.ee
+| AS SEB Bank (Skandinaviska Enskilda Banken AB) SEB Group | LVA | UNLALV2XXXX | Yes | No | cm.clientservices@seb.lv
+| AS SEB Bank (Skandinaviska Enskilda Banken AB) SEB Group | LTU | CBVILT2XXXX | Yes | No | cm.clientservices@seb.lt
+| AS Swedbank | EST | HABAEE2XXXX | Yes | No | cashmanagement@swedbank.ee
+| AS Swedbank | LVA | HABALV22XXX | Yes | No | without contact
+| BARCLAYS BANK | GB | BARCGB22XXX | No | Yes | without contact
+| Commerzbank | DE | COBADEFFXXX | Yes | Yes | without contact
+| HSBC BANK PLC | GB | MIDLGB22XXX | No | Yes | without contact
+| HSBC UK BANK PLC | GB | HBUKGB4BXXX | No | Yes | without contact
+| HCOB-Hamburg Commercial Bank AG | DE | HSHNDEHHXXX | Yes | No | Stefanie.Buhtz@hcob-bank.com
+| Jyske Bank | DK | JYBADKKKXXX | Yes | Yes | cdg@jyskebank.dk
+| KBC Bank NV | BE | KREDBEBBXXX | Yes | No | without contact
+| KBC BANK NV LONDON | GB | KREDGB2XXXX | No | Yes | without contact
+| OTP banka d. d. | SVN | KBMASI2XXXX | Yes | No | without contact
+| Nordea Bank ABP | FI | NDEAFIHHXXX | Yes | No | ISGinternational@nordea.fi
+| SANTANDER UK PLC | GB | ABBYGB2LXXX | No | Yes | without contact
+| Sydbank A/S | DK | SYBKDK22XXX | Yes | Yes | ETD@sydbank.dk
+| DZ BANK AG (früher: WGZ Bank) | DE | GENODEDDXXX | Yes | No | Firmenkunden@dzbank.de
+Direct Clearing
+For all questions concerning Direct Clearing processes (limit, collateral and payment)
+Available from 7:30 am to 7:00 pm CET
++49 341 24680-444 direct.clearing@ecc.de
