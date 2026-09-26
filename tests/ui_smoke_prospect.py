@@ -6,7 +6,7 @@ Needs: pip install playwright (Chromium already installed)."""
 import pathlib, re, sys
 from playwright.sync_api import sync_playwright
 f = (pathlib.Path(__file__).parent.parent / 'dist/wallet/standalone/direct-plus-wallet-prospect.html').resolve().as_uri()
-HERO = r'About €[\d,]+( to €[\d,]+)?( up to €[\d,]+ in a tough week)?'
+HERO = r'About €[\d\u00a0]+( to €[\d\u00a0]+)?( up to €[\d\u00a0]+ in a tough week)?'
 fails = []
 def check(ok, what):
     print(('ok   ' if ok else 'FAIL ') + what)
@@ -35,8 +35,8 @@ with sync_playwright() as pw:
     h = walk(pg, 'trader')
     check('tough week' not in h and heads(pg, 'purposes') == ['what for', 'normal week'], 'the tough week is optional and off by default: ' + h)
     total = pg.eval_on_selector('#purposes tbody tr.total', 'r => r.innerText')
-    js = pg.evaluate('''() => { const a = WalletCalc.defaultAnswers('trader'); a.week = document.getElementById('week').value; const r = WalletCalc.compute(WalletCalc.fromAnswers(a)); return '€' + (Math.round(r.expected.total / 1000) * 1000).toLocaleString('en-GB'); }''')
-    check(js in total, 'trader total equals the calculation for the same answers, rounded to €1,000: ' + js)
+    js = pg.evaluate('''() => { const a = WalletCalc.defaultAnswers('trader'); a.week = document.getElementById('week').value; const r = WalletCalc.compute(WalletCalc.fromAnswers(a)); return '€' + (Math.round(r.expected.total / 1000) * 1000).toLocaleString('en-GB').replace(/,/g, '\u00a0'); }''')
+    check(js in total, 'trader total equals the calculation for the same answers, rounded to €1\u00a0000: ' + js)
     # Top-ups: the table compares the three rhythms and marks the answer; the selector recomputes.
     rows = pg.eval_on_selector_all('#topups tbody tr', 'rs => rs.map(r => r.innerText)')
     check(len(rows) == 3 and any('(your answer)' in r for r in rows), 'top-ups: three rhythms, the answer marked')
@@ -63,7 +63,7 @@ with sync_playwright() as pw:
         p.fill('#capacityMW', '20'); p.dispatch_event('#capacityMW', 'input'); p.fill('#sites', '1'); p.dispatch_event('#sites', 'input')
     walk(pg, 'trader', {2: lambda p: p.click('label[for="w-yes"]'), 5: production})
     brp = [r for r in pg.eval_on_selector_all('#purposes tbody tr', 'rs => rs.map(r => r.innerText)') if r.startswith('BRP collateral')]
-    check(brp and '€21,000' in brp[0], 'production adds BRP collateral: ' + (brp[0].split('\t')[-1] if brp else 'none'))
+    check(brp and '€21\u00a0000' in brp[0], 'production adds BRP collateral: ' + (brp[0].split('\t')[-1] if brp else 'none'))
     # Collateral adjusted every business day: the headline shows the weekday and the weekend amount; the selector switches.
     h = walk(pg, 'trader', {7: lambda p: p.click('label[for="k-daily"]')})
     check('during the week' in h and 'around the weekend' in h, 'daily collateral: weekday and weekend amounts: ' + h)
