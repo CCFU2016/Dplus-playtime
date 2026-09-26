@@ -803,6 +803,7 @@ it, the answers, the assumptions and the sources. It can be printed or saved as 
 - **Calculation:** the same as the calculator (`WalletCalc.compute`).
 - **What it leaves out:** internal references, tags and the "on your own as a BRP" comparison (W11).
 - **Collateral:** static (the same all week) or adjusted every business day. The estimate then shows what the wallet needs during the week and around the weekend.
+- **Hand-off with the limit calculator (Niki, 26 Sep 2026):** "Detailed calculation" under "Trading collateral at ECC" opens the limit calculator in "limits from my collateral" mode with the estimate's collateral, split, base limits and week, and the open risk of the calculation day that sets the amount (the highest day with daily collateral); the banner there says what the wallet needs that day. "Use in the wallet estimate" carries a limit calculator setup back: `eccCollateral`, `splitMode` = mine, `key` and the four base limits. The ECC part is then that amount; `ecc.fixed.need` is what the trading needs at that split (null when a market's share is too small) and `short` flags a shortfall instead of failing. Values travel in the link after the `#`; nothing is stored.
 - **Rounding:** every amount is shown to the nearest €1,000 (on the calculator page too): these are estimates, not exact figures (Niki, 26 Sep 2026).
 
 Answers map onto settings in `wallet.js` (`defaultAnswers`, `strategyVolumes`, `fromAnswers`). With each type's

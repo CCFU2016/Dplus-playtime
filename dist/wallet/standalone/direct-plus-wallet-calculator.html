@@ -1132,6 +1132,11 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('key', 'My split: continuous share', '%', 'number', 'input', 'Auctions get the rest'),
       f('collateralMode', 'Collateral at ECC', '', 'select', 'input', 'Keep one amount all week (sized for the weekend), or change it every business day: less during the week, more before weekends and holidays. Assumed to be in place by that day\'s evening calculation; how fast the Direct+ platform applies changes is open (W4)', { options: [['static', 'Static: the same all week'], ['daily', 'Optimised by day']] }),
       f('cap', 'Cap limit', '€', 'optional', 'ECC setting', 'Set by ECC at KYC, reviewed yearly (ECC DCP risk page); collateral above it does not raise limits'),
+      f('eccCollateral', 'Collateral from the limit calculator', '€', 'optional', 'input', 'Blank: the wallet works out what your trading needs. Set: this amount at ECC, with My split and the base limits below; the result says if your trading needs more'),
+      f('blContBD', 'Base limit, continuous, business day', '€', 'optional', 'input', 'Blank: from resting orders and buying until the evening update (ECC deck p.2, p.4)'),
+      f('blContNBD', 'Base limit, continuous, non-business day', '€', 'optional', 'input', 'Blank: 0 (continuous has no weekend reset)'),
+      f('blAucBD', 'Base limit, auctions, business day', '€', 'optional', 'input', 'Blank: from auction orders resting over 16:00'),
+      f('blAucNBD', 'Base limit, auctions, non-business day', '€', 'optional', 'input', 'Blank: from auction orders resting over a weekend'),
       f('aucMaxPrice', 'Market maximum price (orders without a limit price)', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10; no built-in value (Q9)'),
       f('aucMinPrice', 'Market minimum price (sells without a limit price)', '€/MWh', 'optional', 'ECC setting', 'INTERPRETATION of ECC manual §3.10 (Q9)'),
       f('realMin', 'Realistic price range: minimum', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10 p.25: set by the clearing member; both ends or neither (Q9)'),
@@ -1179,6 +1184,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     price: 80, stressPrice: 250, stressAvgPrice: 120, negShare: 0.05, negPrice: -20,
     s: 0, restingCont: 0, eveningCont: 0, restingAuc: 0, restingAucWeekend: 0, updateHour: 18, stressUpdateHour: 19,
     measure: 'l18', splitMode: 'cheapest', key: 60, collateralMode: 'static', cap: null,
+    eccCollateral: null, blContBD: null, blContNBD: null, blAucBD: null, blAucNBD: null,
     aucMaxPrice: null, aucMinPrice: null, realMin: null, realMax: null,
     carryShare: 0, lossShare: 0.05, replenish: 'none', feesPerWindow: 0,
     imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
@@ -1317,13 +1323,19 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     // Part 1: ECC collateral
     var tg = L.targets(days, flowOf, st.s, st.restingCont * fp);
     var bl = L.baseLimits({ restingCont: st.restingCont * fp, eveningCont: st.eveningCont * fp, updateHour: +(o.stress ? st.stressUpdateHour : st.updateHour),
-                            restingAuc: st.restingAuc * fp, restingAucWeekend: st.restingAucWeekend * fp });
+                            restingAuc: st.restingAuc * fp, restingAucWeekend: st.restingAucWeekend * fp,
+                            override: { cont: { bd: num(st.blContBD), nbd: num(st.blContNBD) }, da: { bd: num(st.blAucBD), nbd: num(st.blAucNBD) } } });
+    // Collateral carried over from the limit calculator: that amount sits at ECC; what the trading needs is still worked out.
+    var fixedC = num(st.eccCollateral);
     var OR = {};
     ws.forEach(function (w) { OR[w.close] = w.OR; });
     var ctx = { days: days, key: +st.key, measure: st.measure, bl: bl,
                 OR: function (d) { return OR[d]; }, cont: function (d) { return tg.cont[d]; }, auc: function (d) { return tg.auc[d] || 0; } };
     var split = st.splitMode === 'mine' ? { key: +st.key, C: L.solve(ctx, +st.key) } : L.cheapest(ctx);
-    if (!split || split.C === null) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
+    if (!split || split.C === null) {
+      if (fixedC == null) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
+      split = { key: +st.key, C: null };
+    }
     var binding = null;
     days.forEach(function (d) {                        // the calculation day that sets the amount
       var one = { days: [d], key: ctx.key, measure: ctx.measure, bl: bl, OR: ctx.OR, cont: ctx.cont, auc: ctx.auc };
@@ -1342,11 +1354,14 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       var r = st.splitMode === 'mine' ? { key: +st.key, C: E.solve([d], p1, t1) } : E.cheapestKey([d], p1, t1);
       return { date: iso, gap: Math.round((nb - d) / 864e5), key: r ? r.key : null, C: r ? r.C : null };
     });
-    if (perDay.some(function (x) { return x.C === null; })) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
+    if (fixedC == null && perDay.some(function (x) { return x.C === null; })) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
     var maxOf = function (f) { var xs = perDay.filter(f).map(function (x) { return x.C; }); return xs.length ? Math.max.apply(null, xs) : null; };
     var daily = st.collateralMode === 'daily';
     var peakC = daily ? maxOf(function () { return true; }) : split.C;
     var weekdayC = daily ? (maxOf(function (x) { return x.gap === 1; }) || peakC) : split.C;
+    // need: what the trading needs at this split (null: out of reach at this split); short: the carried amount is less.
+    var fixed = null;
+    if (fixedC != null) { fixed = { C: fixedC, need: split.C, short: split.C === null || split.C > fixedC + 0.5 }; peakC = weekdayC = fixedC; daily = false; }
     // Direct+ accepts cash only (Direct+ decision, 26 Sep 2026): no bank guarantees, and the wallet holds no ECC default fund.
     // A cap limit (ECC, optional) caps the collateral that counts for limits, so collateral needed above it is out of reach.
     var cap = num(st.cap), overCap = cap != null && peakC > cap;
@@ -1399,7 +1414,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       total: total, parts: parts, segments: seg,
       // With daily collateral: what the wallet needs Monday to Thursday, when only the weekday amount sits at ECC.
       weekdayTotal: total - peakC + weekdayC,
-      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, overCap: overCap, targets: tg, baseLimits: bl, binding: binding, windows: ws },
+      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, overCap: overCap, fixed: fixed, targets: tg, baseLimits: bl, binding: binding, windows: ws },
       settlement: { windows: ws, need: cash.need + carry, flows: cash.need, float: carry, path: cash.path },
       brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
       tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }

@@ -93,6 +93,13 @@
   .error { font-size: 13.5px; color: var(--critical); }
   .conn { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
   .conn select { border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); padding: 8px 10px; }
+  .handoff { display: grid; gap: 8px; justify-items: start; padding: 14px 16px; border: 1px solid var(--rule); border-left: 6px solid var(--s-trading); border-radius: 10px; background: var(--surface); }
+  .handoff[hidden] { display: none; }
+  .handoff b { font-size: 15px; }
+  .handoff p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 70ch; }
+  .detail-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; }
+  .carried { display: block; margin-top: 4px; font-size: 12.5px; color: var(--ink-2); }
+  .carried.short { color: var(--critical, #c3362c); font-weight: 500; }
   .skip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule); }
   .skip span { font-size: 13.5px; color: var(--muted); }
   .example { display: grid; gap: 8px; justify-items: start; padding: 18px 20px; border: 2px solid var(--ex-rule); border-left-width: 8px; border-radius: 10px; background: var(--ex-bg); color: var(--ex-ink); }
@@ -189,6 +196,7 @@
   </header>
 
   <section id="wizard" class="panel wizard" aria-label="Questions">
+    <div class="handoff" id="setup-note" role="note" hidden></div>
     <div class="progress"><span class="pl" id="step-label"></span><div class="track"><div id="progress"></div></div></div>
     <form id="q" novalidate>
 
@@ -1289,6 +1297,11 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('key', 'My split: continuous share', '%', 'number', 'input', 'Auctions get the rest'),
       f('collateralMode', 'Collateral at ECC', '', 'select', 'input', 'Keep one amount all week (sized for the weekend), or change it every business day: less during the week, more before weekends and holidays. Assumed to be in place by that day\'s evening calculation; how fast the Direct+ platform applies changes is open (W4)', { options: [['static', 'Static: the same all week'], ['daily', 'Optimised by day']] }),
       f('cap', 'Cap limit', '€', 'optional', 'ECC setting', 'Set by ECC at KYC, reviewed yearly (ECC DCP risk page); collateral above it does not raise limits'),
+      f('eccCollateral', 'Collateral from the limit calculator', '€', 'optional', 'input', 'Blank: the wallet works out what your trading needs. Set: this amount at ECC, with My split and the base limits below; the result says if your trading needs more'),
+      f('blContBD', 'Base limit, continuous, business day', '€', 'optional', 'input', 'Blank: from resting orders and buying until the evening update (ECC deck p.2, p.4)'),
+      f('blContNBD', 'Base limit, continuous, non-business day', '€', 'optional', 'input', 'Blank: 0 (continuous has no weekend reset)'),
+      f('blAucBD', 'Base limit, auctions, business day', '€', 'optional', 'input', 'Blank: from auction orders resting over 16:00'),
+      f('blAucNBD', 'Base limit, auctions, non-business day', '€', 'optional', 'input', 'Blank: from auction orders resting over a weekend'),
       f('aucMaxPrice', 'Market maximum price (orders without a limit price)', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10; no built-in value (Q9)'),
       f('aucMinPrice', 'Market minimum price (sells without a limit price)', '€/MWh', 'optional', 'ECC setting', 'INTERPRETATION of ECC manual §3.10 (Q9)'),
       f('realMin', 'Realistic price range: minimum', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10 p.25: set by the clearing member; both ends or neither (Q9)'),
@@ -1336,6 +1349,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     price: 80, stressPrice: 250, stressAvgPrice: 120, negShare: 0.05, negPrice: -20,
     s: 0, restingCont: 0, eveningCont: 0, restingAuc: 0, restingAucWeekend: 0, updateHour: 18, stressUpdateHour: 19,
     measure: 'l18', splitMode: 'cheapest', key: 60, collateralMode: 'static', cap: null,
+    eccCollateral: null, blContBD: null, blContNBD: null, blAucBD: null, blAucNBD: null,
     aucMaxPrice: null, aucMinPrice: null, realMin: null, realMax: null,
     carryShare: 0, lossShare: 0.05, replenish: 'none', feesPerWindow: 0,
     imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
@@ -1474,13 +1488,19 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     // Part 1: ECC collateral
     var tg = L.targets(days, flowOf, st.s, st.restingCont * fp);
     var bl = L.baseLimits({ restingCont: st.restingCont * fp, eveningCont: st.eveningCont * fp, updateHour: +(o.stress ? st.stressUpdateHour : st.updateHour),
-                            restingAuc: st.restingAuc * fp, restingAucWeekend: st.restingAucWeekend * fp });
+                            restingAuc: st.restingAuc * fp, restingAucWeekend: st.restingAucWeekend * fp,
+                            override: { cont: { bd: num(st.blContBD), nbd: num(st.blContNBD) }, da: { bd: num(st.blAucBD), nbd: num(st.blAucNBD) } } });
+    // Collateral carried over from the limit calculator: that amount sits at ECC; what the trading needs is still worked out.
+    var fixedC = num(st.eccCollateral);
     var OR = {};
     ws.forEach(function (w) { OR[w.close] = w.OR; });
     var ctx = { days: days, key: +st.key, measure: st.measure, bl: bl,
                 OR: function (d) { return OR[d]; }, cont: function (d) { return tg.cont[d]; }, auc: function (d) { return tg.auc[d] || 0; } };
     var split = st.splitMode === 'mine' ? { key: +st.key, C: L.solve(ctx, +st.key) } : L.cheapest(ctx);
-    if (!split || split.C === null) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
+    if (!split || split.C === null) {
+      if (fixedC == null) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
+      split = { key: +st.key, C: null };
+    }
     var binding = null;
     days.forEach(function (d) {                        // the calculation day that sets the amount
       var one = { days: [d], key: ctx.key, measure: ctx.measure, bl: bl, OR: ctx.OR, cont: ctx.cont, auc: ctx.auc };
@@ -1499,11 +1519,14 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       var r = st.splitMode === 'mine' ? { key: +st.key, C: E.solve([d], p1, t1) } : E.cheapestKey([d], p1, t1);
       return { date: iso, gap: Math.round((nb - d) / 864e5), key: r ? r.key : null, C: r ? r.C : null };
     });
-    if (perDay.some(function (x) { return x.C === null; })) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
+    if (fixedC == null && perDay.some(function (x) { return x.C === null; })) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
     var maxOf = function (f) { var xs = perDay.filter(f).map(function (x) { return x.C; }); return xs.length ? Math.max.apply(null, xs) : null; };
     var daily = st.collateralMode === 'daily';
     var peakC = daily ? maxOf(function () { return true; }) : split.C;
     var weekdayC = daily ? (maxOf(function (x) { return x.gap === 1; }) || peakC) : split.C;
+    // need: what the trading needs at this split (null: out of reach at this split); short: the carried amount is less.
+    var fixed = null;
+    if (fixedC != null) { fixed = { C: fixedC, need: split.C, short: split.C === null || split.C > fixedC + 0.5 }; peakC = weekdayC = fixedC; daily = false; }
     // Direct+ accepts cash only (Direct+ decision, 26 Sep 2026): no bank guarantees, and the wallet holds no ECC default fund.
     // A cap limit (ECC, optional) caps the collateral that counts for limits, so collateral needed above it is out of reach.
     var cap = num(st.cap), overCap = cap != null && peakC > cap;
@@ -1556,7 +1579,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       total: total, parts: parts, segments: seg,
       // With daily collateral: what the wallet needs Monday to Thursday, when only the weekday amount sits at ECC.
       weekdayTotal: total - peakC + weekdayC,
-      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, overCap: overCap, targets: tg, baseLimits: bl, binding: binding, windows: ws },
+      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, overCap: overCap, fixed: fixed, targets: tg, baseLimits: bl, binding: binding, windows: ws },
       settlement: { windows: ws, need: cash.need + carry, flows: cash.need, float: carry, path: cash.path },
       brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
       tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }
@@ -1611,6 +1634,62 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   }
   var WEEKS = [[nextMonday(), 'Next week (' + dLabel(nextMonday(), true) + ')'], ['2026-12-21', 'Christmas 2026 (from Mon 21 Dec)'], ['2027-03-22', 'Easter 2027 (from Mon 22 Mar)']];
   WEEKS.forEach(function (w) { var o = el('option', null, w[1]); o.value = w[0]; $('week').appendChild(o); });
+
+  // ---------- links to and from the limit calculator ----------
+  // Values travel in the link after the # (browsers don't send it to the server; nothing is stored). The answers ride
+  // along too, so Back, or coming back from the limit calculator, reopens the same estimate.
+  function enc(o) { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function dec(t) { try { return JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return null; } }
+  function hashParams() {
+    var o = {};
+    location.hash.replace(/^#/, '').split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) o[kv.slice(0, i)] = kv.slice(i + 1); });
+    return o;
+  }
+  // The limit calculator: on the hosted site, or next to this file when opened from disk; elsewhere no link.
+  function limitsPage() {
+    if (/\/estimate\/?$/.test(location.pathname)) return '/limits';
+    if (location.protocol === 'file:' && /\/wallet\/standalone\/direct-plus-wallet-prospect\.html$/.test(location.pathname)) return '../../standalone/direct-plus-limit-calculator.html';
+    return null;
+  }
+  function ensureWeek(iso) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '') || E.parse(iso).getUTCDay() !== 1) return false;
+    if (!$('week').querySelector('option[value="' + iso + '"]')) { var o = el('option', null, 'Week of ' + dLabel(iso, true)); o.value = iso; $('week').appendChild(o); }
+    return true;
+  }
+  var eccSetup = null;   // carried over from the limit calculator: { C, key, cbd, cnbd, abd, anbd, week }
+  function stateHash() { return 'a=' + enc(ans) + (example ? '&ex=1' : '') + (eccSetup ? '&ecc=' + enc(eccSetup) : ''); }
+  function applySetup(st) {
+    if (!eccSetup) return st;
+    st.eccCollateral = eccSetup.C; st.splitMode = 'mine'; st.key = eccSetup.key;
+    st.blContBD = eccSetup.cbd; st.blContNBD = eccSetup.cnbd; st.blAucBD = eccSetup.abd; st.blAucNBD = eccSetup.anbd;
+    return st;
+  }
+  // The limit calculator prefilled with this estimate's ECC part: the collateral, split, base limits and open risk of the
+  // calculation day that sets the amount (the highest day when collateral changes daily), and what the wallet needs that day.
+  function limitsHref(x) {
+    var page = limitsPage(); if (!page) return null;
+    var e = x.ecc, day = e.binding && e.binding.date, key = e.key;
+    if (e.mode === 'daily') { var pk = e.perDay.reduce(function (m, d) { return d.C > m.C ? d : m; }); day = pk.date; key = pk.key; }
+    if (!day) return null;
+    var OR = 0; e.windows.forEach(function (w) { if (w.close === day) OR = w.OR; });
+    var nb = E.iso(E.nextBD(E.parse(day))), ta = 0;
+    for (var d = E.parse(day); E.iso(d) < nb; ) { d = new Date(d.getTime() + 864e5); ta = Math.max(ta, e.targets.auc[E.iso(d)] || 0); }
+    var w = { week: ans.week, C: Math.ceil(e.C), key: key, or: Math.floor(OR), cbd: Math.round(e.baseLimits.cont.bd), cnbd: Math.round(e.baseLimits.cont.nbd),
+              abd: Math.round(e.baseLimits.da.bd), anbd: Math.round(e.baseLimits.da.nbd), day: day, tc: Math.round(e.targets.cont[day] || 0), ta: Math.round(ta),
+              daily: e.mode === 'daily', carried: !!e.fixed };
+    return page + '#w=' + enc(w) + '&' + stateHash();
+  }
+  function setupNote() {
+    var n = clear($('setup-note'));
+    n.hidden = !eccSetup;
+    if (!eccSetup) return;
+    n.appendChild(el('b', null, 'Your limit calculator setup is carried over'));
+    n.appendChild(el('p', null, eur(eccSetup.C) + ' trading collateral at ECC, split ' + eccSetup.key + '% continuous / ' + (100 - eccSetup.key) + '% auctions, with its base limits, for the week of ' + dLabel(eccSetup.week, true) +
+      '. The estimate uses it for the trading collateral at ECC and tells you if your trading needs more. Answer the questions for the rest of your wallet, or skip to an example.'));
+    var b = el('button', 'linkbtn', 'Don\'t use it: let the estimate work out the collateral');
+    b.type = 'button'; b.addEventListener('click', dropSetup); n.appendChild(b);
+  }
+  function dropSetup() { eccSetup = null; setupNote(); if (!$('results').hidden) results(); }
 
   // ---------- answers ----------
   var ans = C.defaultAnswers('trader'), step = 1, STEPS = 7, last = null, example = false;
@@ -1699,6 +1778,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     $('back').style.visibility = s === 1 ? 'hidden' : 'visible';
     $('next').textContent = s === STEPS ? 'See my estimate' : 'Next';
     $('step-error').hidden = true;
+    setupNote();
   }
   $('next').addEventListener('click', function () {
     var err = validate(step);
@@ -1754,11 +1834,12 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     try {
       runs = variants.map(function (v, i) {
         var a = copy(ans); a.weekend = v[0];
-        var st = C.fromAnswers(a), full = i === variants.length - 1 ? C.compute(st) : null;
+        var st = applySetup(C.fromAnswers(a)), full = i === variants.length - 1 ? C.compute(st) : null;
         return { label: v[1], s: st, full: full, exp: full ? full.expected : C.scenario(st, {}), str: ans.tough ? (full ? full.stress : C.scenario(st, { stress: true })) : null };
       });
     } catch (e) { $('step-error').textContent = 'We can\'t estimate this: ' + e.message; $('step-error').hidden = false; return; }
     var primary = runs[runs.length - 1], s = primary.s;
+    try { history.replaceState(null, '', location.pathname + location.search + '#' + stateHash()); } catch (e) { /* the link just doesn't update */ }
     last = primary.full;
     $('wizard').hidden = true; $('results').hidden = false; $('week').value = ans.week; $('topup').value = ans.replenish; $('cmode').value = ans.collateral;
     $('example').hidden = !example;
@@ -1799,6 +1880,19 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     }
     return '';
   }
+  function eccLinks(td, x) {
+    var fx = x.ecc.fixed;
+    if (fx) {
+      td.appendChild(el('span', 'carried' + (fx.short ? ' short' : ''), 'From your limit calculator: ' + eur(fx.C) + ', split ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ', with its base limits. ' +
+        (fx.need === null ? 'At this split your trading can\'t be covered: one market gets too small a share.'
+         : fx.short ? 'Your trading as answered needs about ' + eur(fx.need) + ' at this split, so your limits may run out.'
+         : 'Enough for your trading as answered (it needs about ' + eur(fx.need) + ' at this split).')));
+    }
+    var row = el('div', 'detail-links no-print'), href = limitsHref(x);
+    if (href) { var a = el('a', 'linkbtn detail', 'Detailed calculation'); a.href = href; row.appendChild(a); }
+    if (fx) { var b = el('button', 'linkbtn', 'Use the estimate\'s own amount'); b.type = 'button'; b.addEventListener('click', dropSetup); row.appendChild(b); }
+    if (row.childNodes.length) td.appendChild(row);
+  }
   var LABEL = { ecc: 'Trading collateral at ECC', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
   function head(t, cols) { var th = el('thead'), hr = el('tr'); cols.forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); }); th.appendChild(hr); t.appendChild(th); }
   function renderPurposes(cols, primary) {
@@ -1807,7 +1901,9 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var tb = el('tbody');
     cols[0].res.parts.forEach(function (p, i) {
       var tr = el('tr'), td = el('td');
-      td.appendChild(el('b', null, LABEL[p.id])); td.appendChild(el('span', 'what', describe(p, primary))); tr.appendChild(td);
+      td.appendChild(el('b', null, LABEL[p.id])); td.appendChild(el('span', 'what', describe(p, primary)));
+      if (p.id === 'ecc') eccLinks(td, primary.exp);
+      tr.appendChild(td);
       cols.forEach(function (c) { tr.appendChild(el('td', 'r', eur(c.res.parts[i].value))); });
       tb.appendChild(tr);
     });
@@ -1906,6 +2002,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     add('Weekends and holidays', { yes: 'Traded', no: 'Not traded', both: 'Shown both ways' }[ans.weekend]);
     add('Held over the 16:00 cut', Math.round(s.carryShare * 100) + '% of a day\'s buys, about ' + mwh(s.carryShare * (s.contBuy + s.aucBuy)));
     if (ans.type === 'trader') add('Largest open M7 position', Math.round((1 - s.s) * 100) + '% of a day\'s buys, about ' + mwh((1 - s.s) * s.contBuy));
+    if (x.ecc.fixed) add('Trading collateral at ECC', 'From your limit calculator, ' + eur(x.ecc.fixed.C));
     add('Split continuous / auctions', x.ecc.key + '% / ' + (100 - x.ecc.key) + '%');
     add('BRP collateral', (x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027') + ', no minimum');
     add('Collateral at ECC', ans.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
@@ -1914,7 +2011,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   function renderAssumed(r, s) {
     var ul = clear($('assumed')), x = r.expected, add = function (t) { ul.appendChild(el('li', null, t)); };
     var rule = x.brp.rule === 'current' ? 'TenneT\'s rule in force (Systeemcode elektriciteit 2026, article 10.8)' : 'ACM\'s draft rule for 2027 (not yet final)';
-    add('Your split between continuous and auctions is the one that needs the least collateral: ' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions. You set it in the Direct+ platform.');
+    if (x.ecc.fixed) add('Your trading collateral at ECC, its split (' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions) and base limits come from your limit calculator setup.');
+    else add('Your split between continuous and auctions is the one that needs the least collateral: ' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions. You set it in the Direct+ platform.');
     add('ECC updates limits around 18:00 on a best-effort basis' + (ans.tough ? '; a tough week assumes around 19:00' : '') + '. Open orders over 16:00 and trading until the update, ' + eur(s.restingCont) + ' and ' + eur(s.eveningCont) + ', are covered by your base limit.');
     add('You hold some positions over ECC\'s 16:00 booking cut, about a third of a day\'s buys (for example bought day-ahead, sold intraday the next day). ECC collects those purchases a business day before the sale comes back, so that money waits in your wallet.');
     add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
@@ -1924,7 +2022,19 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     add('Nothing nets between Direct+ members: the estimate is for you alone. Fees and VAT are not included.');
   }
 
-  fill(); show(1);
+  // Arriving from a link: answers (Back, or back from the limit calculator) and/or a limit calculator setup.
+  (function arrive() {
+    var h = hashParams(), a = h.a ? dec(h.a) : null, e = h.ecc ? dec(h.ecc) : null;
+    if (e && e.C > 0 && e.key >= 0 && e.key <= 100 && ensureWeek(e.week)) eccSetup = e;
+    if (a && a.type && C.PRESETS[a.type]) {
+      ans = C.defaultAnswers(a.type); for (var k in a) ans[k] = a[k];
+      if (eccSetup) ans.week = eccSetup.week;
+      if (!ensureWeek(ans.week)) ans.week = WEEKS[0][0];
+      example = h.ex === '1'; fill(); results(); return;
+    }
+    if (eccSetup) ans.week = eccSetup.week;
+    fill(); show(1);
+  })();
 })();
 </script>
 </body>

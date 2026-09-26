@@ -216,6 +216,13 @@
   .o09 td, .o09 th { text-align: left; }
   .o09 td.r, .o09 th.r { text-align: right; }
   .code { font-family: var(--font-mono); font-size: 13px; }
+  .handoff { display: grid; gap: 10px; justify-items: start; padding: 16px 18px; border-left: 6px solid var(--cont); }
+  .handoff[hidden] { display: none; }
+  .handoff b { font-size: 15.5px; }
+  .handoff p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 75ch; }
+  .handoff .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  a.btn { text-decoration: none; display: inline-block; }
+  .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--rule-strong); }
   .copy-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .btn { border: 1px solid var(--ink); background: var(--ink); color: var(--surface); border-radius: 6px; padding: 7px 14px; font-size: 13.5px; font-weight: 500; cursor: pointer; }
   .btn:hover { opacity: .9; }
@@ -340,6 +347,11 @@
     </form>
 
     <section class="results" aria-label="Results">
+      <div class="panel handoff" id="handoff" role="note" hidden>
+        <b>From your wallet estimate</b>
+        <p id="handoff-text"></p>
+        <div class="row"><a class="btn" id="handoff-use">Use these limits in the wallet estimate</a><a class="btn ghost" id="handoff-back">Back to the wallet estimate</a></div>
+      </div>
       <div class="panel tiles" id="tiles" aria-live="polite"></div>
       <div class="alert critical" id="alert" hidden></div>
 
@@ -374,7 +386,7 @@
         <p class="sub">You set these per market in the Direct+ platform. Base limits are optional; the two splits add up to 100%.</p>
         <div class="table-wrap"><table id="o09-table"></table></div>
         <p class="hint" id="o09-note" hidden>Your collateral and split change by day: see the week table above. These are the settings for the day that needs the most collateral.</p>
-        <div class="copy-row"><button type="button" class="btn" id="copy-o09">Copy as table</button><span class="copy-state" id="copy-state" aria-live="polite"></span></div>
+        <div class="copy-row"><button type="button" class="btn" id="copy-o09">Copy as table</button><a class="btn ghost" id="to-wallet" hidden>Use in the wallet estimate</a><span class="copy-state" id="copy-state" aria-live="polite"></span></div>
       </section>
     </section>
   </main>
@@ -828,9 +840,23 @@ var LimitEngine = (function () {
     var mon = $('week').value, fri = addDays(mon, 4), a = E.parse(mon), b = E.parse(fri);
     var span = 'Mon ' + a.getUTCDate() + (a.getUTCMonth() === b.getUTCMonth() ? '' : ' ' + MO[a.getUTCMonth()]) + ' – Fri ' + b.getUTCDate() + ' ' + MO[b.getUTCMonth()] + ' ' + b.getUTCFullYear();
     var hs = weekHolidays[mon];
+    if (!hs && addedWeeks[mon]) {
+      var near = [];
+      for (var i = -3; i <= 7; i++) { var iso = addDays(mon, i), w = E.parse(iso).getUTCDay(); if (w !== 0 && w !== 6 && !E.isBD(E.parse(iso))) near.push(iso); }
+      $('week-note').textContent = 'Showing ' + span + ', the week of your wallet estimate' + (near.length ? '. ' + near.map(function (h) { return E.HOLIDAYS[h] + ' (' + dShort(h) + ')'; }).join(' and ') + (near.length > 1 ? ' are' : ' is') + ' not an ECC business day, which affects this week\'s calculations.' : '. Every day is an ECC business day; the Friday calculation covers the weekend.');
+      return;
+    }
     $('week-note').textContent = 'Showing ' + span + (hs
       ? '. ' + hs.map(function (h) { return E.HOLIDAYS[h] + ' (' + dShort(h) + ')'; }).join(' and ') + (hs.length > 1 ? ' are not ECC business days.' : ' is not an ECC business day.')
       : '. Every day is an ECC business day; the Friday calculation covers the weekend.');
+  }
+  var addedWeeks = {};
+  function ensureWeek(iso) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '') || E.parse(iso).getUTCDay() !== 1 || iso < E.MIN_DATE || addDays(iso, 7) > E.MAX_DATE) return false;
+    if (!$('week').querySelector('option[value="' + iso + '"]')) {
+      var o = el('option', null, 'Week of ' + dLabel(iso, true) + ', from your wallet estimate'); o.value = iso; $('week').appendChild(o); addedWeeks[iso] = true;
+    }
+    return true;
   }
   weekNote();
 
@@ -1218,6 +1244,47 @@ var LimitEngine = (function () {
     } catch (e) { state.textContent = 'Copy blocked here. Select the table and copy it instead.'; }
   });
 
+  // ---------- links to and from the wallet estimate ----------
+  // Values travel in the link after the # (not sent to the server, nothing stored). From the wallet the link also carries
+  // the wallet's own answers, so "Back" and "Use these limits" reopen the same estimate.
+  function enc(o) { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function dec(t) { try { return JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return null; } }
+  // The wallet estimate: on the hosted site, or next to this file when opened from disk; elsewhere no link.
+  function walletPage() {
+    if (/\/limits\/?$/.test(location.pathname)) return '/estimate';
+    if (location.protocol === 'file:' && /\/standalone\/direct-plus-limit-calculator\.html$/.test(location.pathname)) return '../wallet/standalone/direct-plus-wallet-prospect.html';
+    return null;
+  }
+  var fromWallet = null, walletBack = [];   // the wallet's hand-off, and its own state (answers) to take back
+  function walletHref(res, back) {
+    var page = walletPage(); if (!page || res.C === null || !(res.C > 0)) return null;
+    var setup = { C: Math.round(res.C), key: res.key, cbd: res.s.cont.bd, cnbd: res.s.cont.nbd, abd: res.s.da.bd, anbd: res.s.da.nbd, week: res.s.week };
+    return page + '#' + walletBack.filter(function (kv) { return kv.indexOf('ecc=') !== 0; }).concat(back ? [] : ['ecc=' + enc(setup)]).join('&');
+  }
+  function updateLinks(res) {
+    var to = walletHref(res, false);
+    $('to-wallet').hidden = !to; if (to) $('to-wallet').href = to;
+    $('handoff').hidden = !fromWallet;
+    if (!fromWallet) return;
+    if (to) $('handoff-use').href = to; $('handoff-use').hidden = !to;
+    $('handoff-back').href = walletPage() + '#' + walletBack.join('&');
+  }
+  (function arrive() {
+    var kv = location.hash.replace(/^#/, '').split('&').filter(Boolean), w = null;
+    kv.forEach(function (x) { if (x.indexOf('w=') === 0) w = dec(x.slice(2)); else walletBack.push(x); });
+    if (!w || !(w.C > 0) || !(w.key >= 0 && w.key <= 100) || !ensureWeek(w.week) || !walletPage()) { walletBack = []; return; }
+    fromWallet = w;
+    $('mode-fwd').checked = true;
+    $('week').value = w.week; weekNote();
+    [['collateral', w.C], ['open-risk', w.or], ['c-bd', w.cbd], ['c-nbd', w.cnbd], ['a-bd', w.abd], ['a-nbd', w.anbd]].forEach(function (f) { $(f[0]).value = fmtInt.format(Math.max(0, +f[1] || 0)); });
+    $('split').value = w.key;
+    if (w.day) selected = w.day;
+    $('handoff-text').textContent = 'Collateral ' + eur(w.C) + ' at a ' + w.key + ' / ' + (100 - w.key) + ' split, with the base limits and open risk (' + eur(w.or) + ') of your wallet estimate, for the week of ' + dLabel(w.week, true) + '.' +
+      (w.daily ? ' Your wallet adjusts the collateral every business day; this is its highest day.' : '') +
+      (w.day ? ' On ' + dLabel(w.day) + '\'s calculation, the one that sets the amount, your trading needs M7 continuous ' + eur(w.tc) + ' from 18:00' + (w.ta > 0 ? ' and MATS auctions ' + eur(w.ta) + ' per auction' : '') + '.' : '') +
+      ' Change anything here, then take it back to the wallet.';
+  })();
+
   // ---------- main render ----------
   function syncForm(s) {
     $('fwd-fields').hidden = s.mode !== 'fwd';
@@ -1240,6 +1307,7 @@ var LimitEngine = (function () {
     renderWeek(res);
     renderAuctions(res);
     renderO09(res);
+    updateLinks(res);
   }
 
   var timer = null;

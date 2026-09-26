@@ -12,6 +12,6 @@
     "build:wallet": "node scripts/build.js wallet",
     "start": "node scripts/serve.js",
     "test": "node tests/ecc_examples.test.js && node tests/snapshot.js && node tests/markets.test.js && node tests/ecc_dist_unchanged.test.js && node tests/wallet/run.js && node tests/serve.test.js",
-    "test:ui": "node scripts/build.js && python3 tests/ui_smoke.py && python3 tests/ui_smoke_wallet.py && python3 tests/ui_smoke_prospect.py"
+    "test:ui": "node scripts/build.js && python3 tests/ui_smoke.py && python3 tests/ui_smoke_wallet.py && python3 tests/ui_smoke_prospect.py && python3 tests/ui_smoke_handoff.py"
   }
 }

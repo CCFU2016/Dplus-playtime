@@ -120,4 +120,17 @@ T.ok(nt[0] > nt[1] && nt[1] > nt[2], 'more offsetting, less wallet: ' + nt.map(M
 T.eq(C.fromAnswers(Object.assign(C.defaultAnswers('asset'), { netting: 'flat' })).s, 0, 'the netting answer only applies to traders');
 const tot = ['trader', 'aggregator', 'asset'].map(id => C.compute(C.preset(id)).expected.total);
 T.ok(Math.max.apply(null, tot) <= 3 * Math.min.apply(null, tot), 'the three presets are within a factor of 3: ' + tot.map(Math.round).join(' / '));
+// Collateral carried over from the limit calculator: that amount, with its split and base limits; flagged when short.
+const own = C.compute(C.preset('trader')).expected.ecc;
+const carried = extra => C.compute(Object.assign(C.preset('trader'), { eccCollateral: own.C, splitMode: 'mine', key: own.key,
+  blContBD: own.baseLimits.cont.bd, blContNBD: own.baseLimits.cont.nbd, blAucBD: own.baseLimits.da.bd, blAucNBD: own.baseLimits.da.nbd }, extra || {})).expected.ecc;
+let cr = carried();
+T.ok(Math.abs(cr.C - own.C) < 0.5 && Math.abs(cr.fixed.need - own.C) < 0.5 && !cr.fixed.short, 'the wallet\'s own setup carried back: same amount, not short');
+cr = carried({ eccCollateral: own.C - 5000 });
+T.ok(cr.C === own.C - 5000 && cr.fixed.short, '€5,000 less than the trading needs is flagged as short');
+cr = carried({ key: 100 });
+T.ok(cr.fixed.need === null && cr.fixed.short, 'a split that cannot reach the auction targets is short, not an error');
+cr = carried({ blContBD: 50000 });
+T.ok(cr.baseLimits.cont.bd === 50000 && cr.fixed.need > own.C, 'carried base limits are used: a larger one needs more collateral');
+T.eq(C.compute(C.preset('trader')).expected.ecc.fixed, null, 'without a carried amount nothing is fixed');
 T.done();
