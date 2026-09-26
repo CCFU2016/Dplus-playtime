@@ -108,9 +108,9 @@
   thead th { font-family: var(--font-cond); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--rule-strong); vertical-align: bottom; }
   tbody td { border-bottom: 1px solid var(--rule); font-size: 14px; }
   tbody tr.total td { font-weight: 600; border-bottom: 0; }
-  td .what { display: block; font-size: 12.5px; color: var(--muted); max-width: 52ch; margin-top: 2px; }
+  td .what { display: block; font-size: 12.5px; color: var(--muted); max-width: 52ch; min-width: 190px; margin-top: 2px; }
   .bars { display: grid; gap: 12px; }
-  .bar-row { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 12px; align-items: center; }
+  .bar-row { display: grid; grid-template-columns: minmax(86px, 150px) minmax(0, 1fr); gap: 12px; align-items: center; }
   .bar-row .rl { font-size: 13px; color: var(--ink-2); }
   .bar-track { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .bar { display: flex; gap: 2px; height: 26px; min-width: 2px; }
@@ -183,6 +183,7 @@
           <div class="choices cols">
             <div class="choice"><input type="radio" name="weekend" id="w-yes" value="yes"><label for="w-yes"><b>Yes</b></label></div>
             <div class="choice"><input type="radio" name="weekend" id="w-no" value="no"><label for="w-no"><b>No, business days only</b></label></div>
+            <div class="choice"><input type="radio" name="weekend" id="w-both" value="both"><label for="w-both"><b>Show me both</b><span>Compare the two in the estimate.</span></label></div>
           </div>
           <p class="hint">ECC doesn't process payments at weekends, so a Friday limit has to last until Monday.</p>
         </div>
@@ -226,10 +227,18 @@
         <legend><h2>Which prices do you plan with?</h2></legend>
         <div class="nums">
           <div class="num"><label for="price">A normal price</label><div class="in"><input type="number" id="price" min="1" step="5" data-a="price"><span class="unit">€/MWh</span></div></div>
-          <div class="num"><label for="stressPrice">A price in a tough week</label><div class="in"><input type="number" id="stressPrice" min="1" step="10" data-a="stressPrice"><span class="unit">€/MWh</span></div></div>
           <div class="num" data-market="auctions"><label for="aucLimitPrice">The highest price you'd bid in auctions</label><div class="in"><input type="number" id="aucLimitPrice" min="1" step="10" data-a="aucLimitPrice"><span class="unit">€/MWh</span></div></div>
         </div>
-        <p class="hint">Your trading limits grow with prices, so the estimate is shown for a normal week and a tough week. In auctions, ECC counts each buy order at its highest price × quantity.</p>
+        <p class="hint">Your trading limits grow with prices. In auctions, ECC counts each buy order at its highest price × quantity.</p>
+        <div class="q"><span class="ql">Do you also want to see a tough week?</span>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="tough" id="h-no" value="no"><label for="h-no"><b>No, a normal week is enough</b></label></div>
+            <div class="choice"><input type="radio" name="tough" id="h-yes" value="yes"><label for="h-yes"><b>Yes, show a tough week too</b><span>Higher prices, a trading loss and more imbalance.</span></label></div>
+          </div>
+        </div>
+        <div class="nums" id="tough-price">
+          <div class="num"><label for="stressPrice">A price in a tough week</label><div class="in"><input type="number" id="stressPrice" min="1" step="10" data-a="stressPrice"><span class="unit">€/MWh</span></div></div>
+        </div>
       </fieldset>
 
       <fieldset class="step" data-step="5" hidden>
@@ -237,10 +246,8 @@
         <p class="why">Assets that join the Direct+ BRP add to the BRP collateral, and how well you can forecast them drives imbalance. Tick everything that applies.</p>
         <div class="q"><span class="ql">Assets that join the Direct+ BRP</span>
           <div class="choices cols">
-            <div class="choice"><input type="checkbox" name="asset" id="a-solar" value="solar"><label for="a-solar"><b>Solar</b></label></div>
-            <div class="choice"><input type="checkbox" name="asset" id="a-wind" value="wind"><label for="a-wind"><b>Wind</b></label></div>
-            <div class="choice"><input type="checkbox" name="asset" id="a-battery" value="battery"><label for="a-battery"><b>Battery storage</b></label></div>
-            <div class="choice"><input type="checkbox" name="asset" id="a-demand" value="demand"><label for="a-demand"><b>Flexible demand</b><span>For example an industrial process or heat pumps.</span></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-production" value="production"><label for="a-production"><b>Production</b><span>Solar, wind, CHP or other generation.</span></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-consumption" value="consumption"><label for="a-consumption"><b>Consumption</b><span>Industrial load, heat pumps, charging, or a battery when it charges.</span></label></div>
             <div class="choice"><input type="checkbox" name="asset" id="a-none" value="none"><label for="a-none"><b>None</b><span>I only trade.</span></label></div>
           </div>
         </div>
@@ -298,6 +305,7 @@
       <h2>Your estimate</h2>
       <div class="controls no-print">
         <label>Week shown<select id="week"></select></label>
+        <label>Top-ups<select id="topup"><option value="none">Not during the week</option><option value="weekly">Every Monday</option><option value="daily">Every business day</option></select></label>
         <button type="button" class="btn ghost" id="edit">Change my answers</button>
         <button type="button" class="btn ghost" id="print">Print or save as PDF</button>
       </div>
@@ -322,7 +330,14 @@
 
     <div class="panel card">
       <h3>When you need it</h3>
+      <p class="sub" id="when-sub" hidden></p>
       <ul class="when" id="when"></ul>
+    </div>
+
+    <div class="panel card">
+      <h3>How often you top up</h3>
+      <p class="sub">ECC collects each business day's net purchases from your wallet. The more often you top up, the less money has to wait in it. The estimate covers one week, so a Monday top-up only starts to help from the second week.</p>
+      <div class="table-wrap"><table id="topups"></table></div>
     </div>
 
     <div class="panel card">
@@ -381,11 +396,12 @@
   var form = $('q');
   function setRadio(name, v) { var r = form.querySelector('input[name="' + name + '"][value="' + v + '"]'); if (r) r.checked = true; }
   function fill() {
-    setRadio('type', ans.type); setRadio('markets', ans.markets); setRadio('weekend', ans.weekend ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
+    setRadio('type', ans.type); setRadio('markets', ans.markets); setRadio('weekend', ans.weekend); setRadio('tough', ans.tough ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
     setRadio('carry', ans.carry); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('replenish', ans.replenish);
     Array.prototype.forEach.call(form.querySelectorAll('[data-a]'), function (i) { var v = ans[i.getAttribute('data-a')]; i.value = v == null ? '' : (i.hasAttribute('data-pct') ? Math.round(v * 1000) / 10 : v); });
     ASSET_KEYS.forEach(function (k) { $('a-' + k).checked = !!ans.portfolio[k]; });
     $('a-none').checked = !anyAsset();
+    $('topup').value = ans.replenish;
     visibility();
   }
   function visibility() {
@@ -395,8 +411,9 @@
     });
     Array.prototype.forEach.call(form.querySelectorAll('[data-type]'), function (n) { n.style.display = ans.type === n.getAttribute('data-type') ? '' : 'none'; });
     $('size-q').style.display = anyAsset() ? '' : 'none';
+    $('tough-price').style.display = ans.tough ? '' : 'none';
   }
-  var ASSET_KEYS = ['solar', 'wind', 'battery', 'demand'];
+  var ASSET_KEYS = ['production', 'consumption'];
   function anyAsset() { return ASSET_KEYS.some(function (k) { return ans.portfolio[k]; }); }
   form.addEventListener('change', function (e) {
     var t = e.target, name = t.name;
@@ -414,7 +431,7 @@
         note('We filled in typical answers for ' + t.parentNode.querySelector('b').textContent.toLowerCase() + 's. Change any of them.');
         return;
       }
-      if (name === 'weekend') ans.weekend = t.value === 'yes';
+      if (name === 'tough') ans.tough = t.value === 'yes';
       else ans[name] = t.value;
       if (name === 'strategy') {
         var v = C.strategyVolumes(ans.type, ans.strategy);
@@ -443,8 +460,9 @@
       if (ans.type === 'aggregator' && ans.nonDelivery > 1) return 'The share not delivered can\'t be over 100%.';
     }
     if (s === 4) {
-      if (!(ans.price > 0) || !(ans.stressPrice > 0)) return 'Please fill in both prices.';
-      if (ans.stressPrice < ans.price) return 'The tough-week price should be at least the normal price.';
+      if (!(ans.price > 0)) return 'Please fill in the normal price.';
+      if (ans.tough && !(ans.stressPrice > 0)) return 'Please fill in the tough-week price.';
+      if (ans.tough && ans.stressPrice < ans.price) return 'The tough-week price should be at least the normal price.';
       if (ans.markets !== 'continuous' && ans.aucBuy > 0 && !(ans.aucLimitPrice > 0)) return 'Please fill in the highest price you\'d bid in auctions.';
     }
     if (s === 5 && anyAsset()) {
@@ -473,6 +491,7 @@
   $('edit').addEventListener('click', edit); $('edit2').addEventListener('click', edit);
   $('print').addEventListener('click', function () { window.print(); });
   $('week').addEventListener('change', function () { ans.week = $('week').value; results(); });
+  $('topup').addEventListener('change', function () { ans.replenish = $('topup').value; setRadio('replenish', ans.replenish); results(); });
 
   // ---------- tooltip ----------
   var tip = $('tip');
@@ -491,23 +510,38 @@
   // ---------- results ----------
   var SEG = [['trading', 'Trading collateral at ECC', 'var(--s-trading)'], ['available', 'Available balance', 'var(--s-available)'], ['brp', 'BRP collateral', 'var(--s-brp)']];
   var TYPE = { trader: 'Trader', aggregator: 'Aggregator', asset: 'Asset owner' };
+  function copy(o) { var c = {}; for (var k in o) c[k] = o[k]; return c; }
   function results() {
-    var s = C.fromAnswers(ans), r;
-    try { r = C.compute(s); }
-    catch (e) { $('step-error').textContent = 'We can\'t estimate this: ' + e.message; $('step-error').hidden = false; return; }
-    last = r;
-    $('wizard').hidden = true; $('results').hidden = false; $('week').value = ans.week;
-    var x = r.expected, y = r.stress;
+    // "Show me both" runs the estimate with and without weekend trading; the last run also gets the sensitivities.
+    var variants = ans.weekend === 'both' ? [['no', 'Business days only'], ['yes', 'Also at weekends']] : [[ans.weekend, '']], runs;
+    try {
+      runs = variants.map(function (v, i) {
+        var a = copy(ans); a.weekend = v[0];
+        var st = C.fromAnswers(a), full = i === variants.length - 1 ? C.compute(st) : null;
+        return { label: v[1], s: st, full: full, exp: full ? full.expected : C.scenario(st, {}), str: ans.tough ? (full ? full.stress : C.scenario(st, { stress: true })) : null };
+      });
+    } catch (e) { $('step-error').textContent = 'We can\'t estimate this: ' + e.message; $('step-error').hidden = false; return; }
+    var primary = runs[runs.length - 1], s = primary.s;
+    last = primary.full;
+    $('wizard').hidden = true; $('results').hidden = false; $('week').value = ans.week; $('topup').value = ans.replenish;
+    var cols = runs.map(function (r) { return { label: r.label || 'Normal week', res: r.exp }; });
+    if (ans.tough) runs.forEach(function (r) { cols.push({ label: r.label ? r.label + ', tough week' : 'Tough week', res: r.str }); });
     $('hero-label').textContent = 'Money your Direct+ wallet needs, for the week of ' + dLabel(s.week, true);
-    var hv = clear($('hero-value'));
-    hv.appendChild(document.createTextNode('About ' + eur(x.total) + ' '));
-    hv.appendChild(el('span', 'to', 'up to ' + eur(y.total) + ' in a tough week'));
-    $('hero-sub').textContent = 'All in cash: Direct+ does not accept bank guarantees. A tough week here means prices at ' + eurP(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.';
-    renderPurposes(r, s); renderBars(r); renderWhen(r, s); renderSens(r, s); renderAnswers(s); renderAssumed(r, s);
+    var hv = clear($('hero-value')), normals = runs.map(function (r) { return r.exp.total; });
+    var lo = Math.min.apply(null, normals), hi = Math.max.apply(null, normals);
+    hv.appendChild(document.createTextNode('About ' + eur(lo) + (eur(hi) !== eur(lo) ? ' to ' + eur(hi) : '') + ' '));
+    if (ans.tough) hv.appendChild(el('span', 'to', 'up to ' + eur(Math.max.apply(null, runs.map(function (r) { return r.str.total; }))) + ' in a tough week'));
+    var sub = [];
+    if (runs.length > 1) sub.push(eur(runs[0].exp.total) + ' if you trade on business days only, ' + eur(runs[1].exp.total) + ' if you also trade at weekends and on holidays.');
+    sub.push('All in cash: Direct+ does not accept bank guarantees.');
+    if (ans.tough) sub.push('A tough week here means prices at ' + eurP(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.');
+    $('hero-sub').textContent = sub.join(' ');
+    renderPurposes(cols, primary); renderBars(cols); renderWhen(primary, s, runs.length > 1); renderTopups(primary);
+    renderSens(primary.full, s); renderAnswers(s); renderAssumed(primary.full, s);
     window.scrollTo(0, 0);
   }
-  function describe(p, r, s) {
-    var se = r.expected.settlement;
+  function describe(p, primary) {
+    var se = primary.exp.settlement;
     switch (p.id) {
       case 'ecc': return 'Lets you trade: ECC turns it into your trading limits for continuous trading and the auctions. It stays at ECC while you trade.';
       case 'settlement': return 'ECC settles each business day\'s trades from your wallet as one net payment.' + (se.float > 0.5 ? ' Purchases you sell only after the 16:00 cut are paid before their sale comes back, so part of this stays in the wallet all the time.' : se.flows < 0.5 ? ' Your days net to about zero or to money coming in.' : '');
@@ -517,73 +551,96 @@
     return '';
   }
   var LABEL = { ecc: 'Trading collateral at ECC', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
-  function renderPurposes(r, s) {
-    var t = clear($('purposes')), th = el('thead'), hr = el('tr');
-    [['What for', ''], ['Normal week', 'r'], ['Tough week', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); });
-    th.appendChild(hr); t.appendChild(th);
+  function head(t, cols) { var th = el('thead'), hr = el('tr'); cols.forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); }); th.appendChild(hr); t.appendChild(th); }
+  function renderPurposes(cols, primary) {
+    var t = clear($('purposes'));
+    head(t, [['What for', '']].concat(cols.map(function (c) { return [c.label, 'r']; })));
     var tb = el('tbody');
-    r.expected.parts.forEach(function (p, i) {
+    cols[0].res.parts.forEach(function (p, i) {
       var tr = el('tr'), td = el('td');
-      td.appendChild(el('b', null, LABEL[p.id])); td.appendChild(el('span', 'what', describe(p, r, s))); tr.appendChild(td);
-      tr.appendChild(el('td', 'r', eur(p.value))); tr.appendChild(el('td', 'r', eur(r.stress.parts[i].value)));
+      td.appendChild(el('b', null, LABEL[p.id])); td.appendChild(el('span', 'what', describe(p, primary))); tr.appendChild(td);
+      cols.forEach(function (c) { tr.appendChild(el('td', 'r', eur(c.res.parts[i].value))); });
       tb.appendChild(tr);
     });
     var tot = el('tr', 'total'); tot.appendChild(el('td', null, 'Total'));
-    tot.appendChild(el('td', 'r', eur(r.expected.total))); tot.appendChild(el('td', 'r', eur(r.stress.total))); tb.appendChild(tot);
-    t.appendChild(tb);
+    cols.forEach(function (c) { tot.appendChild(el('td', 'r', eur(c.res.total))); });
+    tb.appendChild(tot); t.appendChild(tb);
   }
   function isDark() { return getComputedStyle(document.documentElement).colorScheme === 'dark'; }
-  function renderBars(r) {
-    var box = clear($('bars')), max = Math.max(r.expected.total, r.stress.total, 1);
-    [['Normal week', r.expected], ['Tough week', r.stress]].forEach(function (x) {
-      var rw = el('div', 'bar-row'); rw.appendChild(el('div', 'rl', x[0]));
+  function renderBars(cols) {
+    var box = clear($('bars')), max = Math.max.apply(null, cols.map(function (c) { return c.res.total; }).concat([1]));
+    cols.forEach(function (c) {
+      var rw = el('div', 'bar-row'); rw.appendChild(el('div', 'rl', c.label));
       var track = el('div', 'bar-track'), bar = el('div', 'bar');
-      bar.style.width = 'calc((100% - 100px) * ' + (x[1].total / max) + ')';
+      bar.style.width = 'calc((100% - 100px) * ' + (c.res.total / max) + ')';
       SEG.forEach(function (sg) {
-        var v = x[1].segments[sg[0]] || 0; if (v <= 0.5) return;
+        var v = c.res.segments[sg[0]] || 0; if (v <= 0.5) return;
         var n = el('div', 'sg' + (!isDark() && sg[0] !== 'trading' ? ' light-ink' : '')); n.style.flex = v + ' 0 0'; n.style.background = sg[2];
-        n.appendChild(el('span', null, eurShort(v))); hoverable(n, eur(v), x[0] + ' · ' + sg[1]); bar.appendChild(n);
+        n.appendChild(el('span', null, eurShort(v))); hoverable(n, eur(v), c.label + ' · ' + sg[1]); bar.appendChild(n);
       });
-      track.appendChild(bar); track.appendChild(el('div', 'bar-total', eur(x[1].total))); rw.appendChild(track); box.appendChild(rw);
+      track.appendChild(bar); track.appendChild(el('div', 'bar-total', eur(c.res.total))); rw.appendChild(track); box.appendChild(rw);
     });
     requestAnimationFrame(function () { Array.prototype.forEach.call(box.querySelectorAll('.sg'), function (sg) { var sp = sg.firstChild; sp.style.visibility = sp.scrollWidth + 8 <= sg.clientWidth ? '' : 'hidden'; }); });
-    var lg = clear($('legend'));
-    SEG.forEach(function (sg) { var s = el('span'), w = el('span', 'swatch'); w.style.background = sg[2]; s.appendChild(w); s.appendChild(document.createTextNode(sg[1] + ': ' + eur(r.expected.segments[sg[0]] || 0) + ' (tough week ' + eur(r.stress.segments[sg[0]] || 0) + ')')); lg.appendChild(s); });
+    var lg = clear($('legend')), first = cols[0];
+    SEG.forEach(function (sg) { var s = el('span'), w = el('span', 'swatch'); w.style.background = sg[2]; s.appendChild(w); s.appendChild(document.createTextNode(sg[1] + ': ' + eur(first.res.segments[sg[0]] || 0) + (cols.length > 1 ? ' (' + first.label.toLowerCase() + ')' : ''))); lg.appendChild(s); });
+  }
+  var TOPUPS = [['none', 'Not during the week'], ['weekly', 'Every Monday'], ['daily', 'Every business day']];
+  function renderTopups(primary) {
+    var t = clear($('topups')), tb = el('tbody'), rows = [];
+    TOPUPS.forEach(function (o) {
+      var st = copy(primary.s); st.replenish = o[0];
+      rows.push({ id: o[0], label: o[1], exp: C.scenario(st, {}), str: ans.tough ? C.scenario(st, { stress: true }) : null });
+    });
+    var cols = [['Top-ups', ''], ['Daily settlement', 'r'], ['Total', 'r']];
+    if (ans.tough) cols.push(['Daily settlement, tough week', 'r'], ['Total, tough week', 'r']);
+    head(t, cols);
+    var sett = function (r) { return r.parts.filter(function (p) { return p.id === 'settlement'; })[0].value; };
+    rows.forEach(function (r) {
+      var mine = r.id === primary.s.replenish, tr = el('tr', mine ? 'total' : null);
+      tr.appendChild(el('td', null, r.label + (mine ? ' (your answer)' : '')));
+      tr.appendChild(el('td', 'r', eur(sett(r.exp)))); tr.appendChild(el('td', 'r', eur(r.exp.total)));
+      if (r.str) { tr.appendChild(el('td', 'r', eur(sett(r.str)))); tr.appendChild(el('td', 'r', eur(r.str.total))); }
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
   }
   function li(box, when, text) { var l = el('li'); l.appendChild(el('b', null, when)); l.appendChild(el('span', null, text)); box.appendChild(l); }
-  function renderWhen(r, s) {
-    var box = clear($('when')), x = r.expected, y = r.stress, se = x.settlement, parts = {};
+  function renderWhen(primary, s, both) {
+    var box = clear($('when')), x = primary.exp, y = primary.str, se = x.settlement, parts = {};
+    $('when-sub').hidden = !both; $('when-sub').textContent = 'Shown for trading at weekends and on holidays too.';
     x.parts.forEach(function (p) { parts[p.id] = p.value; });
     var start = 'Trading collateral at ECC: ' + eur(parts.ecc) + '.';
     if (parts.brp > 0.5) start += ' BRP collateral: ' + eur(parts.brp) + '.';
     if (se.float > 0.5) start += ' Float for positions held over 16:00: ' + eur(se.float) + '.';
     li(box, 'Before your first trade', start);
-    li(box, 'Every business day, by 18:00', se.flows > 0.5 || y.settlement.flows > 0.5
-      ? 'ECC collects the day\'s net purchases from your wallet, with value the next business day. In the week shown that comes to ' + eur(se.flows) + (y.settlement.flows > se.flows + 0.5 ? ', up to ' + eur(y.settlement.flows) + ' in a tough week' : '') + ', with ' + (s.replenish === 'none' ? 'no top-up during the week.' : s.replenish === 'daily' ? 'a top-up every business day.' : 'a top-up every Monday.')
+    var toughFlows = y ? y.settlement.flows : 0;
+    li(box, 'Every business day, by 18:00', se.flows > 0.5 || toughFlows > 0.5
+      ? 'ECC collects the day\'s net purchases from your wallet, with value the next business day. In the week shown that comes to ' + eur(se.flows) + (toughFlows > se.flows + 0.5 ? ', up to ' + eur(toughFlows) + ' in a tough week' : '') + ', with ' + (s.replenish === 'none' ? 'no top-up during the week.' : s.replenish === 'daily' ? 'a top-up every business day.' : 'a top-up every Monday.')
       : 'ECC settles each day\'s trades as one net payment. Yours come to about zero or to money coming in, apart from fees.');
     li(box, 'Around 18:00 each business day', 'ECC updates your trading limits (best effort). Until then, the base limit you set in the Direct+ platform covers trading from 16:00.');
-    li(box, 'About four weeks after each week', 'TenneT\'s imbalance invoice: ' + eur(x.tennet.invoice) + ' a week, up to ' + eur(y.tennet.invoice) + ' in a tough week.');
-    if (s.connectionsMW) li(box, 'Months later', 'Metered volumes are reconciled: smart-meter and telemetry about six months after each month, profile-metered up to 21 months later.');
+    li(box, 'About four weeks after each week', 'TenneT\'s imbalance invoice: ' + eur(x.tennet.invoice) + ' a week' + (y ? ', up to ' + eur(y.tennet.invoice) + ' in a tough week.' : '.'));
+    if (s.connectionsMW) li(box, 'Months later', 'Metered volumes are reconciled: smart-meter and telemetry about six months after each month.');
   }
   function renderSens(r, s) {
     var t = clear($('sens')), tb = el('tbody'), LBL = { 'vol+': 'Volumes 50% higher', 'vol-': 'Volumes 50% lower', price: 'All prices at ' + eurP(s.stressPrice) + '/MWh', imb: 'Twice as much imbalance' };
     var th = el('thead'), hr = el('tr'); [['Change', ''], ['Normal week', 'r'], ['Difference', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); }); th.appendChild(hr); t.appendChild(th);
     var base = el('tr'); base.appendChild(el('td', null, 'Your answers')); base.appendChild(el('td', 'r', eur(r.expected.total))); base.appendChild(el('td', 'r', '')); tb.appendChild(base);
-    r.sensitivity.forEach(function (x) { var d = x.total - r.expected.total, tr = el('tr'); tr.appendChild(el('td', null, LBL[x.id])); tr.appendChild(el('td', 'r', eur(x.total))); tr.appendChild(el('td', 'r', eurDiff(d))); tb.appendChild(tr); });
+    r.sensitivity.forEach(function (x) { if (x.id === 'price' && !ans.tough) return; var d = x.total - r.expected.total, tr = el('tr'); tr.appendChild(el('td', null, LBL[x.id])); tr.appendChild(el('td', 'r', eur(x.total))); tr.appendChild(el('td', 'r', eurDiff(d))); tb.appendChild(tr); });
     t.appendChild(tb);
   }
   function renderAnswers(s) {
     var dl = clear($('answers')), add = function (k, v) { dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, v)); };
     add('You are', TYPE[ans.type]);
     add('Markets', ans.markets === 'both' ? 'Continuous and auctions' : ans.markets === 'continuous' ? 'Continuous only' : 'Auctions only');
-    add('Weekends and holidays', ans.weekend ? 'Yes' : 'No');
+    add('Weekends and holidays', { yes: 'Yes', no: 'No', both: 'Show me both' }[ans.weekend]);
     if (ans.markets !== 'auctions') add('Continuous, buy / sell', fmt.format(s.contBuy) + ' / ' + fmt.format(s.contSell) + ' MWh a day');
     if (ans.markets !== 'continuous') add('Auctions, buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
     if (ans.type === 'aggregator') add('Nominated from other BRPs', fmt.format(s.nominatedIn) + ' MWh a day, ' + Math.round(s.nonDelivery * 100) + '% may not be delivered');
     add('Held over the 16:00 cut', { none: 'No', some: 'About a third of buys', most: 'About two thirds of buys' }[ans.carry]);
-    add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh');
+    if (ans.tough) add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh'); else add('Normal price', eurP(s.price) + ' per MWh');
+    add('Tough week', ans.tough ? 'Shown' : 'Not shown');
     if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eurP(s.aucLimitPrice) + '/MWh');
-    var names = { solar: 'solar', wind: 'wind', battery: 'battery storage', demand: 'flexible demand' }, have = ASSET_KEYS.filter(function (k) { return ans.portfolio[k]; }).map(function (k) { return names[k]; });
+    var names = { production: 'production', consumption: 'consumption' }, have = ASSET_KEYS.filter(function (k) { return ans.portfolio[k]; }).map(function (k) { return names[k]; });
     add('Portfolio', have.length ? have.join(', ').replace(/^./, function (c) { return c.toUpperCase(); }) + ', ' + fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : '') : 'None');
     add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
     add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
@@ -592,10 +649,10 @@
     var ul = clear($('assumed')), x = r.expected, add = function (t) { ul.appendChild(el('li', null, t)); };
     var rule = x.brp.rule === 'current' ? 'TenneT\'s rule in force (Systeemcode elektriciteit 2026, article 10.8)' : 'ACM\'s draft rule for 2027 (not yet final)';
     add('Your split between continuous and auctions is the one that needs the least collateral: ' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions. You set it in the Direct+ platform.');
-    add('ECC updates limits around 18:00 on a best-effort basis; a tough week assumes around 19:00. Open orders over 16:00 and trading until the update, ' + eur(s.restingCont) + ' and ' + eur(s.eveningCont) + ', are covered by your base limit.');
+    add('ECC updates limits around 18:00 on a best-effort basis' + (ans.tough ? '; a tough week assumes around 19:00' : '') + '. Open orders over 16:00 and trading until the update, ' + eur(s.restingCont) + ' and ' + eur(s.eveningCont) + ', are covered by your base limit.');
     add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
     add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum.');
-    add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions. A tough week takes a high but not extreme imbalance week.');
+    add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions.' + (ans.tough ? ' A tough week takes a high but not extreme imbalance week.' : ''));
     if (s.connectionsMW) add('Your capacity is spread evenly over your sites, all metered by telemetry or smart meter; reconciliation of metered volumes varies by about €10 per MW a month.');
     add('Nothing nets between Direct+ members: the estimate is for you alone. Fees and VAT are not included.');
   }
