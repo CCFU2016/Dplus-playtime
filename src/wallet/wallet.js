@@ -32,7 +32,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('negPrice', 'Average price in those hours', '€/MWh', 'number', 'ASSUMPTION', 'Needed to value negative-price hours')
     ] },
     { id: 'ecc', title: 'ECC limits and collateral', note: 'Direct+ accepts cash only: collateral is never a bank guarantee.', fields: [
-      f('s', 'Buys already offset by sells when the position peaks', '%', 'share', 'ASSUMPTION', 'Continuous target max(G × (1 − s), peak); 0 is the cautious default (wallet-model §2.2)'),
+      f('s', 'Buys already sold again when your open position is largest', '%', 'share', 'ASSUMPTION', 'Continuous target max(G × (1 − s), peak): the largest open position is (1 − s) of the day\'s buys; 0 is the cautious default (wallet-model §2.2)'),
       f('restingCont', 'Continuous orders resting over 16:00', '€', 'number', 'ASSUMPTION', 'Risk-bearing orders count against the limit (ECC manual §3.11); they need the base limit after 16:00 (ECC deck p.4)'),
       f('eveningCont', 'Net buying between 16:00 and the evening update', '€', 'number', 'ASSUMPTION', 'Covered by the base limit (ECC deck p.2)'),
       f('restingAuc', 'Auction orders resting over 16:00', '€', 'number', 'ASSUMPTION', 'ECC deck p.4: future orders above the base limit are deleted after 16:00'),

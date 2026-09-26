@@ -154,7 +154,11 @@
   .beside { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
   @media (max-width: 900px) { .beside { grid-template-columns: minmax(0, 1fr); } }
   .core { align-content: start; }
-  .core dd { text-align: right; }
+  .core dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+  .core dl > div { display: grid; gap: 1px; align-content: start; }
+  .core dt { font-size: 12.5px; color: var(--muted); }
+  .core dd { text-align: left; font-size: 14px; }
+  @media (max-width: 420px) { .core dl { grid-template-columns: minmax(0, 1fr); } }
   .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
   @media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
   dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; font-size: 13.5px; }
@@ -231,11 +235,11 @@
           </div>
         </div>
         <div class="q" data-type="trader"><span class="ql">How do your continuous (M7) trades run through the day?</span>
-          <p class="hint">ECC's limit is used by your position at its highest point, not by every trade. The more your buys and sells alternate, the less limit you need.</p>
+          <p class="hint">ECC's trading limit is used by your largest open position during the day, not by every trade. The more your buys and sells alternate, the smaller that position and the less limit you need.</p>
           <div class="choices">
-            <div class="choice"><input type="radio" name="netting" id="n-block" value="block"><label for="n-block"><b>I build a position, then close it</b><span>Most buying comes before the selling. We count all of the day's buys.</span></label></div>
-            <div class="choice"><input type="radio" name="netting" id="n-mixed" value="mixed"><label for="n-mixed"><b>Buys and sells are mixed</b><span>We assume a quarter of the day's buys are already sold again when your position is at its highest.</span></label></div>
-            <div class="choice"><input type="radio" name="netting" id="n-flat" value="flat"><label for="n-flat"><b>Many small trades, close to flat all day</b><span>We assume half of the day's buys are already sold again at the highest point.</span></label></div>
+            <div class="choice"><input type="radio" name="netting" id="n-block" value="block"><label for="n-block"><b>I build a position, then close it</b><span>Most buying comes before the selling: your largest open position is all of the day's buys.</span></label></div>
+            <div class="choice"><input type="radio" name="netting" id="n-mixed" value="mixed"><label for="n-mixed"><b>Buys and sells are mixed</b><span>Your largest open position is about three quarters of the day's buys.</span></label></div>
+            <div class="choice"><input type="radio" name="netting" id="n-flat" value="flat"><label for="n-flat"><b>Many small trades, close to flat all day</b><span>Your largest open position is about half of the day's buys.</span></label></div>
           </div>
         </div>
         <div class="q" data-type="aggregator"><span class="ql">Flexibility from your customers</span>
@@ -1273,7 +1277,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       f('negPrice', 'Average price in those hours', '€/MWh', 'number', 'ASSUMPTION', 'Needed to value negative-price hours')
     ] },
     { id: 'ecc', title: 'ECC limits and collateral', note: 'Direct+ accepts cash only: collateral is never a bank guarantee.', fields: [
-      f('s', 'Buys already offset by sells when the position peaks', '%', 'share', 'ASSUMPTION', 'Continuous target max(G × (1 − s), peak); 0 is the cautious default (wallet-model §2.2)'),
+      f('s', 'Buys already sold again when your open position is largest', '%', 'share', 'ASSUMPTION', 'Continuous target max(G × (1 − s), peak): the largest open position is (1 − s) of the day\'s buys; 0 is the cautious default (wallet-model §2.2)'),
       f('restingCont', 'Continuous orders resting over 16:00', '€', 'number', 'ASSUMPTION', 'Risk-bearing orders count against the limit (ECC manual §3.11); they need the base limit after 16:00 (ECC deck p.4)'),
       f('eveningCont', 'Net buying between 16:00 and the evening update', '€', 'number', 'ASSUMPTION', 'Covered by the base limit (ECC deck p.2)'),
       f('restingAuc', 'Auction orders resting over 16:00', '€', 'number', 'ASSUMPTION', 'ECC deck p.4: future orders above the base limit are deleted after 16:00'),
@@ -1879,7 +1883,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     add('Weekends and holidays', { yes: 'Yes', no: 'No', both: 'Show me both' }[ans.weekend]);
     add('Continuous intraday, buy / sell', fmt.format(s.contBuy) + ' / ' + fmt.format(s.contSell) + ' MWh a day');
     add('Auctions (day-ahead + intraday), buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
-    if (ans.type === 'trader') add('Continuous trades through the day', { block: 'Build a position, then close it (all buys counted)', mixed: 'Buys and sells mixed (a quarter offset at the peak)', flat: 'Many small trades, close to flat (half offset at the peak)' }[ans.netting]);
+    if (ans.type === 'trader') add('Continuous trades through the day', { block: 'Build a position, then close it (largest open position: all of a day\'s buys)', mixed: 'Buys and sells mixed (largest open position: 75% of a day\'s buys)', flat: 'Many small trades, close to flat (largest open position: 50% of a day\'s buys)' }[ans.netting]);
     if (ans.type === 'aggregator') add('Nominated from other BRPs', fmt.format(s.nominatedIn) + ' MWh a day, ' + Math.round(s.nonDelivery * 100) + '% may not be delivered');
     if (ans.tough) add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh'); else add('Normal price', eurP(s.price) + ' per MWh');
     add('Tough week', ans.tough ? 'Shown' : 'Not shown');
@@ -1892,11 +1896,16 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   }
   // The few assumptions that move the estimate most, next to what the money is for; the full list is further down.
   function renderCore(r, s) {
-    var dl = clear($('core')), x = r.expected, add = function (k, v) { dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, v)); };
+    var dl = clear($('core')), x = r.expected, add = function (k, v) { var d = el('div'); d.appendChild(el('dt', null, k)); d.appendChild(el('dd', null, v)); dl.appendChild(d); };
+    var mwh = function (v) { return fmt.format(Math.round(v)) + ' MWh'; }, bs = function (b, x) { return fmt.format(b) + ' buy / ' + fmt.format(x) + ' sell MWh a day'; };
+    add('M7 continuous', bs(s.contBuy, s.contSell));
+    add('MATS auctions', bs(s.aucBuy, s.aucSell));
+    if (ans.type === 'aggregator') add('Nominated from other BRPs', mwh(s.nominatedIn) + ' a day');
+    if (anyAsset()) add('Portfolio', fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : ''));
     add('Price', eurP(s.price) + '/MWh' + (ans.tough ? ', tough week ' + eurP(s.stressPrice) : ''));
     add('Weekends and holidays', { yes: 'Traded', no: 'Not traded', both: 'Shown both ways' }[ans.weekend]);
-    add('Held over the 16:00 cut', Math.round(s.carryShare * 100) + '% of a day\'s buys');
-    if (ans.type === 'trader') add('Buys offset at the peak', Math.round(s.s * 100) + '%');
+    add('Held over the 16:00 cut', Math.round(s.carryShare * 100) + '% of a day\'s buys, about ' + mwh(s.carryShare * (s.contBuy + s.aucBuy)));
+    if (ans.type === 'trader') add('Largest open M7 position', Math.round((1 - s.s) * 100) + '% of a day\'s buys, about ' + mwh((1 - s.s) * s.contBuy));
     add('Split continuous / auctions', x.ecc.key + '% / ' + (100 - x.ecc.key) + '%');
     add('BRP collateral', (x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027') + ', no minimum');
     add('Collateral at ECC', ans.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
