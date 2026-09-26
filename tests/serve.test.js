@@ -21,6 +21,7 @@ server.listen(0, '127.0.0.1', async () => {
     const home = await get('/');
     t.ok(home.status === 200 && /text\/html/.test(home.type) && home.text.includes('Direct+ calculators'), '/ serves the landing page');
     t.ok(home.text.includes('href="/estimate"') && home.text.includes('href="/limits"'), 'the landing page links both calculators');
+    t.ok(home.text.includes('Proof of concept by NVS, not a finished product'), 'the landing page carries the proof-of-concept disclaimer');
     const est = await get('/estimate');
     t.ok(est.status === 200 && est.text === fs.readFileSync(path.join(dir, 'wallet/standalone/direct-plus-wallet-prospect.html'), 'utf8'), '/estimate serves the prospect questionnaire');
     const lim = await get('/limits');
