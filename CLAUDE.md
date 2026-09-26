@@ -9,7 +9,8 @@ wording plain and every number traceable to ECC's rules.
 
 - `src/engine.js` holds all the limit logic: calendar, base-limit reserve, evening/morning limits, sizing solver. It has no DOM, and the page and the tests both use it.
 - `src/page.html` is the page (HTML, CSS, UI script). `/*__ENGINE__*/` marks where the build inlines the engine.
-- `scripts/build.js` writes `dist/direct-plus-limit-calculator.html` (the page body, as published at the claude.ai link) and `dist/standalone/...` (a full document that opens from disk). Never edit `dist/` by hand.
+- `scripts/build.js` writes `dist/direct-plus-limit-calculator.html` (the page body, as published at the claude.ai link) and `dist/standalone/...` (a full document that opens from disk). It also builds the wallet calculator (`src/wallet/`, into `dist/wallet/`) once that page exists. Never edit `dist/` by hand.
+- `tests/ecc_dist_unchanged.test.js`: builds the ECC pages into a temp directory and checks their SHA-256 (and the committed `dist/` files) against `tests/golden/ecc_dist.sha256`. Any change to `src/engine.js` or `src/page.html` changes these bytes. Re-record (`--write`) only on purpose, and say why in the commit message.
 - `tests/ecc_examples.test.js`: ECC's own worked examples (deck p.8 and p.10). **Must always pass.**
 - `tests/snapshot.js`: engine output for every business day in range, over 5 parameter sets, plus 3 sizing searches. A refactor must leave it unchanged. Only re-record (`--write`) after a change that is meant to change numbers, and say which numbers changed and why in the commit message.
 - `tests/markets.test.js`: market definitions against ECC's table, the markets form against the two-market form, and the cheapest split with three markets against every split.
@@ -19,8 +20,10 @@ wording plain and every number traceable to ECC's rules.
 
 ## Commands
 
-    npm test          # ECC examples + snapshot
-    npm run build     # rebuild dist/
+    npm test              # ECC examples + snapshot + markets + ECC dist hashes
+    npm run build         # rebuild dist/ (ECC and wallet)
+    npm run build:ecc     # ECC calculator only
+    npm run build:wallet  # wallet calculator only
     npm run test:ui   # build + headless smoke test (needs python playwright)
 
 Run `npm test` before and after every engine change.
