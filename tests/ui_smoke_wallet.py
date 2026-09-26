@@ -17,7 +17,7 @@ with sync_playwright() as pw:
     pg.goto(f); pg.wait_for_timeout(1200)
     pg.fill('#week', '2026-10-05'); pg.dispatch_event('#week', 'change'); pg.wait_for_timeout(900)
     hero = pg.inner_text('#hero-value')
-    check(hero == '€133,994 to €467,883', 'financial trader, week of 5 Oct 2026: ' + hero)
+    check(hero == '€134,000 to €468,000', 'financial trader, week of 5 Oct 2026: ' + hero)
     for member in ['trader', 'aggregator', 'asset']:
         pg.select_option('#member', member); pg.wait_for_timeout(900)
         h = pg.inner_text('#hero-value')
@@ -27,11 +27,11 @@ with sync_playwright() as pw:
     pg.click('#tab-settings'); pg.select_option('[data-key="brpBasis"]', 'standalone'); pg.wait_for_timeout(900)
     check(pg.is_visible('[data-field="brpBasis"].changed'), 'the changed setting is marked')
     pg.click('#tab-wallet')
-    check(pg.inner_text('#hero-value') == '€325,994 to €755,883', 'Settings change reaches the wallet: ' + pg.inner_text('#hero-value'))
+    check(pg.inner_text('#hero-value') == '€326,000 to €756,000', 'Settings change reaches the wallet: ' + pg.inner_text('#hero-value'))
     pg.click('#tab-settings'); pg.click('#reset'); pg.wait_for_timeout(900)
     check(pg.eval_on_selector('[data-key="brpBasis"]', 'n => n.value') == 'marginal', 'reset puts the preset value back in the input')
     pg.click('#tab-wallet')
-    check(pg.inner_text('#hero-value') == '€133,994 to €467,883', 'reset to the preset')
+    check(pg.inner_text('#hero-value') == '€134,000 to €468,000', 'reset to the preset')
     # A "would lower it most" link opens Settings with that field focused.
     pg.click('#parts button[data-focus="replenish"]'); pg.wait_for_timeout(200)
     check(pg.is_visible('#view-settings') and pg.evaluate('document.activeElement.getAttribute("data-key")') == 'replenish', 'a lever link focuses its setting')

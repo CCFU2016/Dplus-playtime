@@ -195,7 +195,7 @@
       <div class="bars" id="bars"></div>
       <div class="legend" id="legend"></div>
       <div class="table-wrap"><table id="purpose-table"></table></div>
-      <p class="small muted">All members sit in one wallet at one connected bank, and each member's need is worked out on its own: nothing nets between members (Direct+ contract).</p>
+      <p class="small muted">Amounts are rounded to the nearest €1,000: they are estimates, not exact figures. All members sit in one wallet at one connected bank, and each member's need is worked out on its own: nothing nets between members (Direct+ contract).</p>
     </section>
 
     <section class="parts" id="parts"></section>
@@ -256,7 +256,11 @@
   var E = LimitEngine, C = WalletCalc;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
-  function eur(v) { return (v < -0.5 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }
+  // Amounts are rounded to the nearest €1,000: these are estimates, not exact figures (Niki, 26 Sep 2026). Prices and
+  // amounts typed in are shown as entered (eurP).
+  function eur(v) { var a = Math.abs(v); if (a < 0.5) return '€0'; if (a < 1000) return 'under €1,000'; return (v < 0 ? '−€' : '€') + fmt.format(Math.round(a / 1000) * 1000); }
+  function eurP(v) { return (v < 0 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }
+  function eurDiff(d) { var r = Math.round(d / 1000) * 1000; return r === 0 ? 'about the same' : (r > 0 ? '+€' : '−€') + fmt.format(Math.abs(r)); }
   function eurShort(v) {
     var a = Math.abs(v), s = v < 0 ? '−€' : '€';
     if (a >= 1e6) return s + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'm';
@@ -474,7 +478,7 @@
         : 'Your marginal collateral under ' + ruleName + ': ' + (br.rule === 'current' ? (br.current.twoA ? '2 × A' : 'A + B') : '3A + 4B + 6C + 6D') + ' on your own figures. There is no minimum for members: the €96,000 and the 50 MW floors apply once to the Direct+ BRP.';
     } else {
       brpText = br.rule === 'current'
-        ? (st.reading === '1200' && br.volume < 1200 ? 'On your own as a BRP, under ' + ruleName + ' the 50 MW floor sets it: 2 × 1,200 MWh × ' + eur(Math.max(br.price, 40)) + '/MWh.' : 'On your own as a BRP, under ' + ruleName + ': ' + (br.current.twoA ? '2 × A' : 'A + B') + '.')
+        ? (st.reading === '1200' && br.volume < 1200 ? 'On your own as a BRP, under ' + ruleName + ' the 50 MW floor sets it: 2 × 1,200 MWh × ' + eurP(Math.max(br.price, 40)) + '/MWh.' : 'On your own as a BRP, under ' + ruleName + ': ' + (br.current.twoA ? '2 × A' : 'A + B') + '.')
         : (br.draft.sum < 96000 ? 'On your own as a BRP, under ' + ruleName + ' the €96,000 minimum applies: 3A + 4B + 6C + 6D is ' + eur(br.draft.sum) + '.' : 'On your own as a BRP, under ' + ruleName + ': 3A + 4B + 6C + 6D.');
     }
     card('var(--p-brp)', br.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security on your own', x.brp.security, y.brp.security, brpText,
@@ -575,7 +579,7 @@
     var t = clear($('sens')); head(t, [{ t: 'Change' }, { t: 'Expected total', cls: 'r' }, { t: 'Difference', cls: 'r' }]);
     var tb = el('tbody');
     row(tb, [{ t: 'As set' }, { t: eur(r.expected.total), cls: 'r' }, { t: '', cls: 'r' }]);
-    r.sensitivity.forEach(function (x) { var dlt = x.total - r.expected.total; row(tb, [{ t: x.label }, { t: eur(x.total), cls: 'r' }, { t: (dlt >= 0 ? '+' : '') + eur(dlt), cls: 'r' }]); });
+    r.sensitivity.forEach(function (x) { var dlt = x.total - r.expected.total; row(tb, [{ t: x.label }, { t: eur(x.total), cls: 'r' }, { t: eurDiff(dlt), cls: 'r' }]); });
     t.appendChild(tb);
   }
 
@@ -585,7 +589,7 @@
     if (a.kind === 'share') return (Math.round(a.value * 10000) / 100) + '%';
     if (a.kind === 'select') { var fl = fieldOf(a.key), o = fl.options.filter(function (x) { return String(x[0]) === String(a.value); })[0]; return o ? o[1] : String(a.value); }
     if (a.kind === 'list') return a.value + ' MW';
-    return (a.unit && a.unit.indexOf('€') === 0 && a.unit.length === 1 ? eur(+a.value) : fmt.format(+a.value) + (a.unit && a.unit !== '€' ? ' ' + a.unit : ''));
+    return (a.unit && a.unit.indexOf('€') === 0 && a.unit.length === 1 ? eurP(+a.value) : fmt.format(+a.value) + (a.unit && a.unit !== '€' ? ' ' + a.unit : ''));
   }
   function renderAssumptions(r) {
     var t = clear($('assumptions')); head(t, [{ t: 'Assumption' }, { t: 'Value' }, { t: 'Kind' }, { t: 'Source' }]);

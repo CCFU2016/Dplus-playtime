@@ -32,8 +32,8 @@ with sync_playwright() as pw:
     pg.click('#edit'); pg.wait_for_timeout(200)
     h = walk(pg, 'trader')
     total = pg.eval_on_selector('#purposes tbody tr.total', 'r => r.innerText')
-    js = pg.evaluate('''() => { const a = WalletCalc.defaultAnswers('trader'); a.week = document.getElementById('week').value; const r = WalletCalc.compute(WalletCalc.fromAnswers(a)); return '€' + Math.round(r.expected.total).toLocaleString('en-GB'); }''')
-    check(js in total, 'trader totals equal the calculation for the same answers: ' + js)
+    js = pg.evaluate('''() => { const a = WalletCalc.defaultAnswers('trader'); a.week = document.getElementById('week').value; const r = WalletCalc.compute(WalletCalc.fromAnswers(a)); return '€' + (Math.round(r.expected.total / 1000) * 1000).toLocaleString('en-GB'); }''')
+    check(js in total, 'trader total equals the calculation for the same answers, rounded to €1,000: ' + js)
     # An answer changes the estimate: no positions held over 16:00 removes the settlement float.
     pg.click('#edit'); pg.wait_for_timeout(200)
     h2 = walk(pg, 'trader', {3: lambda p: p.click('label[for="c-none"]')})

@@ -341,7 +341,7 @@
         <li>TenneT BRP rules: Systeemcode elektriciteit 2026, articles 10.8, 10.26, 10.27 and 10.29 (wetten.overheid.nl).</li>
         <li>From 1 January 2027: ACM draft decision ACM/25/196985 of 25 August 2026 on BRP security (not yet final).</li>
       </ul>
-      <p class="disclaimer">Indicative only: not an offer and not advice. Fees (ECC, EPEX SPOT, Direct+) and VAT are not included. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
+      <p class="disclaimer">Amounts are rounded to the nearest €1,000: this is an estimate, not an exact figure. Indicative only: not an offer and not advice. Fees (ECC, EPEX SPOT, Direct+) and VAT are not included. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
     </div>
   </section>
 </div>
@@ -1495,9 +1495,12 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   var E = LimitEngine, C = WalletCalc;
   var $ = function (id) { return document.getElementById(id); };
   var fmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
-  function eur(v) { return (v < -0.5 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }
+  // Amounts are rounded to the nearest €1,000: these are estimates, not exact figures (Niki, 26 Sep 2026). Prices and
+  // amounts typed in are shown as entered (eurP).
+  function eur(v) { var a = Math.abs(v); if (a < 0.5) return '€0'; if (a < 1000) return 'under €1,000'; return (v < 0 ? '−€' : '€') + fmt.format(Math.round(a / 1000) * 1000); }
+  function eurP(v) { return (v < 0 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }
+  function eurDiff(d) { var r = Math.round(d / 1000) * 1000; return r === 0 ? 'about the same' : (r > 0 ? '+€' : '−€') + fmt.format(Math.abs(r)); }
   function eurShort(v) { var a = Math.abs(v); if (a >= 1e6) return '€' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'm'; if (a >= 1e4) return '€' + Math.round(a / 1e3) + 'k'; if (a >= 1e3) return '€' + (a / 1e3).toFixed(1).replace(/\.0$/, '') + 'k'; return '€' + Math.round(a); }
-  function round(v, to) { return Math.round(v / to) * to; }
   var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function dLabel(iso, year) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (year ? ' ' + d.getUTCFullYear() : ''); }
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
@@ -1638,9 +1641,9 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var x = r.expected, y = r.stress;
     $('hero-label').textContent = 'Money your Direct+ wallet needs, for the week of ' + dLabel(s.week, true);
     var hv = clear($('hero-value'));
-    hv.appendChild(document.createTextNode('About ' + eur(round(x.total, 1000)) + ' '));
-    hv.appendChild(el('span', 'to', 'up to ' + eur(round(y.total, 1000)) + ' in a tough week'));
-    $('hero-sub').textContent = 'All in cash: Direct+ does not accept bank guarantees. A tough week here means prices at ' + eur(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.';
+    hv.appendChild(document.createTextNode('About ' + eur(x.total) + ' '));
+    hv.appendChild(el('span', 'to', 'up to ' + eur(y.total) + ' in a tough week'));
+    $('hero-sub').textContent = 'All in cash: Direct+ does not accept bank guarantees. A tough week here means prices at ' + eurP(s.stressPrice) + '/MWh, a loss of ' + Math.round(s.lossShare * 100) + '% on each day\'s purchases and more imbalance.';
     renderPurposes(r, s); renderBars(r); renderWhen(r, s); renderSens(r, s); renderAnswers(s); renderAssumed(r, s);
     window.scrollTo(0, 0);
   }
@@ -1700,14 +1703,14 @@ var WalletCalc = (function (E, B, S, L, R, W) {
       ? 'ECC collects the day\'s net purchases from your wallet, with value the next business day. In the week shown that comes to ' + eur(se.flows) + (y.settlement.flows > se.flows + 0.5 ? ', up to ' + eur(y.settlement.flows) + ' in a tough week' : '') + ', with ' + (s.replenish === 'none' ? 'no top-up during the week.' : s.replenish === 'daily' ? 'a top-up every business day.' : 'a top-up every Monday.')
       : 'ECC settles each day\'s trades as one net payment. Yours come to about zero or to money coming in, apart from fees.');
     li(box, 'Around 18:00 each business day', 'ECC updates your trading limits (best effort). Until then, the base limit you set in the Direct+ platform covers trading from 16:00.');
-    li(box, 'About four weeks after each week', 'TenneT\'s imbalance invoice: about ' + eur(x.tennet.invoice) + ' a week, up to ' + eur(y.tennet.invoice) + ' in a tough week.');
+    li(box, 'About four weeks after each week', 'TenneT\'s imbalance invoice: ' + eur(x.tennet.invoice) + ' a week, up to ' + eur(y.tennet.invoice) + ' in a tough week.');
     if (s.connectionsMW) li(box, 'Months later', 'Metered volumes are reconciled: smart-meter and telemetry about six months after each month, profile-metered up to 21 months later.');
   }
   function renderSens(r, s) {
-    var t = clear($('sens')), tb = el('tbody'), LBL = { 'vol+': 'Volumes 50% higher', 'vol-': 'Volumes 50% lower', price: 'All prices at ' + eur(s.stressPrice) + '/MWh', imb: 'Twice as much imbalance' };
+    var t = clear($('sens')), tb = el('tbody'), LBL = { 'vol+': 'Volumes 50% higher', 'vol-': 'Volumes 50% lower', price: 'All prices at ' + eurP(s.stressPrice) + '/MWh', imb: 'Twice as much imbalance' };
     var th = el('thead'), hr = el('tr'); [['Change', ''], ['Normal week', 'r'], ['Difference', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); }); th.appendChild(hr); t.appendChild(th);
     var base = el('tr'); base.appendChild(el('td', null, 'Your answers')); base.appendChild(el('td', 'r', eur(r.expected.total))); base.appendChild(el('td', 'r', '')); tb.appendChild(base);
-    r.sensitivity.forEach(function (x) { var d = x.total - r.expected.total, tr = el('tr'); tr.appendChild(el('td', null, LBL[x.id])); tr.appendChild(el('td', 'r', eur(x.total))); tr.appendChild(el('td', 'r', (d >= 0 ? '+' : '') + eur(d))); tb.appendChild(tr); });
+    r.sensitivity.forEach(function (x) { var d = x.total - r.expected.total, tr = el('tr'); tr.appendChild(el('td', null, LBL[x.id])); tr.appendChild(el('td', 'r', eur(x.total))); tr.appendChild(el('td', 'r', eurDiff(d))); tb.appendChild(tr); });
     t.appendChild(tb);
   }
   function renderAnswers(s) {
@@ -1719,8 +1722,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     if (ans.markets !== 'continuous') add('Auctions, buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
     if (ans.type === 'aggregator') add('Nominated from other BRPs', fmt.format(s.nominatedIn) + ' MWh a day, ' + Math.round(s.nonDelivery * 100) + '% may not be delivered');
     add('Held over the 16:00 cut', { none: 'No', some: 'About a third of buys', most: 'About two thirds of buys' }[ans.carry]);
-    add('Normal / tough-week price', eur(s.price) + ' / ' + eur(s.stressPrice) + ' per MWh');
-    if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eur(s.aucLimitPrice) + '/MWh');
+    add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh');
+    if (ans.markets !== 'continuous' && s.aucBuy > 0) add('Highest auction bid', eurP(s.aucLimitPrice) + '/MWh');
     add('Connections', s.connectionsMW ? s.connectionsMW + ' MW' : 'None');
     add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
     add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
@@ -1730,7 +1733,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var rule = x.brp.rule === 'current' ? 'TenneT\'s rule in force (Systeemcode elektriciteit 2026, article 10.8)' : 'ACM\'s draft rule for 2027 (not yet final)';
     add('Your split between continuous and auctions is the one that needs the least collateral: ' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions. You set it in the Direct+ platform.');
     add('ECC updates limits around 18:00 on a best-effort basis; a tough week assumes around 19:00. Open orders over 16:00 and trading until the update, ' + eur(s.restingCont) + ' and ' + eur(s.eveningCont) + ', are covered by your base limit.');
-    add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eur(s.negPrice) + '/MWh.');
+    add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
     add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum.');
     add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions. A tough week takes a high but not extreme imbalance week.');
     if (s.connectionsMW) add('Reconciliation of metered volumes is assumed to vary by about €' + 10 + ' per MW a month.');
