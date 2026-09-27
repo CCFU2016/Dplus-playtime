@@ -389,12 +389,12 @@
         <div class="card-head">
           <h2>This week, day by day</h2>
           <div class="view-switch" role="group" aria-label="How to show the week">
-            <button type="button" data-view="days" aria-pressed="true">By day, weekend included</button>
-            <button type="button" data-view="calc" aria-pressed="false">By ECC calculation</button>
+            <button type="button" data-view="calc" aria-pressed="true">By ECC calculation</button>
+            <button type="button" data-view="days" aria-pressed="false">By day, weekend included</button>
           </div>
         </div>
-        <p class="sub" id="view-sub-days">What you can trade each day, Monday to Sunday (and a holiday Monday after it). On weekends and holidays M7 keeps the evening limit of the last business day's calculation until the next business morning, and MATS gets a share of that calculation for each auction.</p>
-        <p class="sub" id="view-sub-calc" hidden>Each row is one of ECC's evening calculations. "Reserved for base limits" holds today's base limit and the next business day's, for M7 and MATS together: the next one goes live at 16:00, before ECC's next calculation has seen today's trades (before a weekend, MATS reserves one for each auction day). "After settlement" is the limit once the previous day's purchases have been paid, by 10:45 on the next business day.</p>
+        <p class="sub" id="view-sub-days" hidden>What you can trade each day, Monday to Sunday (and a holiday Monday after it). On weekends and holidays M7 keeps the evening limit of the last business day's calculation until the next business morning, and MATS gets a share of that calculation for each auction.</p>
+        <p class="sub" id="view-sub-calc">Each row is one of ECC's evening calculations. "Reserved for base limits" holds today's base limit and the next business day's, for M7 and MATS together: the next one goes live at 16:00, before ECC's next calculation has seen today's trades (before a weekend, MATS reserves one for each auction day). "After settlement" is the limit once the previous day's purchases have been paid, by 10:45 on the next business day.</p>
         <div class="table-wrap"><table id="week-table"></table></div>
       </section>
 
@@ -1158,7 +1158,7 @@ var LimitEngine = (function () {
   // The week by calendar day, Monday to Sunday: the limits a member has each day. A business day has a morning limit
   // (after settlement, from the previous business day's calculation), the base limit from 16:00 and the evening limit;
   // a weekend or holiday keeps the last business day's evening limit for M7. MATS: the limit at that day's 12:00 auction.
-  var weekView = 'days';
+  var weekView = 'calc';                     // ECC's calculations by default (Direct+ decision); the day view is one click away
   function renderWeek(res) { if (weekView === 'days') renderDays(res); else renderCalc(res); }
   function renderDays(res) {
     var t = $('week-table'); t.textContent = '';

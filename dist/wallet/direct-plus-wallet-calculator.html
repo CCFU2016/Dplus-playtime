@@ -1463,8 +1463,8 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var a = Math.abs(v), s = v < 0 ? '−€' : '€';
     if (a >= 1e6) return s + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'm';
     if (a >= 1e4) return s + Math.round(a / 1e3) + 'k';
-    if (a >= 1e3) return s + (a / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
-    return s + Math.round(a);
+    if (a >= 500) return s + Math.round(a / 1e3) + 'k';            // whole €1,000s, like every amount on this page
+    return a < 0.5 ? '€0' : '<€1k';
   }
   var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function dLabel(iso, year) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (year ? ' ' + d.getUTCFullYear() : ''); }

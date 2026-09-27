@@ -1690,7 +1690,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
   function eur(v) { var a = Math.abs(v); if (a < 0.5) return '€0'; if (a < 1000) return 'under €1,000'; return (v < 0 ? '−€' : '€') + fmt.format(Math.round(a / 1000) * 1000); }
   function eurP(v) { return (v < 0 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }
   function eurDiff(d) { var r = Math.round(d / 1000) * 1000; return r === 0 ? 'about the same' : (r > 0 ? '+€' : '−€') + fmt.format(Math.abs(r)); }
-  function eurShort(v) { var a = Math.abs(v); if (a >= 1e6) return '€' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'm'; if (a >= 1e4) return '€' + Math.round(a / 1e3) + 'k'; if (a >= 1e3) return '€' + (a / 1e3).toFixed(1).replace(/\.0$/, '') + 'k'; return '€' + Math.round(a); }
+  function eurShort(v) { var a = Math.abs(v); if (a >= 1e6) return '€' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'm'; if (a >= 1e4) return '€' + Math.round(a / 1e3) + 'k'; if (a >= 500) return '€' + Math.round(a / 1e3) + 'k'; return a < 0.5 ? '€0' : '<€1k'; }   // whole €1,000s, like every amount here
   var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function dLabel(iso, year) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (year ? ' ' + d.getUTCFullYear() : ''); }
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }

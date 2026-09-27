@@ -53,6 +53,8 @@ with sync_playwright() as pw:
     # Default answers: no tough week, one column, and the total matches the calculation for the same answers.
     h = walk(pg, 'trader')
     check(h == ex_hero, 'the example equals a trader who keeps the typical answers: ' + h)
+    segs = pg.eval_on_selector_all('#bars .sg span', 'ss => ss.map(s => s.textContent)')
+    check(segs and all(re.fullmatch(r'€\d+k|<€1k', x) for x in segs), 'bar labels in whole €1,000s like the table: ' + ', '.join(segs))
     check(pg.is_hidden('#example') and pg.inner_text('#results-title') == 'Your estimate' and not pg.inner_text('#hero-label').startswith('Example'), 'answering the questions removes the example marks')
     check('tough week' not in h and heads(pg, 'purposes') == ['what for', 'normal week'], 'the tough week is optional and off by default: ' + h)
     total = pg.eval_on_selector('#purposes tbody tr.total', 'r => r.innerText')
