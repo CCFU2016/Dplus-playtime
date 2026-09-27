@@ -389,9 +389,9 @@
       </section>
 
       <section class="panel card">
-        <h2>MATS auctions: limit at each day-ahead auction</h2>
-        <p class="sub">On business days the day-ahead auction runs at 12:00, after the morning settlement. Weekend and holiday auctions get an equal share of the calculation made on the business day before, with no settlement in between. The next business day's auction is back at the full limit if they went unused.</p>
-        <div class="chart" id="auction-chart" role="img" aria-label="MATS auctions: limit at each day-ahead auction"></div>
+        <h2>Your limits at 12:00 each day</h2>
+        <p class="sub">M7 continuous and MATS auctions on the same scale. On business days both are the limits after the morning settlement; the day-ahead auction runs at 12:00. M7 doesn't reset on weekends and holidays, so one bar covers them: the last business day's evening limit, until the next business morning. MATS gets an equal share of that calculation for each weekend or holiday auction, and the next business day's auction is back at the full limit if they went unused.</p>
+        <div class="chart" id="auction-chart" role="img" aria-label="M7 continuous and MATS auctions: limits at 12:00 each day"></div>
         <div class="chart-key" id="auction-key"></div>
       </section>
 
@@ -1244,47 +1244,81 @@ var LimitEngine = (function () {
     var nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
     return nf * mag;
   }
+  // Two panels on one € scale, the same days: M7 continuous on top, MATS auctions below, both at 12:00. On a business day
+  // that is after the morning settlement. M7 doesn't reset on weekends and holidays, so it gets one wide bar across them
+  // (the last business day's evening limit, until the next business morning); MATS keeps one bar per auction.
   function renderAuctions(res) {
     var box = $('auction-chart'); box.textContent = '';
-    var items = allAuctions(res.rows);
+    var items = allAuctions(res.rows), byCalc = {};
+    res.rows.forEach(function (r) { byCalc[r.date] = r; });
+    items.forEach(function (a) { var r = byCalc[a.calc]; a.m7 = a.bd ? r.cont.l09 : r.cont.l18; a.m7Until = r.nextBD; });
+    // M7 bars: one per business day, one per run of weekend and holiday days from the same calculation
+    var runs = [];
+    items.forEach(function (a, i) {
+      var last = runs[runs.length - 1];
+      if (!a.bd && last && !last.bd && last.calc === a.calc) { last.to = i; return; }
+      runs.push({ from: i, to: i, bd: a.bd, calc: a.calc, v: a.m7, until: a.m7Until, date: a.date });
+    });
     var target = res.s.mode === 'inv' && res.inv && res.inv.C !== null ? res.s.tDa : 0;
-    var W = Math.max(300, box.clientWidth || 600), H = 250;
-    var m = { l: 52, r: 12, t: 22, b: 46 };
-    var pw = W - m.l - m.r, ph = H - m.t - m.b;
-    var vmax = Math.max(target, maxBy(items, function (a) { return a.limit; }).limit) || 1;
-    var step = niceStep(vmax, 4), top = Math.ceil(vmax / step) * step;
-    var y = function (v) { return m.t + ph - (v / top) * ph; };
+    var W = Math.max(300, box.clientWidth || 600), ph = 118, gap = 44;
+    var m = { l: 52, r: 12, t: 34, b: 30 }, H = m.t + ph + gap + ph + m.b;
+    var pw = W - m.l - m.r, y1 = m.t, y2 = m.t + ph + gap;             // tops of the two panels
+    var vmax = Math.max(target, maxBy(items, function (a) { return a.limit; }).limit, maxBy(items, function (a) { return a.m7; }).m7) || 1;
+    var step = niceStep(vmax * 1.15, 3), top = Math.ceil(vmax * 1.15 / step) * step;   // headroom for the labels above the bars
+    var yv = function (top0, v) { return top0 + ph - (v / top) * ph; };
     var NS = 'http://www.w3.org/2000/svg';
     var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     function s(tag, attrs, text) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; svg.appendChild(n); return n; }
-    var slot = pw / items.length;
-    // weekend / holiday bands
-    items.forEach(function (a, i) { if (!a.bd) s('rect', { x: m.l + i * slot, y: m.t, width: slot, height: ph, fill: 'var(--band)' }); });
-    for (var v = 0; v <= top + 1e-9; v += step) {
-      s('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: v === 0 ? 'var(--rule-strong)' : 'var(--rule)', 'stroke-width': 1 });
-      s('text', { x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'tick' }, eurShort(v));
+    function bar(x0, w, top0, v, fill) {
+      var yt = yv(top0, v), yb = yv(top0, 0), r = Math.min(4, (yb - yt) / 2);
+      if (yb - yt > 0.5) s('path', { d: 'M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + w - r) + 'Q' + (x0 + w) + ',' + yt + ' ' + (x0 + w) + ',' + (yt + r) + 'V' + yb + 'Z', fill: fill });
+      return yt;
     }
+    var slot = pw / items.length, bw = Math.min(24, slot * 0.5);
+    // weekend and holiday bands across both panels
+    items.forEach(function (a, i) { if (!a.bd) s('rect', { x: m.l + i * slot, y: y1 - 4, width: slot, height: y2 + ph - y1 + 4, fill: 'var(--band)' }); });
+    [[y1, 'M7 continuous'], [y2, 'MATS auctions']].forEach(function (pnl) {
+      for (var v = 0; v <= top + 1e-9; v += step) {
+        s('line', { x1: m.l, x2: W - m.r, y1: yv(pnl[0], v), y2: yv(pnl[0], v), stroke: v === 0 ? 'var(--rule-strong)' : 'var(--rule)', 'stroke-width': 1 });
+        s('text', { x: m.l - 8, y: yv(pnl[0], v) + 4, 'text-anchor': 'end', class: 'tick' }, eurShort(v));
+      }
+      s('text', { x: m.l, y: pnl[0] - 16, class: 'xl' }, pnl[1]);
+    });
+    // M7: one bar per business day, one wide bar per weekend or holiday stretch
+    var loM = minBy(runs, function (r) { return r.v; }), hiM = maxBy(runs, function (r) { return r.v; });
+    runs.forEach(function (r) {
+      var n = r.to - r.from + 1, x0 = r.bd ? m.l + r.from * slot + slot / 2 - bw / 2 : m.l + r.from * slot + (slot - bw) / 2;
+      var w = r.bd ? bw : (n - 1) * slot + bw, cx = x0 + w / 2;
+      var yt = bar(x0, w, y1, r.v, 'var(--cont)');
+      if (!r.bd && n > 1 && n * slot < 190) {                    // narrow: two lines, the value over "one limit"
+        s('text', { x: cx, y: yt - 20, 'text-anchor': 'middle', class: 'dl' }, eurShort(r.v));
+        s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'xv' }, 'one limit');
+      } else if (!r.bd) s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(r.v) + (n > 1 ? ', one limit for ' + n + ' days' : ''));
+      else if (r === loM || r === hiM) s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(r.v));
+      var hit = s('rect', { x: m.l + r.from * slot, y: y1, width: n * slot, height: ph, class: 'hit' });
+      hoverable(hit, eur(r.v), r.bd ? dLabel(r.date) + ' at 12:00 · M7 continuous after the morning settlement (' + dLabel(r.calc) + '\'s calculation)'
+        : dLabel(items[r.from].date) + (n > 1 ? ' to ' + dLabel(items[r.to].date) : '') + ' · M7 continuous: one limit' + (n > 1 ? ' for all ' + n + ' days' : '') + ', ' + dLabel(r.calc) + '\'s evening limit until ' + dLabel(r.until) + ' morning');
+    });
+    // MATS: one bar per auction
     var lo = minBy(items, function (a) { return a.limit; }), hi = maxBy(items, function (a) { return a.limit; });
-    var bw = Math.min(24, slot * 0.5);
     items.forEach(function (a, i) {
-      var cx = m.l + i * slot + slot / 2, x0 = cx - bw / 2, y0 = y(a.limit), yb = y(0), r = Math.min(4, (yb - y0) / 2);
-      if (yb - y0 > 0.5) s('path', { d: 'M' + x0 + ',' + yb + 'V' + (y0 + r) + 'Q' + x0 + ',' + y0 + ' ' + (x0 + r) + ',' + y0 + 'H' + (x0 + bw - r) + 'Q' + (x0 + bw) + ',' + y0 + ' ' + (x0 + bw) + ',' + (y0 + r) + 'V' + yb + 'Z', fill: 'var(--da)' });
+      var cx = m.l + i * slot + slot / 2, yt = bar(cx - bw / 2, bw, y2, a.limit, 'var(--da)');
       s('text', { x: cx, y: H - m.b + 18, 'text-anchor': 'middle', class: 'xl' }, dShort(a.date));
-      s('text', { x: cx, y: H - m.b + 34, 'text-anchor': 'middle', class: 'xv' }, eurShort(a.limit));
-      if (a === lo || a === hi) s('text', { x: cx, y: y0 - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(a.limit));
-      var hit = s('rect', { x: m.l + i * slot, y: m.t, width: slot, height: ph, class: 'hit' });
+      if (a === lo || a === hi) s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(a.limit));
+      var hit = s('rect', { x: m.l + i * slot, y: y2, width: slot, height: ph, class: 'hit' });
       var label = dLabel(a.date) + ' day-ahead auction · ' + (a.settled ? (a.rollover ? 'after settlement, full limit again if the weekend or holiday auctions went unused' : 'after settlement') : (a.note ? dayNote(a.note) + ', ' : '') + 'share of ' + dShort(a.calc) + '\'s calculation');
       hoverable(hit, eur(a.limit), label);
     });
     if (target > 0) {
-      s('line', { x1: m.l, x2: W - m.r, y1: y(target), y2: y(target), stroke: 'var(--ink)', 'stroke-width': 1.5 });
-      s('text', { x: W - m.r, y: y(target) - 6, 'text-anchor': 'end', class: 'dl' }, 'Target ' + eurShort(target));
+      s('line', { x1: m.l, x2: W - m.r, y1: yv(y2, target), y2: yv(y2, target), stroke: 'var(--ink)', 'stroke-width': 1.5 });
+      s('text', { x: W - m.r, y: yv(y2, target) - 6, 'text-anchor': 'end', class: 'dl' }, 'Target ' + eurShort(target));
     }
     box.appendChild(svg);
     var key = $('auction-key'); key.textContent = '';
+    var k0 = el('span'); k0.appendChild(el('span', 'swatch sw-cont')); k0.appendChild(document.createTextNode('M7 continuous at 12:00')); key.appendChild(k0);
     var k1 = el('span'); k1.appendChild(el('span', 'swatch sw-da')); k1.appendChild(document.createTextNode('MATS auctions: limit at the day-ahead auction')); key.appendChild(k1);
-    if (items.some(function (a) { return !a.bd; })) { var k2 = el('span'); k2.appendChild(el('span', 'band-key')); k2.appendChild(document.createTextNode('Weekend or holiday auction, no settlement before it')); key.appendChild(k2); }
-    if (target > 0) { var k3 = el('span'); k3.appendChild(el('span', 'line-key')); k3.appendChild(document.createTextNode('Your target')); key.appendChild(k3); }
+    if (items.some(function (a) { return !a.bd; })) { var k2 = el('span'); k2.appendChild(el('span', 'band-key')); k2.appendChild(document.createTextNode('Weekend or holiday: one M7 limit throughout, a MATS share per auction')); key.appendChild(k2); }
+    if (target > 0) { var k3 = el('span'); k3.appendChild(el('span', 'line-key')); k3.appendChild(document.createTextNode('Your MATS target')); key.appendChild(k3); }
   }
 
   // ---------- O09 ----------
