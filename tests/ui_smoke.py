@@ -46,10 +46,11 @@ with sync_playwright() as pw:
     check('Per weekend auction: Sat, Sun · ÷ 3 because Friday\'s calculation lasts until Monday' in cyc and 'Mon ·' not in cyc, 'Friday panel: weekend auctions only, ÷ 3 explained')
     bars = pg.evaluate("""() => { const c = document.getElementById('auction-chart'); return [c.querySelectorAll('[data-series="m7"]').length, c.querySelectorAll('[data-series="mats"]').length, c.textContent, c.querySelectorAll('svg').length]; }""")
     check(bars[3] == 1 and bars[0] == 6 and bars[1] == 7 and 'one limit' in bars[2], 'chart (bars): one graph; M7 one bar per business day and one across the weekend (6), MATS one per auction (7): ' + str(bars[:2]))
-    pg.click('.chart-switch [data-style="line"]'); pg.wait_for_timeout(300)
-    lines = pg.evaluate("""() => document.querySelectorAll('#auction-chart line[data-series="m7"]').length""")
-    check(lines == 6 and 'one limit for 2 days' in pg.inner_text('#auction-chart'), 'chart (line): M7 as lines, unbroken across the weekend')
-    pg.click('.chart-switch [data-style="bars"]'); pg.wait_for_timeout(300)
+    check(pg.query_selector('.chart-switch') is None, 'the chart is bars only: no style switch')
+    check(not pg.eval_on_selector('#method', 'd => d.open') and pg.is_hidden('.method-grid'), '"How the calculation works" starts collapsed')
+    pg.click('#method > summary'); pg.wait_for_timeout(200)
+    check(pg.is_visible('.method-grid') and 'Assumptions and limits' in pg.inner_text('#method'), 'and opens on click')
+    pg.click('#method > summary'); pg.wait_for_timeout(200)
 
     # Market names: M7 and MATS everywhere, explained once in the header.
     text = pg.inner_text('body')
