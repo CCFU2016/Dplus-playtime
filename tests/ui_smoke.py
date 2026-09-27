@@ -44,8 +44,8 @@ with sync_playwright() as pw:
     week = pg.inner_text('#week-table'); cyc = pg.inner_text('#cycle')
     check('€50,000 × 2 (Sat, Sun)' in week and '× 3' not in week, 'weekend in the week table: €50,000 × 2 (Sat, Sun)')
     check('Per weekend auction: Sat, Sun · ÷ 3 because Friday\'s calculation lasts until Monday' in cyc and 'Mon ·' not in cyc, 'Friday panel: weekend auctions only, ÷ 3 explained')
-    bars = pg.evaluate("""() => { const ps = Array.from(document.querySelectorAll('#auction-chart path')); return [ps.filter(p => p.getAttribute('fill') === 'var(--cont)').length, ps.filter(p => p.getAttribute('fill') === 'var(--da)').length, document.getElementById('auction-chart').textContent]; }""")
-    check(bars[0] == 6 and bars[1] == 7 and 'one limit for 2 days' in bars[2], 'chart: M7 has one bar for the weekend (6 bars), MATS one per auction (7): ' + str(bars[:2]))
+    bars = pg.evaluate("""() => { const c = document.getElementById('auction-chart'); return [c.querySelectorAll('[data-series="m7"]').length, c.querySelectorAll('[data-series="mats"]').length, c.textContent, c.querySelectorAll('svg').length]; }""")
+    check(bars[3] == 1 and bars[0] == 6 and bars[1] == 7 and 'one limit for 2 days' in bars[2], 'chart: one graph; M7 one line per business day and one across the weekend (6), MATS one bar per auction (7): ' + str(bars[:2]))
 
     # Market names: M7 and MATS everywhere, explained once in the header.
     text = pg.inner_text('body')
