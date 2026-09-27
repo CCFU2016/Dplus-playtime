@@ -390,8 +390,14 @@
       </section>
 
       <section class="panel card">
-        <h2>Your limits at 12:00 each day</h2>
-        <p class="sub">M7 continuous (the line) and MATS auctions (the bars) on one scale. On business days both are the limits after the morning settlement; the day-ahead auction runs at 12:00. M7 doesn't reset on weekends and holidays, so its line runs unbroken across them: one limit, the last business day's evening limit until the next business morning. MATS gets an equal share of that calculation for each weekend or holiday auction, and the next business day's auction is back at the full limit if they went unused.</p>
+        <div class="card-head">
+          <h2>Your limits at 12:00 each day</h2>
+          <div class="view-switch chart-switch" role="group" aria-label="Chart style">
+            <button type="button" data-style="bars" aria-pressed="true">Bars</button>
+            <button type="button" data-style="line" aria-pressed="false">Line</button>
+          </div>
+        </div>
+        <p class="sub">M7 continuous (blue) and MATS auctions (orange) on one scale. On business days both are the limits after the morning settlement; the day-ahead auction runs at 12:00. M7 doesn't reset on weekends and holidays, so it shows as one bar, or one unbroken line, across them: one limit, the last business day's evening limit until the next business morning. MATS gets an equal share of that calculation for each weekend or holiday auction, and the next business day's auction is back at the full limit if they went unused.</p>
         <div class="chart" id="auction-chart" role="img" aria-label="M7 continuous and MATS auctions: limits at 12:00 each day"></div>
         <div class="chart-key" id="auction-key"></div>
       </section>
@@ -1249,7 +1255,9 @@ var LimitEngine = (function () {
   // day that is the limit after the morning settlement, one short line per day with a break between days. M7 doesn't reset
   // on weekends and holidays, so its line runs unbroken across them (the last business day's evening limit, until the next
   // business morning); MATS keeps one bar per auction.
-  function renderAuctions(res) {
+  var chartStyle = 'bars';
+  function renderAuctions(res) { if (chartStyle === 'line') renderAuctionsLine(res); else renderAuctionsBars(res); }
+  function renderAuctionsLine(res) {
     var box = $('auction-chart'); box.textContent = '';
     var items = allAuctions(res.rows), byCalc = {};
     res.rows.forEach(function (r) { byCalc[r.date] = r; });
@@ -1308,6 +1316,85 @@ var LimitEngine = (function () {
     box.appendChild(svg);
     var key = $('auction-key'); key.textContent = '';
     var k0 = el('span'); k0.appendChild(el('span', 'm7-key')); k0.appendChild(document.createTextNode('M7 continuous at 12:00 (unbroken over a weekend: one limit)')); key.appendChild(k0);
+    var k1 = el('span'); k1.appendChild(el('span', 'swatch sw-da')); k1.appendChild(document.createTextNode('MATS auctions: limit at the day-ahead auction')); key.appendChild(k1);
+    if (items.some(function (a) { return !a.bd; })) { var k2 = el('span'); k2.appendChild(el('span', 'band-key')); k2.appendChild(document.createTextNode('Weekend or holiday')); key.appendChild(k2); }
+    if (target > 0) { var k3 = el('span'); k3.appendChild(el('span', 'line-key')); k3.appendChild(document.createTextNode('Your MATS target')); key.appendChild(k3); }
+  }
+
+  // Bars: M7 (blue) and MATS (orange) side by side each business day. Over a weekend or holiday M7 is one limit, so one
+  // blue bar spans the days, between the first day's orange bar (left) and the last day's (right); orange bars of days in
+  // between stand in front of it with a surface outline.
+  function renderAuctionsBars(res) {
+    var box = $('auction-chart'); box.textContent = '';
+    var items = allAuctions(res.rows), byCalc = {};
+    res.rows.forEach(function (r) { byCalc[r.date] = r; });
+    items.forEach(function (a) { var r = byCalc[a.calc]; a.m7 = a.bd ? r.cont.l09 : r.cont.l18; a.m7Until = r.nextBD; });
+    var runs = [];
+    items.forEach(function (a, i) {
+      var last = runs[runs.length - 1];
+      if (!a.bd && last && !last.bd && last.calc === a.calc) { last.to = i; return; }
+      runs.push({ from: i, to: i, bd: a.bd, calc: a.calc, v: a.m7, until: a.m7Until, date: a.date });
+    });
+    var target = res.s.mode === 'inv' && res.inv && res.inv.C !== null ? res.s.tDa : 0;
+    var W = Math.max(300, box.clientWidth || 600), H = 270;
+    var m = { l: 52, r: 12, t: 34, b: 30 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var vmax = Math.max(target, maxBy(items, function (a) { return a.limit; }).limit, maxBy(items, function (a) { return a.m7; }).m7) || 1;
+    var step = niceStep(vmax * 1.15, 4), top = Math.ceil(vmax * 1.15 / step) * step;
+    var y = function (v) { return m.t + ph - (v / top) * ph; };
+    var NS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    function s(tag, attrs, text) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; svg.appendChild(n); return n; }
+    function bar(x0, w, v, fill, series, ring) {
+      var yt = y(v), yb = y(0), r = Math.min(4, (yb - yt) / 2), d = 'M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + w - r) + 'Q' + (x0 + w) + ',' + yt + ' ' + (x0 + w) + ',' + (yt + r) + 'V' + yb + 'Z';
+      if (yb - yt > 0.5) s('path', ring ? { d: d, fill: fill, stroke: 'var(--surface)', 'stroke-width': 2, 'data-series': series } : { d: d, fill: fill, 'data-series': series });
+      return yt;
+    }
+    var slot = pw / items.length, bw = Math.min(20, slot * 0.3), g = 2;       // bar width, 2px gap between a pair
+    var cxOf = function (i) { return m.l + i * slot + slot / 2; };
+    items.forEach(function (a, i) { if (!a.bd) s('rect', { x: m.l + i * slot, y: m.t, width: slot, height: ph, fill: 'var(--band)' }); });
+    for (var v = 0; v <= top + 1e-9; v += step) {
+      s('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: v === 0 ? 'var(--rule-strong)' : 'var(--rule)', 'stroke-width': 1 });
+      s('text', { x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'tick' }, eurShort(v));
+    }
+    items.forEach(function (a, i) { s('text', { x: cxOf(i), y: H - m.b + 18, 'text-anchor': 'middle', class: 'xl' }, dShort(a.date)); });
+    // where each orange bar goes: right of the blue one on a business day; in a stretch, left on its first day, right on its
+    // last, centred (in front of the blue bar) in between
+    var matsX = {}, loM = minBy(runs, function (r) { return r.v; }), hiM = maxBy(runs, function (r) { return r.v; });
+    runs.forEach(function (r) {
+      var n = r.to - r.from + 1, x0, w;
+      if (n === 1) { x0 = cxOf(r.from) - bw - g / 2; w = bw; matsX[r.from] = cxOf(r.from) + g / 2; }
+      else {
+        matsX[r.from] = cxOf(r.from) - bw - g / 2; matsX[r.to] = cxOf(r.to) + g / 2;
+        for (var k = r.from + 1; k < r.to; k++) matsX[k] = cxOf(k) - bw / 2;
+        x0 = cxOf(r.from) + g / 2; w = cxOf(r.to) - g / 2 - x0;
+      }
+      var yt = bar(x0, w, r.v, 'var(--cont)', 'm7'), cx = x0 + w / 2;
+      if (n > 1 && w < 170) {
+        s('text', { x: cx, y: yt - 20, 'text-anchor': 'middle', class: 'dl' }, eurShort(r.v));
+        s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'xv' }, 'one limit');
+      } else if (n > 1) s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(r.v) + ', one limit for ' + n + ' days');
+      else if (r === loM || r === hiM) s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(r.v));
+      var hit = s('rect', { x: x0 - 2, y: m.t, width: w + 4, height: ph, class: 'hit' });
+      hoverable(hit, eur(r.v), r.bd ? 'M7 continuous · ' + dLabel(r.date) + ' at 12:00, after the morning settlement (' + dLabel(r.calc) + '\'s calculation)'
+        : 'M7 continuous · ' + dLabel(items[r.from].date) + (n > 1 ? ' to ' + dLabel(items[r.to].date) : '') + ': one limit' + (n > 1 ? ' for all ' + n + ' days' : '') + ', ' + dLabel(r.calc) + '\'s evening limit until ' + dLabel(r.until) + ' morning');
+      r.n = n;
+    });
+    var lo = minBy(items, function (a) { return a.limit; }), hi = maxBy(items, function (a) { return a.limit; });
+    items.forEach(function (a, i) {
+      var run = runs.filter(function (r) { return i >= r.from && i <= r.to; })[0], inside = run.n > 2 && i > run.from && i < run.to;
+      var x0 = matsX[i], yt = bar(x0, bw, a.limit, 'var(--da)', 'mats', inside);
+      if (a === lo || a === hi) s('text', { x: x0 + bw / 2, y: yt - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(a.limit));
+      var hit = s('rect', { x: x0 - 2, y: m.t, width: bw + 4, height: ph, class: 'hit' });
+      hoverable(hit, eur(a.limit), 'MATS auctions · ' + dLabel(a.date) + ' day-ahead auction · ' + (a.settled ? (a.rollover ? 'after settlement, full limit again if the weekend or holiday auctions went unused' : 'after settlement') : (a.note ? dayNote(a.note) + ', ' : '') + 'share of ' + dShort(a.calc) + '\'s calculation'));
+    });
+    if (target > 0) {
+      s('line', { x1: m.l, x2: W - m.r, y1: y(target), y2: y(target), stroke: 'var(--ink)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4' });
+      s('text', { x: W - m.r, y: y(target) - 6, 'text-anchor': 'end', class: 'dl' }, 'MATS target ' + eurShort(target));
+    }
+    box.appendChild(svg);
+    var key = $('auction-key'); key.textContent = '';
+    var k0 = el('span'); k0.appendChild(el('span', 'swatch sw-cont')); k0.appendChild(document.createTextNode('M7 continuous at 12:00 (one bar across a weekend: one limit)')); key.appendChild(k0);
     var k1 = el('span'); k1.appendChild(el('span', 'swatch sw-da')); k1.appendChild(document.createTextNode('MATS auctions: limit at the day-ahead auction')); key.appendChild(k1);
     if (items.some(function (a) { return !a.bd; })) { var k2 = el('span'); k2.appendChild(el('span', 'band-key')); k2.appendChild(document.createTextNode('Weekend or holiday')); key.appendChild(k2); }
     if (target > 0) { var k3 = el('span'); k3.appendChild(el('span', 'line-key')); k3.appendChild(document.createTextNode('Your MATS target')); key.appendChild(k3); }
@@ -1425,10 +1512,17 @@ var LimitEngine = (function () {
   $('setup').addEventListener('change', schedule);
   $('setup').addEventListener('submit', function (e) { e.preventDefault(); });
   $('week').addEventListener('change', function () { selected = null; weekNote(); });
-  Array.prototype.forEach.call(document.querySelectorAll('.view-switch button'), function (b) {
+  Array.prototype.forEach.call(document.querySelectorAll('.chart-switch button'), function (b) {
+    b.addEventListener('click', function () {
+      chartStyle = b.getAttribute('data-style');
+      Array.prototype.forEach.call(document.querySelectorAll('.chart-switch button'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      render();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.view-switch:not(.chart-switch) button'), function (b) {
     b.addEventListener('click', function () {
       weekView = b.getAttribute('data-view');
-      Array.prototype.forEach.call(document.querySelectorAll('.view-switch button'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      Array.prototype.forEach.call(document.querySelectorAll('.view-switch:not(.chart-switch) button'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
       $('view-sub-days').hidden = weekView !== 'days'; $('view-sub-calc').hidden = weekView !== 'calc';
       render();
     });

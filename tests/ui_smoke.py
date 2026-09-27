@@ -45,7 +45,11 @@ with sync_playwright() as pw:
     check('€50,000 × 2 (Sat, Sun)' in week and '× 3' not in week, 'weekend in the week table: €50,000 × 2 (Sat, Sun)')
     check('Per weekend auction: Sat, Sun · ÷ 3 because Friday\'s calculation lasts until Monday' in cyc and 'Mon ·' not in cyc, 'Friday panel: weekend auctions only, ÷ 3 explained')
     bars = pg.evaluate("""() => { const c = document.getElementById('auction-chart'); return [c.querySelectorAll('[data-series="m7"]').length, c.querySelectorAll('[data-series="mats"]').length, c.textContent, c.querySelectorAll('svg').length]; }""")
-    check(bars[3] == 1 and bars[0] == 6 and bars[1] == 7 and 'one limit for 2 days' in bars[2], 'chart: one graph; M7 one line per business day and one across the weekend (6), MATS one bar per auction (7): ' + str(bars[:2]))
+    check(bars[3] == 1 and bars[0] == 6 and bars[1] == 7 and 'one limit for 2 days' in bars[2], 'chart (bars): one graph; M7 one bar per business day and one across the weekend (6), MATS one per auction (7): ' + str(bars[:2]))
+    pg.click('.chart-switch [data-style="line"]'); pg.wait_for_timeout(300)
+    lines = pg.evaluate("""() => document.querySelectorAll('#auction-chart line[data-series="m7"]').length""")
+    check(lines == 6 and 'one limit for 2 days' in pg.inner_text('#auction-chart'), 'chart (line): M7 as lines, unbroken across the weekend')
+    pg.click('.chart-switch [data-style="bars"]'); pg.wait_for_timeout(300)
 
     # Market names: M7 and MATS everywhere, explained once in the header.
     text = pg.inner_text('body')
