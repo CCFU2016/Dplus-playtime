@@ -60,16 +60,19 @@ All wallet code lives in `src/wallet/`. It uses only the engine's public API, in
 
 | Module | Job | Uses |
 |---|---|---|
-| `behaviour.js` | Inputs and presets → per-day trade flows per market (volume, value, risk-bearing value), orders over 16:00, imbalance volumes, weekly invoice parameters | nothing |
-| `settlement.js` | Booking windows, funding deadline and value date per window, net amount per window, cash path, `OR(D)` | behaviour, engine calendar |
-| `ecc-link.js` | Limit targets per calculation day, base limits, the per-day solver, the split search, collateral form | behaviour, settlement, engine |
-| `brp.js` | Current and draft art. 10.8 on the member's own figures (as its own BRP), NEMO, ramp-up series, seeded Monte Carlo for B | behaviour, rule configs |
-| `tennet-account.js` | Imbalance and reconciliation invoices, the Dutch working-day calendar, payment dates, the account/security check, exit tail | behaviour, brp |
-| `wallet.js` | Totals by purpose and by account, the expected–stress range, sensitivities | all |
-| `page.html` | The page, with `/*__ENGINE__*/` and `/*__WALLET__*/` markers | |
+| `dates.js` | Date helpers shared by the modules (UTC days) | nothing |
+| `behaviour.js` | A trading plan → each trading day's flows per market (value, the value that uses limit, auction order exposure) | nothing |
+| `settlement.js` | Booking windows, funding deadline and value date per window, net amount per window, `OR(D)`, the cash path | engine calendar, dates |
+| `ecc-link.js` | Limit targets per calculation day, base limits, the per-day solver, the split search | engine, dates |
+| `brp.js` | Current and draft art. 10.8 on the member's own figures (as its own BRP), the ramp-up series | its rule numbers |
+| `tennet-account.js` | The weekly imbalance invoice and the seeded Monte Carlo for B's stress end, the Dutch working-day calendar, the debit day, the exit tail | engine, dates, brp |
+| `settings.js` | Every setting (label, unit, kind, tag, source, default) and the presets | nothing |
+| `answers.js` | The prospect questionnaire: answers → settings | settings |
+| `wallet.js` | Totals by purpose and by wallet segment, the expected–stress range, sensitivities; `WalletCalc`, the one object the pages use | all |
+| `page.html`, `prospect.html` | The pages, with `/*__ENGINE__*/` and `/*__WALLET__*/` markers | |
 
-- **Style:** every module is an IIFE with `module.exports` for node, ES5, no dependencies, as `engine.js` is.
-- **Rule configs:** each rule version (current and draft art. 10.8, current and draft 10.26(5)) is one config object. Every entry carries its source: document, article, paragraph.
+- **Style:** every module is an IIFE that defines one global and exports it for Node; modern JavaScript, no dependencies, no build framework.
+- **Rule numbers:** each rule version (current and draft art. 10.8) keeps its numbers in one object, `RULES` in `brp.js`. Every number carries its source in a comment: document, article, paragraph.
 - **Build:** `scripts/build.js` is split.
   - `build:ecc` keeps today's output byte for byte.
   - `build:wallet` writes `dist/wallet/direct-plus-wallet-calculator.html` and `dist/wallet/standalone/…`, inlining the same `src/engine.js` file.

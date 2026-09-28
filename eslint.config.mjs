@@ -11,6 +11,8 @@ const inlinedModules = {
   WalletEccLink: 'readonly',
   WalletBrp: 'readonly',
   WalletTennet: 'readonly',
+  WalletSettings: 'readonly',
+  WalletAnswers: 'readonly',
   WalletCalc: 'readonly',
   PageUI: 'readonly',
   Handoff: 'readonly',

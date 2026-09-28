@@ -1,168 +1,169 @@
-/* Direct+ wallet: the TenneT account: imbalance and reconciliation invoices, their dates, and the account/security check
-   (docs/wallet-model.md §5, §6.2). Each member pays its own invoices, as if it were its own BRP (Direct+ decision, 26 Sep 2026).
-   Sources: SC 2026 art. 10.26, 10.27, 10.29 (reference/tennet/systeemcode-elektriciteit_wetten-overheid_…txt);
-   ACM draft ACM/25/196985 art. 10.8(9)-(10), amended 10.26(5)-(6) and 10.27(13)-(14), explanatory paras 15-17. */
-var WalletTennet = (function () {
+/* Direct+ wallet: the member's TenneT account: the weekly imbalance invoice, the day TenneT debits it, and how long the
+   security stays committed after the member stops (docs/wallet-model.md §5 and §6.2). Each member pays its own
+   invoices, as if it were its own BRP.
+   Sources: SC 2026 art. 10.26, 10.27 and 10.29 (reference/tennet/systeemcode-elektriciteit_wetten-overheid_…txt); ACM
+   draft ACM/25/196985 art. 10.8(9)-(10), amended 10.26(5)-(6) and 10.27(13)-(14), explanatory paras 15-17. */
+const WalletTennet = ((Engine, Dates, Brp) => {
   'use strict';
-  var DAY = 86400000;
-  function parse(iso) { var p = iso.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
-  function iso(d) { return d.toISOString().slice(0, 10); }
-  function add(d, n) { return new Date(d.getTime() + n * DAY); }
 
-  /* ---------- imbalance price (SC 2026 art. 10.29) ----------
-     prices = { up (opregelen), down (afregelen), mid (middenprijs) } for one settlement period; v = imbalance in MWh,
-     + short ("afnemen": the BRP pays), − long ("invoeden": TenneT pays). Returns the signed amount, + = the BRP pays.
-     It is the full imbalance price, not a spread against day-ahead; negative prices flip the flow by themselves. */
-  function price(state, side, p) {
-    if (state === -1) return p.down;                                                   // para 2: afregelen, both sides
-    if (state === 1) return p.up;                                                      // para 3: opregelen, both sides
-    if (state === 0) return p.mid;                                                     // para 5: middenprijs, both sides
-    if (state === 2) return side === 'short' ? Math.max(p.mid, p.up) : Math.min(p.mid, p.down);   // para 4a-4d
-    throw new Error('Unknown regulation state ' + state);
-  }
-  function periodAmount(v, state, p) { return v * price(state, v > 0 ? 'short' : 'long', p); }
+  const DEFAULT_LAG_WEEKS = 4; // ACM draft para 15: "Tussen het moment van levering en facturatie zitten vier weken."
 
-  /* ---------- Dutch working days ----------
-     TenneT's deadlines count Dutch working days, not ECC's T2 days. Holidays as in the Algemene termijnenwet (art. 3):
-     New Year's Day, Easter Monday, King's Day (27 April, 26 April when that is a Sunday), 5 May, Ascension Day,
-     Whit Monday, Christmas Day and Boxing Day. To be confirmed with TenneT (Q11). */
-  function easter(y) {                                   // anonymous Gregorian algorithm
-    var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
-    var g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
-    var l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
-    var month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
-    return new Date(Date.UTC(y, month - 1, day));
-  }
-  var holidayCache = {};
-  function holidays(y) {
-    if (holidayCache[y]) return holidayCache[y];
-    var e = easter(y), king = new Date(Date.UTC(y, 3, 27)), h = {};
-    if (king.getUTCDay() === 0) king = new Date(Date.UTC(y, 3, 26));
-    h[y + '-01-01'] = "Nieuwjaarsdag"; h[iso(add(e, 1))] = 'Tweede Paasdag'; h[iso(king)] = 'Koningsdag';
-    h[y + '-05-05'] = 'Bevrijdingsdag'; h[iso(add(e, 39))] = 'Hemelvaartsdag'; h[iso(add(e, 50))] = 'Tweede Pinksterdag';
-    h[y + '-12-25'] = 'Eerste Kerstdag'; h[y + '-12-26'] = 'Tweede Kerstdag';
-    return (holidayCache[y] = h);
-  }
-  function isWorkday(d) { var w = d.getUTCDay(); return w !== 0 && w !== 6 && !holidays(d.getUTCFullYear())[iso(d)]; }
-  function onOrAfterWorkday(d) { while (!isWorkday(d)) d = add(d, 1); return d; }
-  function workdaysBetween(a, b) { var n = 0; for (var x = add(a, 1); x < b; x = add(x, 1)) if (isWorkday(x)) n++; return n; }
-  function nthWorkday(y, m0, n) { var d = new Date(Date.UTC(y, m0, 1)), k = 0; for (;;) { if (isWorkday(d) && ++k === n) return d; d = add(d, 1); } }
+  // The stress end of component B (stressB)
+  const STRESS_SEED = 20260926;
+  const STRESS_RUNS = 10000;
+  const STRESS_QUANTILE = 0.95;
 
-  /* ---------- reconciliation dates ----------
-     month: 'YYYY-MM', the reconciliation month M. version 'current' | 'draft' (default: the draft for statements from
-     1 January 2027, when its 10.26(5) takes effect; ACM draft Artikel II B).
-     Profile (10.26): TenneT states the amount by the 10th working day of M+5 (para 4). Payment on the first Tuesday after;
-       current para 5: the Tuesday after that "tenzij tussen bedoelde moment en de eerste dinsdag niet meer dan drie
-       werkdagen zijn gelegen" applies; the draft drops that exception. Payout on the Wednesday after that Tuesday (para 6).
-       A Tuesday or Wednesday that is not a working day moves to the next working day (para 8; para 7 in the draft).
-     Smart-meter and telemetry (10.27): paid and paid out on the first working day of M+6 (paras 13-14). */
-  function monthShift(month, k) { var y = +month.slice(0, 4), m = +month.slice(5, 7) - 1 + k; return { y: y + Math.floor(m / 12), m0: ((m % 12) + 12) % 12 }; }
-  function paymentDates(statement, version) {
-    var s = typeof statement === 'string' ? parse(statement) : statement;
-    var v = version || (iso(s) >= '2027-01-01' ? 'draft' : 'current');
-    var tue = add(s, ((2 - s.getUTCDay() + 7) % 7) || 7);
-    if (v === 'current' && workdaysBetween(s, tue) <= 3) tue = add(tue, 7);
-    return { version: v, statement: iso(s), pay: iso(onOrAfterWorkday(tue)), payout: iso(onOrAfterWorkday(add(tue, 1))) };
-  }
-  function profileDates(month, version) {
-    var t = monthShift(month, 5), r = paymentDates(nthWorkday(t.y, t.m0, 10), version);
-    r.month = month;
-    return r;
-  }
-  function smartDates(month) {
-    var t = monthShift(month, 6), d = nthWorkday(t.y, t.m0, 1);
-    return { month: month, pay: iso(d), payout: iso(d) };
-  }
-  /* Weekly imbalance invoice for the delivery week starting weekStart (a Monday). ACM draft para 15: "Tussen het moment
-     van levering en facturatie zitten vier weken." The debit day is in TenneT's billing terms, not in the pack (Q11):
-     ASSUMPTION, the first working day on or after the end of the delivery week + lagWeeks (default 4). */
-  function imbalanceDebit(weekStart, lagWeeks) {
-    return iso(onOrAfterWorkday(add(parse(weekStart), 7 + 7 * (lagWeeks == null ? 4 : lagWeeks))));
+  // After the member stops (exitTail)
+  const EXIT_IMBALANCE_DAYS = 28; // the last imbalance invoice, about four weeks after delivery (ACM draft para 15)
+  const EXIT_SMART_MONTHS = 6; // smart-meter and telemetry reconciliation (para 17)
+  const EXIT_PROFILE_MONTHS = 21; // profile reconciliation (para 16)
+
+  // ---------- Dutch working days ----------
+  // TenneT's deadlines count Dutch working days, not ECC's T2 days. The holidays are those of the Algemene termijnenwet
+  // (art. 3): New Year's Day, Easter Monday, King's Day (27 April, or 26 April when that is a Sunday), 5 May, Ascension
+  // Day, Whit Monday, Christmas Day and Boxing Day. To be confirmed with TenneT (open question W7).
+
+  /** Easter Sunday of `year`: the anonymous Gregorian algorithm, with its customary variable names. */
+  function easter(year) {
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(Date.UTC(year, month - 1, day));
   }
 
-  /* ---------- account vs security ----------
-     Draft art. 10.8(10): enough balance for the weekly and monthly settlements (a), and enough security after them (b).
-     INTERPRETATION, processing debits in date order: balance before a debit ≥ max(invoice, 0), and
-     balance after it + guarantee ≥ security. Returns the smallest opening balance that passes, and the binding event.
-     invoices: [{ date, amount }] (+ the BRP pays, − TenneT pays); security: € or a function of the date.
-     rule 'current': invoice cash and security are additive (the deposit tops the guarantee up to the security). */
-  function accountNeed(invoices, security, guarantee, rule) {
-    var sec = typeof security === 'function' ? security : function () { return security; };
-    var g = guarantee || 0, ev = invoices.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
-    var cum = 0, need = 0, why = null;
-    var consider = function (v, what) { if (v > need + 1e-9) { need = v; why = what; } };
-    if (rule === 'current') {
-      var peak = 0;
-      ev.forEach(function (e) { if (cum + Math.max(e.amount, 0) > peak) { peak = cum + Math.max(e.amount, 0); why = { date: e.date, check: 'invoice' }; } cum += e.amount; });
-      var dep = Math.max(sec(ev.length ? ev[0].date : null) - g, 0);
-      return { need: peak + dep, invoices: peak, deposit: dep, binding: why };
+  const holidaysByYear = new Map();
+
+  /** The Dutch public holidays of `year`, as { isoDate: name }. */
+  function holidays(year) {
+    if (!holidaysByYear.has(year)) {
+      const easterSunday = easter(year);
+      const afterEaster = (days) => Engine.iso(Dates.addDays(easterSunday, days));
+      let kingsDay = new Date(Date.UTC(year, 3, 27));
+      if (kingsDay.getUTCDay() === 0) kingsDay = new Date(Date.UTC(year, 3, 26));
+      holidaysByYear.set(year, {
+        [`${year}-01-01`]: 'Nieuwjaarsdag',
+        [afterEaster(1)]: 'Tweede Paasdag',
+        [Engine.iso(kingsDay)]: 'Koningsdag',
+        [`${year}-05-05`]: 'Bevrijdingsdag',
+        [afterEaster(39)]: 'Hemelvaartsdag',
+        [afterEaster(50)]: 'Tweede Pinksterdag',
+        [`${year}-12-25`]: 'Eerste Kerstdag',
+        [`${year}-12-26`]: 'Tweede Kerstdag',
+      });
     }
-    consider(sec(ev.length ? ev[0].date : null) - g, { date: ev.length ? ev[0].date : null, check: 'security at the start' });
-    ev.forEach(function (e) {
-      consider(cum + Math.max(e.amount, 0), { date: e.date, check: 'balance before the debit' });
-      cum += e.amount;
-      consider(cum + sec(e.date) - g, { date: e.date, check: 'security after the debit' });
-    });
-    return { need: need, binding: why };
+    return holidaysByYear.get(year);
   }
 
-  /* ---------- weekly imbalance model (wallet-model §6.2) ----------
-     o = { weeklyVolume (MWh traded, nominated or produced a week), share, bias (−1 long … +1 short), price (typical
-     imbalance price €/MWh), statePrice2Share, stateGap2 (€/MWh), cv }. A normal model: it understates NL imbalance-price
-     tails, and says so on the page. */
-  /* shortVolume (MWh a week, optional) is imbalance that is always short, such as an aggregator's non-delivery. */
-  function weekly(o) {
-    var V = o.weeklyVolume * o.share, Vs = o.shortVolume || 0, delta = (o.statePrice2Share || 0) * (o.stateGap2 || 0), b = o.bias || 0;
-    var mu = V * (b * o.price + (1 - Math.abs(b)) * delta / 2) + Vs * o.price, sigma = (o.cv == null ? 0.5 : o.cv) * (V + Vs) * o.price;
-    return { volume: V + Vs, delta: delta, mu: mu, sigma: sigma, B: mu + 2 * sigma };
+  function isWorkday(date) {
+    const weekday = date.getUTCDay();
+    return weekday !== 0 && weekday !== 6 && !holidays(date.getUTCFullYear())[Engine.iso(date)];
   }
-  // Seeded pseudo-random numbers (mulberry32) and standard normals (Box-Muller), so the stress end is reproducible.
-  // Math.imul is ES2015; the fallback keeps the module ES5.
-  var imul = Math.imul || function (a, b) {
-    var ah = (a >>> 16) & 0xffff, al = a & 0xffff, bh = (b >>> 16) & 0xffff, bl = b & 0xffff;
-    return (al * bl + (((ah * bl + al * bh) << 16) >>> 0)) | 0;
-  };
-  function mulberry32(a) {
-    return function () {
-      a = (a + 0x6D2B79F5) | 0;
-      var t = imul(a ^ (a >>> 15), 1 | a);
-      t = (t + imul(t ^ (t >>> 7), 61 | t)) ^ t;
+
+  function workdayOnOrAfter(date) {
+    let day = date;
+    while (!isWorkday(day)) day = Dates.addDays(day, 1);
+    return day;
+  }
+
+  // ---------- the weekly imbalance invoice ----------
+
+  /**
+   * The day TenneT debits the weekly imbalance invoice for the delivery week that starts on `weekStart` (a Monday).
+   * The debit day is in TenneT's billing terms, not in the texts (open question W7). ASSUMPTION: the first working
+   * day on or after the end of the delivery week plus `lagWeeks`.
+   */
+  function imbalanceDebit(weekStart, lagWeeks = DEFAULT_LAG_WEEKS) {
+    const due = Dates.addDays(Engine.parse(weekStart), 7 + 7 * lagWeeks);
+    return Engine.iso(workdayOnOrAfter(due));
+  }
+
+  /**
+   * The weekly imbalance invoice as a normal distribution (wallet-model §6.2). A normal model understates the tails of
+   * NL imbalance prices, and the page says so.
+   *   volume       MWh a week that the imbalance is measured against (traded, nominated or produced)
+   *   share        the imbalance as a share of that volume
+   *   bias         −1 always long … +1 always short: short pays the imbalance price, long receives it (art. 10.29)
+   *   price        the typical imbalance price, €/MWh
+   *   state2Share, state2Gap  the share of periods with dual pricing (regulation state 2), and the gap between the
+   *                short and long prices then, €/MWh (art. 10.29(4))
+   *   cv           σ of the invoice as a multiple of the imbalance value
+   *   shortVolume  MWh a week that is always short, such as an aggregator's non-delivery
+   * Returns { volume, delta, mean, sd, B }: MWh a week, € per MWh of dual pricing, and € a week. B is component B of
+   * the draft when every weekly invoice follows this distribution: the mean plus two standard deviations.
+   */
+  function weekly({ volume, share, bias = 0, price, state2Share = 0, state2Gap = 0, cv = 0.5, shortVolume = 0 }) {
+    const imbalance = volume * share;
+    const delta = state2Share * state2Gap;
+    const mean = imbalance * (bias * price + ((1 - Math.abs(bias)) * delta) / 2) + shortVolume * price;
+    const sd = cv * (imbalance + shortVolume) * price;
+    return { volume: imbalance + shortVolume, delta, mean, sd, B: mean + Brp.RULES.draft.sigmaB * sd };
+  }
+
+  /** A seeded pseudo-random generator (mulberry32) of numbers in [0, 1), so the stress end is reproducible. */
+  function mulberry32(seed) {
+    let state = seed;
+    return () => {
+      state = (state + 0x6d2b79f5) | 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  /* Stress end of B: the q-quantile of B = mean + 2σ over `runs` simulated windows of ten weekly invoices N(mu, sigma).
-     sigmaType 'population' (default) or 'sample'. */
-  function stressB(mu, sigma, o) {
-    o = o || {};
-    var rnd = mulberry32(o.seed == null ? 20260926 : o.seed), runs = o.runs || 10000, n = 10, q = o.q == null ? 0.95 : o.q, bs = [];
-    var normal = function () { var u = 1 - rnd(), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
-    for (var r = 0; r < runs; r++) {
-      var w = [], mean = 0, ss = 0, i;
-      for (i = 0; i < n; i++) { w.push(mu + sigma * normal()); mean += w[i]; }
-      mean /= n;
-      for (i = 0; i < n; i++) ss += (w[i] - mean) * (w[i] - mean);
-      bs.push(mean + 2 * Math.sqrt(ss / (o.sigmaType === 'sample' ? n - 1 : n)));
+
+  /**
+   * The stress end of component B: its 95th percentile over simulated ten-week windows of weekly invoices, each drawn
+   * from N(mean, sd). Seeded, so the same inputs always give the same amount. sigma: as for WalletBrp.stats().
+   */
+  function stressB(mean, sd, { sigma, seed = STRESS_SEED } = {}) {
+    const random = mulberry32(seed);
+    const normal = () => {
+      // Box-Muller
+      const u = 1 - random();
+      const v = random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    };
+    const outcomes = [];
+    for (let run = 0; run < STRESS_RUNS; run++) {
+      const invoices = Array.from({ length: Brp.RULES.draft.weeksB }, () => mean + sd * normal());
+      outcomes.push(Brp.componentB(invoices, sigma));
     }
-    bs.sort(function (a, b) { return a - b; });
-    return bs[Math.min(runs - 1, Math.floor(q * runs))];
+    outcomes.sort((a, b) => a - b);
+    return outcomes[Math.min(STRESS_RUNS - 1, Math.floor(STRESS_QUANTILE * STRESS_RUNS))];
   }
 
-  /* ---------- exit tail (draft art. 10.8(10c); proposal BR-2024-2077 p.2) ----------
-     After the member stops on date `stop`, security and cash stay committed until the last invoices are settled:
-     imbalance about four weeks after the last delivery (ACM draft para 15), profile reconciliation up to 21 months
-     (para 16), smart-meter and telemetry reconciliation six months (para 17). has = { profile, smart }. */
-  function exitTail(stop, has) {
-    var d = parse(stop), addMonths = function (k) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, d.getUTCDate())); };
-    var out = { imbalance: iso(add(d, 28)) };
-    if (has && has.smart) out.smart = iso(addMonths(6));
-    if (has && has.profile) out.profile = iso(addMonths(21));
-    var last = out.imbalance; Object.keys(out).forEach(function (k) { if (out[k] > last) last = out[k]; });
-    out.released = last;
-    return out;
+  // ---------- after the member stops ----------
+
+  /**
+   * When the security is released after the member stops on `stop` (draft art. 10.8(10c); proposal BR-2024-2077
+   * p.2): once the last invoices are settled. `profile` and `smart` say whether the member's connections have those
+   * reconciliations. Returns ISO dates: { imbalance, smart?, profile?, released }.
+   */
+  function exitTail(stop, { profile = false, smart = false } = {}) {
+    const date = Engine.parse(stop);
+    const monthsLater = (months) =>
+      Engine.iso(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, date.getUTCDate())));
+    const tail = { imbalance: Engine.iso(Dates.addDays(date, EXIT_IMBALANCE_DAYS)) };
+    if (smart) tail.smart = monthsLater(EXIT_SMART_MONTHS);
+    if (profile) tail.profile = monthsLater(EXIT_PROFILE_MONTHS);
+    const released = Object.values(tail).reduce((latest, day) => (day > latest ? day : latest));
+    return { ...tail, released };
   }
 
-  return { price: price, periodAmount: periodAmount, holidays: holidays, isWorkday: isWorkday, paymentDates: paymentDates, profileDates: profileDates,
-           smartDates: smartDates, imbalanceDebit: imbalanceDebit, accountNeed: accountNeed, weekly: weekly,
-           mulberry32: mulberry32, stressB: stressB, exitTail: exitTail };
-})();
+  return { isWorkday, imbalanceDebit, weekly, mulberry32, stressB, exitTail };
+})(
+  typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
+  typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
+  typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
+);
 if (typeof module !== 'undefined') module.exports = WalletTennet;

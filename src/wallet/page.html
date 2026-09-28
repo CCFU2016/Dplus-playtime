@@ -461,10 +461,13 @@
       box.appendChild(c);
     }
     var b = x.ecc.binding;
+    var capNote = x.ecc.overCap || y.ecc.overCap
+      ? ' Your cap limit is ' + eur(+st.cap) + ': collateral above it does not raise limits, so this plan needs ECC to raise the cap' + (x.ecc.overCap ? '.' : ' at the stress end.')
+      : '';
     card('var(--p-ecc)', 'ECC trading collateral', x.ecc.C, y.ecc.C,
-      x.ecc.mode === 'daily'
-        ? 'Optimised by day: ' + eur(x.ecc.weekday) + ' on normal weekdays, ' + eur(x.ecc.peak) + ' at the highest (the calculation before a weekend or holiday), each day with its own split. Static would be one amount all week.'
-        : 'Set by the calculation on ' + dLabel(b.date) + (b.gap > 1 ? ', whose limit has to last ' + b.gap + ' days until the next business day,' : '') + ' at a ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ' split between continuous and auctions.',
+      (x.ecc.mode === 'daily'
+        ? 'Optimised by day: ' + eur(x.ecc.weekday) + ' on normal weekdays, ' + eur(x.ecc.C) + ' at the highest (the calculation before a weekend or holiday), each day with its own split. Static would be one amount all week.'
+        : 'Set by the calculation on ' + dLabel(b.date) + (b.gap > 1 ? ', whose limit has to last ' + b.gap + ' days until the next business day,' : '') + ' at a ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ' split between continuous and auctions.') + capNote,
       b.gap > 1 && st.weekend ? [['collateralMode', 'Collateral optimised by day'], ['weekend', 'Weekend trading']] : [['contBuy', 'Continuous buying'], ['aucLimitPrice', 'Auction bid prices']]);
     var se = x.settlement, seText = 'ECC settles each business day\'s trades from the wallet as one net payment. ';
     if (se.float > 0.5) seText += 'Purchases you sell only after the 16:00 cut are paid one collection before the sale comes back, so about ' + eur(se.float) + ' stays in the wallet as a float.' + (se.flows < 0.5 ? ' Otherwise your buys and sells net to about zero.' : ' On top of that come the week\'s net purchases, ' + eur(se.flows) + '.');
@@ -496,7 +499,7 @@
     $('tl-exp').setAttribute('aria-pressed', tlScenario === 'expected' ? 'true' : 'false');
     $('tl-str').setAttribute('aria-pressed', tlScenario === 'stress' ? 'true' : 'false');
     var fp = tlScenario === 'stress' ? st.stressPrice / st.price : 1;
-    sc.ecc.windows.forEach(function (w) {
+    sc.settlement.windows.forEach(function (w) {
       var d = E.parse(w.close);
       var res = E.day(d, { C: sc.ecc.C, OR: w.OR, cont: { bd: sc.ecc.baseLimits.cont.bd, nbd: sc.ecc.baseLimits.cont.nbd, key: sc.ecc.key }, da: { bd: sc.ecc.baseLimits.da.bd, nbd: sc.ecc.baseLimits.da.nbd, key: 100 - sc.ecc.key } });
       ev.push({ at: w.close + ' 16:00', what: 'Booking cut: ' + w.days.length + ' day' + (w.days.length > 1 ? 's' : '') + ' of trades close', amount: w.net });

@@ -9,7 +9,7 @@ const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 // Wallet modules in dependency order; each ends with the same node export line as the engine.
-const WALLET_MODULES = ['behaviour', 'settlement', 'ecc-link', 'brp', 'tennet-account', 'wallet'];
+const WALLET_MODULES = ['dates', 'behaviour', 'settlement', 'ecc-link', 'brp', 'tennet-account', 'settings', 'answers', 'wallet'];
 
 function stripExport(src) { return src.replace(/\nif \(typeof module !== 'undefined'\) module\.exports = \w+;\s*$/, ''); }
 const head = `<!doctype html>

@@ -751,935 +751,2031 @@ var LimitEngine = (function () {
            cheapestKey: cheapestKey, parse: parse, iso: iso, isBD: isBD, nextBD: nextBD, prevBD: prevBD,
            holidayName: holidayName, HOLIDAYS: HOLIDAYS, MARKETS: MARKETS, MIN_DATE: MIN_DATE, MAX_DATE: MAX_DATE };
 })();
-/* Direct+ wallet: trading behaviour → per-day flows, auction order exposure, continuous target.
-   Sources: ECC Risk Management Services Manual v056, §3.10 (auctions) and §3.11 (continuous).
-   Formulas and their sources: docs/wallet-model.md §2.2, §2.3 and §6. No DOM, no engine. */
-var WalletBehaviour = (function () {
+/* Direct+ wallet: date helpers shared by the wallet modules. Dates are UTC midnights, as in the engine; its parse()
+   and iso() convert them to and from ISO strings. */
+const WalletDates = (() => {
   'use strict';
-  function clamp(p, lo, hi) { return Math.min(Math.max(p, lo), hi); }
 
-  /* Continuous target for one limit period, from its trades in time order (wallet-model §2.2).
-     trades: [{ mwh: + buy / − sell, price }]. Manual §3.11: buys at positive and sells at negative prices use limit,
-     the others give it back.
-       G = risk-bearing value, P = running peak of the cumulative net position,
-       T = max(G × (1 − s), P) + resting   (s: ASSUMPTION, default 0) */
-  function contTarget(trades, s, resting) {
-    var G = 0, pos = 0, P = 0;
-    trades.forEach(function (t) {
-      var v = t.mwh * t.price;              // what the trade costs the member; negative when it pays the member
-      if (v > 0) G += v;
-      pos += v;
-      if (pos > P) P = pos;
-    });
-    return { G: G, P: P, T: Math.max(G * (1 - (s || 0)), P) + (resting || 0) };
+  const DAY_MS = 86400000;
+
+  const addDays = (date, days) => new Date(date.getTime() + days * DAY_MS);
+  const daysBetween = (from, to) => Math.round((to - from) / DAY_MS);
+
+  /** The Monday of the week that holds `date`. */
+  const mondayOf = (date) => addDays(date, -((date.getUTCDay() + 6) % 7));
+
+  /** Orders ISO dates or date-times ('2026-10-05 18:00'), for sort(). */
+  const compareIso = (a, b) => Number(a > b) - Number(a < b);
+
+  /** Every date from `from` to `to`, both included. */
+  function* eachDay(from, to) {
+    for (let day = from; day <= to; day = addDays(day, 1)) yield day;
   }
 
-  /* Exposure of one auction order (Manual §3.10, p.24): "the maximum value of (price*quantity) for the complete order.
-     Only orders with a positive exposure are applied against the limit."
-     curve: [{ mwh: + buy / − sell, price }]; price null means no limit price.
-     px: { maxMarket, minMarket, minReal, maxReal }. The Realistic Price Range (p.25) applies only when both minReal and
-     maxReal are set; it caps prices to [minReal, maxReal]. No built-in values (Q9).
-     INTERPRETATION: a sell without a limit price counts at the minimum price; the manual only mentions the maximum. */
-  function orderExposure(curve, px) {
-    var range = px.minReal != null && px.maxReal != null, best = 0;
-    if (range && !(px.minReal < px.maxReal)) throw new Error('Realistic price range: the minimum must be below the maximum');
-    curve.forEach(function (c) {
-      var p = c.price;
-      if (p == null) {
-        p = c.mwh > 0 ? (range ? px.maxReal : px.maxMarket) : (range ? px.minReal : px.minMarket);
-        if (p == null) throw new Error('Set the market ' + (c.mwh > 0 ? 'maximum' : 'minimum') + ' price for orders without a limit price (Q9)');
+  return { DAY_MS, addDays, daysBetween, mondayOf, compareIso, eachDay };
+})();
+/* Direct+ wallet: from a trading plan to what each trading day costs and how much ECC limit it uses.
+   Sources: ECC Risk Management Services Manual v056, §3.10 (auctions) and §3.11 (continuous).
+   The formulas are explained in docs/wallet-model.md §2 and §6. */
+const WalletBehaviour = (() => {
+  'use strict';
+
+  const clamp = (value, lo, hi) => Math.min(Math.max(value, lo), hi);
+
+  /**
+   * Exposure of one auction order (Manual §3.10, p.24): "the maximum value of (price*quantity) for the complete order.
+   * Only orders with a positive exposure are applied against the limit."
+   *   curve   [{ mwh: + buy / − sell, price }]; a price of null means the order has no limit price
+   *   prices  { maxMarket, minMarket, minReal, maxReal }. The realistic price range (p.25) applies only when both of its
+   *           ends are set, and caps prices to it. None of these has a built-in value.
+   * INTERPRETATION: a sell without a limit price counts at the minimum price; the manual only mentions the maximum.
+   */
+  function orderExposure(curve, { maxMarket, minMarket, minReal, maxReal }) {
+    const ranged = minReal != null && maxReal != null;
+    if (ranged && !(minReal < maxReal)) throw new Error('Realistic price range: the minimum must be below the maximum');
+    let exposure = 0;
+    for (const { mwh, price: limit } of curve) {
+      const buy = mwh > 0;
+      let price = limit;
+      if (price == null) {
+        if (ranged) price = buy ? maxReal : minReal;
+        else price = buy ? maxMarket : minMarket;
+        if (price == null) {
+          throw new Error(`Set the market ${buy ? 'maximum' : 'minimum'} price for orders without a limit price`);
+        }
       }
-      if (range) p = clamp(p, px.minReal, px.maxReal);
-      var e = p * c.mwh;
-      if (e > best) best = e;
-    });
-    return best;
+      if (ranged) price = clamp(price, minReal, maxReal);
+      const value = price * mwh;
+      if (value > exposure) exposure = value;
+    }
+    return exposure;
   }
 
-  /* Parametric flows for one trading day (16:00 the day before to 16:00), wallet-model §6.1.
-     b = { weekend, price, negShare, negPrice, cont: { buy, sell }, auc: { buy, sell, limitPrice }, lossShare }
-       volumes in MWh a day, prices in €/MWh; limitPrice null means no limit price (priced by px as in orderExposure).
-     f multiplies every price (1 = expected; stress price ÷ typical price = stress). traded: an ECC business day, or
-     weekend and holiday trading is on.
-     Returns values in €: cont.risk (risk-bearing value for the continuous target), auc.exposure (auction target),
-     tradeNet (buys − sells at one price per market) and net (what settlement collects for the day's trades: tradeNet
-     plus the stress loss share, wallet-model §3; a loss is buying that has not been sold back at the same price). */
-  function dayFlows(b, f, traded, px) {
-    var z = { traded: false, cont: { buyValue: 0, sellValue: 0, risk: 0 }, auc: { buyValue: 0, sellValue: 0, exposure: 0 }, tradeNet: 0, net: 0 };
-    if (!traded) return z;
-    var p = b.price * f, pn = (b.negPrice || 0) * f, sh = b.negShare || 0;
-    var avg = (1 - sh) * p + sh * pn;                          // average price over positive and negative hours
-    var c = b.cont || { buy: 0, sell: 0 }, a = b.auc || { buy: 0, sell: 0, limitPrice: null };
-    var cont = { buyValue: c.buy * avg, sellValue: c.sell * avg, risk: c.buy * (1 - sh) * p + c.sell * sh * Math.abs(pn) };
-    var lim = a.limitPrice == null ? null : a.limitPrice * f;
-    var auc = { buyValue: a.buy * avg, sellValue: a.sell * avg, exposure: a.buy > 0 ? orderExposure([{ mwh: a.buy, price: lim }], px || {}) : 0 };
-    var tradeNet = cont.buyValue - cont.sellValue + auc.buyValue - auc.sellValue;
-    return { traded: true, cont: cont, auc: auc, tradeNet: tradeNet, net: tradeNet + (b.lossShare || 0) * (c.buy + a.buy) * p };
+  const noTrading = () => ({
+    traded: false,
+    cont: { buyValue: 0, sellValue: 0, risk: 0 },
+    auc: { buyValue: 0, sellValue: 0, exposure: 0 },
+    tradeNet: 0,
+    net: 0,
+  });
+
+  /**
+   * What one trading day (16:00 the day before to 16:00) costs, from the plan's daily volumes (wallet-model §6.1).
+   *   plan         { price, negShare, negPrice, cont: { buy, sell }, auc: { buy, sell, limitPrice }, lossShare }
+   *                volumes in MWh a day, prices in €/MWh
+   *   priceFactor  multiplies every price: 1 for the expected case, stress price ÷ typical price for the stress end
+   *   traded       whether the member trades that day (an ECC business day, or weekend trading is on)
+   *   prices       market price bounds for auction orders without a limit price, as for orderExposure()
+   * Returns values in €: cont.risk (the value that uses continuous limit), auc.exposure (the auction limit an order
+   * needs), tradeNet (buys − sells, one price per market) and net (what settlement collects: tradeNet plus the loss
+   * share, an optional stress assumption for buying not sold back at the same price).
+   */
+  function dayFlows(plan, priceFactor, traded, prices = {}) {
+    if (!traded) return noTrading();
+    const price = plan.price * priceFactor;
+    const negPrice = (plan.negPrice || 0) * priceFactor;
+    const negShare = plan.negShare || 0;
+    const avgPrice = (1 - negShare) * price + negShare * negPrice; // over the positive and negative hours
+    const cont = plan.cont || { buy: 0, sell: 0 };
+    const auc = plan.auc || { buy: 0, sell: 0, limitPrice: null };
+
+    // Buys at positive prices and sells at negative prices use limit; the others give it back (Manual §3.11).
+    const continuous = {
+      buyValue: cont.buy * avgPrice,
+      sellValue: cont.sell * avgPrice,
+      risk: cont.buy * (1 - negShare) * price + cont.sell * negShare * Math.abs(negPrice),
+    };
+    const limitPrice = auc.limitPrice == null ? null : auc.limitPrice * priceFactor;
+    const auctions = {
+      buyValue: auc.buy * avgPrice,
+      sellValue: auc.sell * avgPrice,
+      exposure: auc.buy > 0 ? orderExposure([{ mwh: auc.buy, price: limitPrice }], prices) : 0,
+    };
+    const tradeNet = continuous.buyValue - continuous.sellValue + auctions.buyValue - auctions.sellValue;
+    const loss = (plan.lossShare || 0) * (cont.buy + auc.buy) * price;
+    return { traded: true, cont: continuous, auc: auctions, tradeNet, net: tradeNet + loss };
   }
 
-  return { contTarget: contTarget, orderExposure: orderExposure, dayFlows: dayFlows };
+  return { orderExposure, dayFlows };
 })();
 /* Direct+ wallet: ECC settlement through the connected account (docs/wallet-model.md §3).
    Sources: ECC, "Linking a Connected Bank Settlement Account with ECC" 2025/2026, p.3: "all trades conducted before
    4 PM CET are settled in the next morning", one MT101 "at the end of the business day (6 PM CET) with value date the
    next business day", received "before 8 AM (EUR)"; ECC DCP Payments page: one net payment per DCP member.
    Business days come from the engine's ECC (T2) calendar. */
-var WalletSettlement = (function (E) {
+const WalletSettlement = ((Engine, Dates) => {
   'use strict';
-  var DAY = 86400000;
-  function add(d, n) { return new Date(d.getTime() + n * DAY); }
-  function toDate(d) { return typeof d === 'string' ? E.parse(d) : d; }
 
-  /* Booking window closing on business day D at 16:00. It holds the trading days (each 16:00 to 16:00, labelled by
-     the day it ends) after the previous business day, up to and including D. */
-  function bookingWindow(D) {
-    D = toDate(D);
-    if (!E.isBD(D)) throw new Error(E.iso(D) + ' is not an ECC business day');
-    var from = E.prevBD(D), days = [];
-    for (var x = add(from, 1); x <= D; x = add(x, 1)) days.push(E.iso(x));
-    var value = E.iso(E.nextBD(D));
-    return { close: E.iso(D), from: E.iso(from), days: days, fundBy: E.iso(D) + ' 18:00', valueDate: value, receivedBy: value + ' 08:00' };
-  }
+  const FUNDING_TIME = '18:00'; // the member funds each window by 18:00 on its closing day
+  const RECEIPT_TIME = '08:00'; // ECC receives the money before 08:00 on the value date
+  const TOP_UP_TIME = '12:00'; // when the member tops the wallet up again (an assumption, for the timeline only)
 
-  /* Windows closing on each of closeDays, with their amounts. flowOf(isoDay) → { net } for one trading day: what its
-     trades cost (WalletBehaviour.dayFlows); extras(window) → fees and cash-collateral items (optional).
-     OR(D) = max(net of the window's trades, 0): purchases not yet paid, for the engine's evening calculation. Fees and
-     collateral items are paid in the same collection but are not open risk. */
-  function windows(closeDays, flowOf, extras) {
-    return closeDays.map(function (D) {
-      var w = bookingWindow(D), trade = 0;
-      w.days.forEach(function (d) { trade += flowOf(d).net; });
-      w.tradeNet = trade;
-      w.net = trade + (extras ? extras(w) : 0);
-      w.OR = Math.max(trade, 0);
-      return w;
-    });
-  }
+  const toDate = (day) => (typeof day === 'string' ? Engine.parse(day) : day);
 
-  /* Cash the member must have in the connected account (wallet-model §3): the peak, over the horizon, of what has been
-     funded minus what came back and what the member topped up. Positive nets must be in the account at their D 18:00
-     deadline; credits (negative nets) arrive on their value date. replenish (ASSUMPTION, default 'none'):
-       'daily'  each morning's collection is topped up the same business day;
-       'weekly' collections are topped up on the first business day of each week. */
-  function cashPath(ws, replenish) {
-    var ev = [];
-    ws.forEach(function (w) {
-      if (w.net > 0) {
-        ev.push({ at: w.close + ' 18:00', kind: 'fund', amount: w.net, window: w.close });
-        ev.push({ at: w.valueDate + ' 08:00', kind: 'collect', amount: w.net, window: w.close });
-      } else if (w.net < 0) ev.push({ at: w.valueDate + ' 08:00', kind: 'credit', amount: -w.net, window: w.close });
-    });
-    ev.sort(function (a, b) { return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
-    var need = 0, level = 0, sinceTopUp = 0, lastWeek = null, path = [];
-    ev.forEach(function (e) {
-      var day = e.at.slice(0, 10);
-      if (replenish === 'weekly') {
-        var d = E.parse(day), mon = E.iso(add(d, -((d.getUTCDay() + 6) % 7)));
-        if (lastWeek !== null && mon !== lastWeek && sinceTopUp > 0) { path.push({ at: day + ' 12:00', kind: 'top-up', amount: sinceTopUp, level: level -= sinceTopUp }); sinceTopUp = 0; }
-        lastWeek = mon;
-      }
-      if (e.kind === 'fund') { level += e.amount; need = Math.max(need, level); }
-      else if (e.kind === 'credit') level -= e.amount;
-      else if (e.kind === 'collect') {
-        sinceTopUp += e.amount;
-        if (replenish === 'daily') { path.push({ at: e.at, kind: 'collect', amount: e.amount, level: level }); path.push({ at: day + ' 12:00', kind: 'top-up', amount: e.amount, level: level -= e.amount }); sinceTopUp = 0; return; }
-      }
-      path.push({ at: e.at, kind: e.kind, amount: e.amount, level: level });
-    });
-    return { need: need, path: path };
-  }
-
-  return { bookingWindow: bookingWindow, windows: windows, cashPath: cashPath };
-})(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'));
-/* Direct+ wallet: from behaviour to ECC collateral (docs/wallet-model.md §2).
-   Uses only the engine's public API (day, nextBD, iso, parse). The engine's own solve() holds open risk and targets
-   constant for all days; this solver takes both per calculation day. */
-var WalletEccLink = (function (E) {
-  'use strict';
-  var DAY = 86400000;
-  function add(d, n) { return new Date(d.getTime() + n * DAY); }
-
-  /* Base limits (wallet-model §2.4; ECC deck p.2 and p.4). o = { restingCont, eveningCont, updateHour, restingAuc,
-     restingAucWeekend, override }. eveningCont is the net buying expected between 16:00 and an 18:00 update; the update
-     hour is an ASSUMPTION (18, stress 19). Continuous has no weekend reset, so its non-business-day base limit is 0. */
-  function baseLimits(o) {
-    var bl = {
-      cont: { bd: (o.restingCont || 0) + (o.eveningCont || 0) * ((o.updateHour || 18) - 16) / 2, nbd: 0 },
-      da: { bd: o.restingAuc || 0, nbd: o.restingAucWeekend || 0 }
+  /** The booking window that closes on business day `close` at 16:00: the trading days (each 16:00 to 16:00, labelled
+   *  by the day it ends) after the previous business day, up to and including `close`. */
+  function bookingWindow(close) {
+    const closeDate = toDate(close);
+    if (!Engine.isBD(closeDate)) throw new Error(`${Engine.iso(closeDate)} is not an ECC business day`);
+    const from = Engine.prevBD(closeDate);
+    const days = [...Dates.eachDay(Dates.addDays(from, 1), closeDate)].map(Engine.iso);
+    const closeIso = Engine.iso(closeDate);
+    const valueDate = Engine.iso(Engine.nextBD(closeDate));
+    return {
+      close: closeIso,
+      from: Engine.iso(from),
+      days,
+      fundBy: `${closeIso} ${FUNDING_TIME}`,
+      valueDate,
+      receivedBy: `${valueDate} ${RECEIPT_TIME}`,
     };
-    var ov = o.override || {};
-    ['cont', 'da'].forEach(function (m) { if (ov[m]) { if (ov[m].bd != null) bl[m].bd = ov[m].bd; if (ov[m].nbd != null) bl[m].nbd = ov[m].nbd; } });
-    return bl;
   }
 
-  /* Targets per calculation day (wallet-model §2.2, §2.3). The limit set on calculation day D serves the trading days
-     after D up to and including nextBD(D) (each 16:00 to 16:00). flowOf(isoDay) → WalletBehaviour.dayFlows result.
-       continuous: max(G × (1 − s), P) + resting, where P is the peak of the daily cumulative net value (a lower bound
-                   on the intraday peak, since only daily totals exist in parametric mode);
-       auctions:   each auction date's order exposure. */
-  function targets(calcDays, flowOf, s, restingCont) {
-    var cont = {}, auc = {};
-    calcDays.forEach(function (D) {
-      var nb = E.nextBD(D), G = 0, pos = 0, P = 0;
-      for (var x = add(D, 1); x <= nb; x = add(x, 1)) {
-        var f = flowOf(E.iso(x));
-        G += f.cont.risk;
-        pos += f.cont.buyValue - f.cont.sellValue;
-        if (pos > P) P = pos;
-        auc[E.iso(x)] = f.auc.exposure;
-      }
-      cont[E.iso(D)] = Math.max(G * (1 - (s || 0)), P) + (restingCont || 0);
+  /**
+   * The windows closing on each of closeDays, with their amounts.
+   *   flowOf(isoDay)  → { net }: what one trading day's trades cost (WalletBehaviour.dayFlows)
+   *   extras(window)  → € of fees and other cash items in the same collection (optional)
+   * OR, the open risk for the engine's evening calculation, is the window's net buying, never below 0. Fees and other
+   * items are paid in the same collection but are not open risk.
+   */
+  function windows(closeDays, flowOf, extras) {
+    return closeDays.map((close) => {
+      const window = bookingWindow(close);
+      const tradeNet = window.days.reduce((sum, day) => sum + flowOf(day).net, 0);
+      const net = tradeNet + (extras ? extras(window) : 0);
+      return { ...window, tradeNet, net, OR: Math.max(tradeNet, 0) };
     });
-    return { cont: cont, auc: auc };
   }
 
-  /* ctx = { days: [Date], OR: iso → €, cont: iso → €, auc: (iso, auction) → €, bl: baseLimits(), measure: 'l18'|'l09' }
-     The engine's meets() logic with per-day open risk and targets: base limits covered, the continuous measure,
-     every auction. measure is an ASSUMPTION ('l18' by default, wallet-model §2.2). */
-  function meets(C, k, ctx) {
-    for (var i = 0; i < ctx.days.length; i++) {
-      var D = ctx.days[i], d = E.iso(D);
-      var r = E.day(D, { C: C, OR: ctx.OR(d), cont: { bd: ctx.bl.cont.bd, nbd: ctx.bl.cont.nbd, key: k }, da: { bd: ctx.bl.da.bd, nbd: ctx.bl.da.nbd, key: 100 - k } });
-      if (r.baseUncovered) return false;
-      var tc = ctx.cont(d);
-      if (tc > 0 && r.cont[ctx.measure || 'l18'] < tc - 1e-6) return false;
-      for (var j = 0; j < r.da.auctions.length; j++) {
-        var au = r.da.auctions[j], ta = ctx.auc(au.date, au);
-        if (ta > 0 && au.limit < ta - 1e-6) return false;
+  /**
+   * The cash the member must have in the connected account (wallet-model §3): the peak, over the windows, of what has
+   * been funded minus what came back and what the member topped up. A positive net must be in the account by 18:00 on
+   * the window's closing day; a credit (negative net) arrives on its value date.
+   *   replenish  'none'   no top-ups within the period (the default, and the cautious ASSUMPTION)
+   *              'daily'  each morning's collection is topped up the same business day
+   *              'weekly' the collections are topped up on the first day of each new week
+   * Returns { need, path }, where path lists every movement in time order with the balance after it.
+   */
+  function cashPath(ws, replenish) {
+    const events = [];
+    for (const w of ws) {
+      if (w.net > 0) {
+        events.push({ at: `${w.close} ${FUNDING_TIME}`, kind: 'fund', amount: w.net });
+        events.push({ at: `${w.valueDate} ${RECEIPT_TIME}`, kind: 'collect', amount: w.net });
+      } else if (w.net < 0) {
+        events.push({ at: `${w.valueDate} ${RECEIPT_TIME}`, kind: 'credit', amount: -w.net });
+      }
+    }
+    events.sort((a, b) => Dates.compareIso(a.at, b.at));
+
+    const path = [];
+    let need = 0;
+    let level = 0; // funded and not yet covered by a top-up or a credit
+    let collected = 0; // collected since the last top-up
+    let week = null;
+    const topUp = (day, amount) => {
+      level -= amount;
+      path.push({ at: `${day} ${TOP_UP_TIME}`, kind: 'top-up', amount, level });
+    };
+
+    for (const event of events) {
+      const day = event.at.slice(0, 10);
+      // Weekly: the first movement of a new week tops up what was collected before it, at midday.
+      let weeklyTopUp = 0;
+      if (replenish === 'weekly') {
+        const monday = Engine.iso(Dates.mondayOf(Engine.parse(day)));
+        if (week !== null && monday !== week && collected > 0) {
+          weeklyTopUp = collected;
+          collected = 0;
+        }
+        week = monday;
+      }
+      const topUpFirst = event.at >= `${day} ${TOP_UP_TIME}`;
+      if (weeklyTopUp && topUpFirst) topUp(day, weeklyTopUp);
+
+      if (event.kind === 'fund') {
+        level += event.amount;
+        need = Math.max(need, level);
+      } else if (event.kind === 'credit') {
+        level -= event.amount;
+      } else {
+        collected += event.amount;
+      }
+      path.push({ at: event.at, kind: event.kind, amount: event.amount, level });
+
+      if (weeklyTopUp && !topUpFirst) topUp(day, weeklyTopUp);
+      if (event.kind === 'collect' && replenish === 'daily') {
+        topUp(day, event.amount);
+        collected = 0;
+      }
+    }
+    return { need, path };
+  }
+
+  return { bookingWindow, windows, cashPath };
+})(
+  typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
+  typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
+);
+/* Direct+ wallet: from the trading plan to ECC collateral (docs/wallet-model.md §2).
+   Uses only the engine's public API. The engine's own solve() holds open risk and targets constant for all days; this
+   solver takes both per calculation day. */
+const WalletEccLink = ((Engine, Dates) => {
+  'use strict';
+
+  const BOOKING_CUT_HOUR = 16;
+  const EVENING_BUYING_HOURS = 2; // eveningCont is the net buying from the 16:00 cut to an 18:00 update
+  const DEFAULT_UPDATE_HOUR = 18;
+  const SEARCH_START = 1e6; // the engine's solve() starts its search at €1 million ...
+  const SEARCH_LIMIT = 1e13; // ... and gives up above €10 trillion
+  const TOLERANCE = 1e-6; // how far (€) a limit may fall short of its target and still meet it
+  const SAME_AMOUNT = 0.5; // two amounts within 50 cents need the same collateral
+  const DEFAULT_KEY = 50;
+
+  /**
+   * Base limits (wallet-model §2.4; ECC deck p.2 and p.4) from the orders that rest over the 16:00 cut:
+   *   restingCont, restingAuc, restingAucWeekend  € of continuous, auction and weekend auction orders
+   *   eveningCont  net continuous buying between 16:00 and an 18:00 update, €; a later update stretches it
+   *   updateHour   when ECC's evening update comes (ASSUMPTION: 18, and 19 in the stress case)
+   *   override     { cont: { bd, nbd }, da: { bd, nbd } }: values set by hand, which win
+   * Continuous has no weekend reset, so its non-business-day base limit is 0.
+   */
+  function baseLimits({ restingCont, eveningCont, updateHour, restingAuc, restingAucWeekend, override = {} }) {
+    const buyingHours = (updateHour || DEFAULT_UPDATE_HOUR) - BOOKING_CUT_HOUR;
+    const limits = {
+      cont: { bd: (restingCont || 0) + ((eveningCont || 0) * buyingHours) / EVENING_BUYING_HOURS, nbd: 0 },
+      da: { bd: restingAuc || 0, nbd: restingAucWeekend || 0 },
+    };
+    for (const market of ['cont', 'da']) {
+      const given = override[market] || {};
+      if (given.bd != null) limits[market].bd = given.bd;
+      if (given.nbd != null) limits[market].nbd = given.nbd;
+    }
+    return limits;
+  }
+
+  /**
+   * Limit targets per calculation day (wallet-model §2.2, §2.3). The limit set on calculation day D serves the trading
+   * days after D up to and including the next business day (each 16:00 to 16:00).
+   *   flowOf(isoDay)  → WalletBehaviour.dayFlows() for that trading day
+   *   s               share of the buys already sold again when the open position is largest (ASSUMPTION, default 0)
+   * Continuous, per calculation day: max(G × (1 − s), P) + restingCont, where G is the value that uses limit and P the
+   * peak of the cumulative net value by day (a lower bound on the intraday peak: the plan has only daily totals).
+   * Auctions, per auction day: that day's order exposure.
+   */
+  function targets(calcDays, flowOf, s, restingCont) {
+    const cont = {};
+    const auc = {};
+    for (const calcDay of calcDays) {
+      let risk = 0;
+      let position = 0;
+      let peak = 0;
+      for (const day of Dates.eachDay(Dates.addDays(calcDay, 1), Engine.nextBD(calcDay))) {
+        const flows = flowOf(Engine.iso(day));
+        risk += flows.cont.risk;
+        position += flows.cont.buyValue - flows.cont.sellValue;
+        if (position > peak) peak = position;
+        auc[Engine.iso(day)] = flows.auc.exposure;
+      }
+      cont[Engine.iso(calcDay)] = Math.max(risk * (1 - (s || 0)), peak) + (restingCont || 0);
+    }
+    return { cont, auc };
+  }
+
+  /** The engine's market parameters for base limits `bl` and continuous share `key`; auctions get the rest. */
+  const marketParams = (bl, key) => ({
+    cont: { bd: bl.cont.bd, nbd: bl.cont.nbd, key },
+    da: { bd: bl.da.bd, nbd: bl.da.nbd, key: 100 - key },
+  });
+
+  /* Whether collateral C with continuous share `key` meets the targets on every calculation day: the base limits are
+     covered, the continuous limit (the evening limit 'l18' or the limit after settlement 'l09', an ASSUMPTION) holds
+     its target, and so does every auction. The engine's meets(), with open risk and targets per day. */
+  function meetsTargets(C, key, search) {
+    const params = marketParams(search.bl, key);
+    for (const day of search.days) {
+      const date = Engine.iso(day);
+      const limits = Engine.day(day, { C, OR: search.OR(date), ...params });
+      if (limits.baseUncovered) return false;
+      const contTarget = search.cont(date);
+      if (contTarget > 0 && limits.cont[search.measure || 'l18'] < contTarget - TOLERANCE) return false;
+      for (const auction of limits.da.auctions) {
+        const target = search.auc(auction.date, auction);
+        if (target > 0 && auction.limit < target - TOLERANCE) return false;
       }
     }
     return true;
   }
-  // Smallest whole euro of collateral meeting ctx with continuous key k; null if out of reach. Same search bounds as the
-  // engine's solve(), which it matches when open risk and targets are constant (tests/wallet/ecc-link.test.js).
-  function solve(ctx, k) {
-    var hi = 1e6;
-    while (!meets(hi, k, ctx)) { hi *= 2; if (hi > 1e13) return null; }
-    if (meets(0, k, ctx)) return 0;
-    var lo = 0;
-    while (hi - lo > 1) { var mid = Math.floor((lo + hi) / 2); if (meets(mid, k, ctx)) hi = mid; else lo = mid; }
+
+  /**
+   * The smallest whole euro of collateral that meets the targets with continuous share `key`, or null when no amount
+   * does. search = {
+   *   days     the calculation days (Dates)
+   *   bl       base limits (baseLimits())
+   *   measure  'l18' | 'l09', the continuous limit that must hold the target
+   *   OR(iso)  open risk on that calculation day, €
+   *   cont(iso), auc(iso, auction)  the targets, €
+   *   key      the member's own split, preferred on ties by cheapest() }
+   * Same search bounds as the engine's solve(), which it matches when open risk and targets are constant
+   * (tests/wallet/ecc-link.test.js).
+   */
+  function solve(search, key) {
+    let hi = SEARCH_START;
+    while (!meetsTargets(hi, key, search)) {
+      hi *= 2;
+      if (hi > SEARCH_LIMIT) return null;
+    }
+    if (meetsTargets(0, key, search)) return 0;
+    let lo = 0;
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (meetsTargets(mid, key, search)) hi = mid;
+      else lo = mid;
+    }
     return hi;
   }
-  // The split (continuous %) needing the least collateral: every split from 0 to 100, ties to the member's own (ctx.key).
-  function cheapest(ctx) {
-    var best = null, u = ctx.key == null ? 50 : ctx.key;
-    for (var k = 0; k <= 100; k++) {
-      var C = solve(ctx, k);
+
+  /** The split (continuous %) that needs the least collateral, trying every split from 0 to 100; on a tie, the one
+   *  closest to the member's own (search.key). Returns { key, C }, or null when no split reaches the targets. */
+  function cheapest(search) {
+    const preferred = search.key ?? DEFAULT_KEY;
+    const distance = (key) => Math.abs(key - preferred);
+    let best = null;
+    for (let key = 0; key <= 100; key++) {
+      const C = solve(search, key);
       if (C === null) continue;
-      if (!best || C < best.C - 0.5 || (Math.abs(C - best.C) <= 0.5 && Math.abs(k - u) < Math.abs(best.key - u))) best = { key: k, C: C };
+      const cheaper = !best || C < best.C - SAME_AMOUNT;
+      const asCheapButCloser = best && Math.abs(C - best.C) <= SAME_AMOUNT && distance(key) < distance(best.key);
+      if (cheaper || asCheapButCloser) best = { key, C };
     }
     return best;
   }
 
-  return { baseLimits: baseLimits, targets: targets, meets: meets, solve: solve, cheapest: cheapest };
-})(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'));
-/* Direct+ wallet: BRP security for TenneT, art. 10.8 in force and as drafted (docs/wallet-model.md §4).
-   Each member is treated as its own BRP (Direct+ decision, 26 Sep 2026; wallet-model §4.4).
-   Sources: reference/tennet/systeemcode-elektriciteit_wetten-overheid_art-10.8-10.26-10.27-10.29_2026-09-26.txt (SC 2026),
-   reference/tennet/acm-25-196985_gecorrigeerd-ontwerpbesluit_2026-08-25.pdf (ACM draft). */
-var WalletBrp = (function () {
+  return { baseLimits, targets, marketParams, solve, cheapest };
+})(
+  typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
+  typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
+);
+/* Direct+ wallet: BRP security for TenneT under art. 10.8, the rule in force and the ACM draft (docs/wallet-model.md §4).
+   Each member is treated as its own BRP (wallet-model §4.4).
+   Sources: reference/tennet/systeemcode-elektriciteit_wetten-overheid_art-10.8-10.26-10.27-10.29_2026-09-26.txt
+   (SC 2026) and reference/tennet/acm-25-196985_gecorrigeerd-ontwerpbesluit_2026-08-25.pdf (ACM draft). */
+const WalletBrp = (() => {
   'use strict';
 
-  var RULES = {
+  const RULES = {
+    // Systeemcode elektriciteit 2026, art. 10.8: the rule in force
     current: {
-      label: 'Systeemcode elektriciteit 2026, art. 10.8 (in force)',
-      priceFloor: { value: 40, src: 'SC 2026 art. 10.8(4) and (12): "met een ondergrens van € 40 per MWh"' },
-      volumeFloorMW: { value: 50, src: 'SC 2026 art. 10.8(3), (6) and (11): "met een ondergrens van 50 MW"' },
-      hours: { value: 24, src: 'SC 2026 art. 10.8(11): "vermenigvuldigd met 24"' },
-      priceMonths: { value: 3, src: 'SC 2026 art. 10.8(4) and (12): "over een periode van drie maanden"' },
-      volumeWeeks: { value: 6, src: 'SC 2026 art. 10.8(5) and (6): "in de zes voorafgaande weken"' },
-      classes: { value: [[2, 10, 2], [11, 25, 11], [26, 50, 26]], src: 'SC 2026 art. 10.8(8)-(9): classes 2-10, 11-25, 26-50 MW, each counted at "de laagste capaciteit van die klasse"; above 50 MW actual capacity, (10)' },
-      nemo: { value: 100000, src: 'SC 2026 art. 10.8(14)' },
-      flatMinimum: { value: 96000, src: 'TenneT BRP recognition page (not retrieved); INTERPRETATION "flat €96,000"' }
+      priceFloor: 40, // art. 10.8(4) and (12): "met een ondergrens van € 40 per MWh"
+      volumeFloorMW: 50, // art. 10.8(3), (6) and (11): "met een ondergrens van 50 MW"
+      hours: 24, // art. 10.8(11): "vermenigvuldigd met 24"
+      // art. 10.8(8)-(9): each class counts at "de laagste capaciteit van die klasse"; above 50 MW the actual capacity
+      // counts, art. 10.8(10)
+      classes: [
+        { from: 2, to: 10 },
+        { from: 11, to: 25 },
+        { from: 26, to: 50 },
+      ],
+      flatMinimum: 96000, // on TenneT's BRP page only: INTERPRETATION, a flat minimum (open question W8)
     },
+    // ACM draft decision ACM/25/196985 of 25 Aug 2026, art. 10.8: in force from 1 January 2027 once final
     draft: {
-      label: 'ACM draft decision ACM/25/196985 of 25 Aug 2026, art. 10.8 (from 1 Jan 2027 once final)',
-      from: { value: '2027-01-01', src: 'ACM draft, Artikel II B' },
-      weights: { value: { A: 3, B: 4, C: 6, D: 6 }, src: 'ACM draft art. 10.8(7): "de som 3A + 4B + 6C + 6D"' },
-      minimum: { value: 96000, src: 'ACM draft art. 10.8(7): "een minimumbedrag van € 96.000,-"' },
-      nemo: { value: 100000, src: 'ACM draft art. 10.8(8)' },
-      weeksB: { value: 10, src: 'ACM draft art. 10.8(3a): "referentieperiode van tien weken"' },
-      sigmaB: { value: 2, src: 'ACM draft art. 10.8(3b): "twee maal de standaarddeviatie"' },
-      monthsCD: { value: 12, src: 'ACM draft art. 10.8(4a) and (5a): "referentieperiode van twaalf maanden"' },
-      sigmaCD: { value: 0.5, src: 'ACM draft art. 10.8(4b) and (5b): "een half maal de standaarddeviatie"' },
-      months: { value: 2, src: 'ACM draft art. 10.8(2): "over een periode van twee maanden"' },
-      missing: { value: 0, src: 'ACM draft art. 10.8(6): "een fictieve factuur van € 0,-"' }
-    }
+      from: '2027-01-01', // Artikel II B
+      weights: { A: 3, B: 4, C: 6, D: 6 }, // art. 10.8(7): "de som 3A + 4B + 6C + 6D"
+      minimum: 96000, // art. 10.8(7): "een minimumbedrag van € 96.000,-"
+      weeksB: 10, // art. 10.8(3a): "referentieperiode van tien weken"
+      sigmaB: 2, // art. 10.8(3b): "twee maal de standaarddeviatie"
+      monthsCD: 12, // art. 10.8(4a) and (5a): "referentieperiode van twaalf maanden"
+      sigmaCD: 0.5, // art. 10.8(4b) and (5b): "een half maal de standaarddeviatie"
+      missing: 0, // art. 10.8(6): "een fictieve factuur van € 0,-"
+    },
   };
-  var C = RULES.current, D = RULES.draft;
 
-  // Rule in force on a date (ISO), unless overridden ('current' | 'draft'). Direct+ decision: offer both (Q3).
-  function ruleFor(iso, override) { return override || (iso >= D.from.value ? 'draft' : 'current'); }
+  // The draft rule for a new member, month by month (rampUp).
+  const RAMP_MONTHS = 18;
+  const DEFAULT_LAG_WEEKS = 4; // the first weekly invoice about four weeks after delivery (ACM draft para 15)
+  const PROFILE_LAG_MONTHS = 5; // month M's profile reconciliation is paid in month M + 5 (SC 2026 art. 10.26(4)-(5))
+  const SMART_LAG_MONTHS = 6; // month M's smart-meter reconciliation on the first working day of M + 6 (art. 10.27(13))
 
-  /* Net transaction volume on one day (MWh). byCp = { counterparty: [net MWh per settlement period] }, + bought.
-     INTERPRETATION settings (wallet-model §4.3):
-       perPeriod 'i' |Σ over the day's periods| (default) or 'ii' Σ over the periods of |net|;
-       counterparties 'max' the largest single counterparty (default: "met enige andere" / "met een andere") or 'total'
-       all counterparties netted together. */
-  function dayVolume(byCp, perPeriod, counterparties) {
-    var read = function (v) {
-      var s = 0, a = 0;
-      v.forEach(function (x) { s += x; a += Math.abs(x); });
-      return perPeriod === 'ii' ? a : Math.abs(s);
-    };
-    var cps = Object.keys(byCp);
-    if (counterparties === 'total') {
-      var n = 0, tot = [];
-      cps.forEach(function (cp) { n = Math.max(n, byCp[cp].length); });
-      for (var t = 0; t < n; t++) { tot[t] = 0; cps.forEach(function (cp) { tot[t] += byCp[cp][t] || 0; }); }
-      return read(tot);
-    }
-    var best = 0;
-    cps.forEach(function (cp) { best = Math.max(best, read(byCp[cp])); });
-    return best;
+  /** The rule for a week that starts on `iso`: 'current' or 'draft' as chosen, or by date when `choice` is 'auto'. */
+  function ruleFor(iso, choice = 'auto') {
+    if (choice !== 'auto') return choice;
+    return iso >= RULES.draft.from ? 'draft' : 'current';
   }
 
-  /* Capacity counted for B under the current rule (MW), art. 10.8(8)-(10). mw: capacities of the large connections.
-     INTERPRETATION settings: under 2 MW counts nothing (no class); a capacity between two classes (e.g. 10.5 MW) rounds
-     'down' to the lower class (default) or 'up' to the higher one. */
-  function countedCapacity(mw, between) {
-    var cls = C.classes.value, total = 0;
-    mw.forEach(function (m) {
-      if (m > 50) { total += m; return; }
-      if (m < 2) return;
-      for (var i = 0; i < cls.length; i++) {
-        if (m >= cls[i][0] && m <= cls[i][1]) { total += cls[i][2]; return; }
-        var next = cls[i + 1];
-        if (next && m > cls[i][1] && m < next[0]) { total += between === 'up' ? next[2] : cls[i][2]; return; }
+  /* One connection's capacity as the current rule counts it (art. 10.8(8)-(10)). INTERPRETATION: under 2 MW counts
+     nothing, and a capacity between two classes (e.g. 10.5 MW) counts in the lower class ('down', the default) or in
+     the higher one ('up'). */
+  function countedMW(mw, between) {
+    const { classes } = RULES.current;
+    for (const [i, cls] of classes.entries()) {
+      if (mw < cls.from) {
+        if (i === 0) return 0;
+        return between === 'up' ? cls.from : classes[i - 1].from;
       }
-    });
+      if (mw <= cls.to) return cls.from;
+    }
+    return mw;
+  }
+
+  /** Counted capacity (MW) of the large connections, for component B of the current rule. */
+  function countedCapacity(capacities, between = 'down') {
+    let total = 0;
+    for (const mw of capacities) total += countedMW(mw, between);
     return total;
   }
 
-  /* Current rule (SC 2026 art. 10.8). o = {
-       price3m,                              average market price over three months (€/MWh), floored at €40
-       kind: 'first' | 'up' | 'down',        which paragraph sets A: (3) first time, (5) TenneT's request, (6) the BRP's request
-       expected,                             expected highest daily net volume (MWh), for 'first'
-       daily,                                the last six weeks of daily highs (MWh), for 'up' and 'down'
-       capacityMW,                           counted capacity of large connections (countedCapacity)
-       reading: '1200' | 'flat',             INTERPRETATION of the 50 MW floor (wallet-model §4.1); default '1200'
-       floors,                               false: no volume floors and no minimum (a Direct+ member's marginal share)
-       nemo }
-     '1200': the 50 MW floor is 50 × 24 = 1,200 MWh, on A (first and down) and on B. 'flat': no volume floors, and a
-     €96,000 minimum on the total. The €40 price floor always applies: it sets the price of the BRP's own calculation. */
-  function current(o) {
-    if (o.nemo) return { rule: 'current', nemo: true, security: C.nemo.value };
-    var floor = o.reading === 'flat' || o.floors === false ? 0 : C.volumeFloorMW.value * C.hours.value;
-    var price = Math.max(o.price3m, C.priceFloor.value), daily = o.daily || [], V;
-    if (o.kind === 'up') V = Math.max.apply(null, daily.length ? daily : [0]);
-    else if (o.kind === 'down') V = Math.max(daily.reduce(function (s, x) { return s + x; }, 0) / (daily.length || 1), floor);
-    else V = Math.max(o.expected || 0, floor);
-    var A = V * price, B = Math.max((o.capacityMW || 0) * C.hours.value, floor) * price;
-    var security = 2 * A >= B ? 2 * A : A + B;
-    if (o.reading === 'flat' && o.floors !== false) security = Math.max(security, C.flatMinimum.value);
-    return { rule: 'current', volume: V, price: price, A: A, B: B, twoA: 2 * A >= B, security: security };
+  /**
+   * The rule in force (SC 2026 art. 10.8) for an expected highest daily net volume.
+   *   volume      the expected highest daily net volume, MWh
+   *   price3m     the average market price over three months, €/MWh; the €40 floor always applies
+   *   capacityMW  the counted capacity of the large connections (countedCapacity())
+   *   reading     INTERPRETATION of the 50 MW floor (wallet-model §4.1): '1200' (default), 50 MW × 24 h = 1,200 MWh on
+   *               both A and B; or 'flat', no volume floors and a €96,000 minimum on the total
+   *   floors      false for a Direct+ member's marginal collateral: no volume floors and no minimum, never below €0
+   * A is set as for a first recognition (para 3). Aup and Adown are A as TenneT recalculates it at its own request
+   * (para 5: the highest daily volume, with no floor) and at the BRP's (para 6: the average daily volume, with the
+   * floor). With one expected volume for every day, Adown is A again.
+   */
+  function current({ volume, price3m, capacityMW = 0, reading = '1200', floors = true }) {
+    const { priceFloor, volumeFloorMW, hours, flatMinimum } = RULES.current;
+    const flat = reading === 'flat';
+    const volumeFloor = flat || !floors ? 0 : volumeFloorMW * hours;
+    const price = Math.max(price3m, priceFloor);
+    const flooredVolume = Math.max(volume || 0, volumeFloor);
+    const A = flooredVolume * price;
+    const B = Math.max(capacityMW * hours, volumeFloor) * price;
+    const twoA = 2 * A >= B;
+    let security = twoA ? 2 * A : A + B;
+    if (!floors) security = Math.max(security, 0);
+    else if (flat) security = Math.max(security, flatMinimum);
+    return { rule: 'current', volume: flooredVolume, price, A, B, twoA, security, Aup: volume * price, Adown: A };
   }
 
-  /* Mean and standard deviation over a fixed window of invoices, € (signed: positive means the BRP pays).
-     Missing weeks or months count as €0 (ACM draft art. 10.8(6)); values beyond n are ignored (the oldest first).
-     sigma 'population' (default) or 'sample': an INTERPRETATION. */
+  /**
+   * Mean and standard deviation over the last `n` invoices (oldest first), € (+ the BRP pays). Missing invoices count
+   * as €0 (ACM draft art. 10.8(6)). sigma: 'population' (the default) or 'sample', an INTERPRETATION.
+   */
   function stats(values, n, sigma) {
-    var v = values.slice(-n), i;
-    while (v.length < n) v.unshift(D.missing.value);
-    var mean = 0; for (i = 0; i < n; i++) mean += v[i]; mean /= n;
-    var ss = 0; for (i = 0; i < n; i++) ss += (v[i] - mean) * (v[i] - mean);
-    return { mean: mean, sd: Math.sqrt(ss / (sigma === 'sample' ? n - 1 : n)) };
-  }
-  // Draft components from invoice histories (oldest first). Components are not floored (proposal p.8).
-  function componentB(weekly, sigma) { var s = stats(weekly, D.weeksB.value, sigma); return s.mean + D.sigmaB.value * s.sd; }
-  function componentCD(monthly, sigma) { var s = stats(monthly, D.monthsCD.value, sigma); return s.mean + D.sigmaCD.value * s.sd; }
-
-  /* Draft rule (ACM draft art. 10.8). o = { A | (volume2m, price2m), weekly | B, profile | C, smart | D, sigma, nemo,
-     minimum }. Components come from invoice histories, or are given directly (B, C, D: the parametric model).
-       A = realised highest daily net volume over two months × average day-ahead reference price over two months;
-       minimum: apply the €96,000 per member (default true; wallet-model §4.4). */
-  function draft(o) {
-    if (o.nemo) return { rule: 'draft', nemo: true, security: D.nemo.value };
-    var w = D.weights.value;
-    var A = o.A != null ? o.A : (o.volume2m || 0) * (o.price2m || 0);
-    var B = o.B != null ? o.B : componentB(o.weekly || [], o.sigma);
-    var Cc = o.C != null ? o.C : componentCD(o.profile || [], o.sigma), Dc = o.D != null ? o.D : componentCD(o.smart || [], o.sigma);
-    var sum = w.A * A + w.B * B + w.C * Cc + w.D * Dc;
-    return { rule: 'draft', A: A, B: B, C: Cc, D: Dc, sum: sum, security: o.minimum === false ? sum : Math.max(sum, D.minimum.value) };
+    const window = values.slice(-n);
+    while (window.length < n) window.unshift(RULES.draft.missing);
+    let mean = 0;
+    for (const value of window) mean += value;
+    mean /= n;
+    let squares = 0;
+    for (const value of window) squares += (value - mean) * (value - mean);
+    return { mean, sd: Math.sqrt(squares / (sigma === 'sample' ? n - 1 : n)) };
   }
 
-  /* Draft-rule series for a new member, months 1-18 (wallet-model §4.2). Delivery starts at the beginning of month 1 and
-     TenneT recalculates at the start of each month (ASSUMPTION: the day in the month is not in the texts).
-       A: realised volume exists from month 2;
-       B: the first weekly invoice about four weeks after delivery (ACM draft para 15);
-       C: month M's profile reconciliation is paid in month M+5 (SC 2026 art. 10.26(4)-(5));
-       D: month M's smart-meter/telemetry reconciliation on the first working day of month M+6 (art. 10.27(13)).
-     s = { A, weekly, weeklySd, profile, profileSd, smart, smartSd, sigma, minimum, lagWeeks }: mean (and standard
-     deviation) of one invoice in steady state, €. With k real invoices of mean μ and deviation σ in a window of n, and
-     the rest €0, the component is taken at its expected mean and spread: p·μ + f·√(p(σ² + μ²) − (p·μ)²), p = k/n.
-     With σ = 0 this is exactly the constant-invoice window (stats() on k copies and n − k zeros). */
-  function expectedComponent(k, n, mean, sd, factor, sigma) {
-    var p = Math.min(k, n) / n, v = Math.max(0, p * (sd * sd + mean * mean) - p * mean * p * mean);
-    if (sigma === 'sample') v = v * n / (n - 1);
-    return p * mean + factor * Math.sqrt(v);
+  /** Component B of the draft from the weekly imbalance invoices (oldest first): mean + 2σ over ten weeks. Components
+   *  are not floored (proposal p.8). */
+  function componentB(weekly, sigma) {
+    const { mean, sd } = stats(weekly, RULES.draft.weeksB, sigma);
+    return mean + RULES.draft.sigmaB * sd;
   }
-  function rampUp(s, months) {
-    var out = [], lag = s.lagWeeks == null ? 4 : s.lagWeeks, peak = null;
-    for (var m = 1; m <= (months || 18); m++) {
-      var weeks = Math.floor((m - 1) * 52 / 12), kB = Math.max(0, weeks - lag);
-      var kC = Math.max(0, m - 6), kD = Math.max(0, m - 7);
-      var r = draft({ A: m >= 2 ? s.A || 0 : 0,
-                      B: expectedComponent(kB, D.weeksB.value, s.weekly || 0, s.weeklySd || 0, D.sigmaB.value, s.sigma),
-                      C: expectedComponent(kC, D.monthsCD.value, s.profile || 0, s.profileSd || 0, D.sigmaCD.value, s.sigma),
-                      D: expectedComponent(kD, D.monthsCD.value, s.smart || 0, s.smartSd || 0, D.sigmaCD.value, s.sigma),
-                      minimum: s.minimum });
-      r.month = m; r.invoices = { B: Math.min(kB, 10), C: Math.min(kC, 12), D: Math.min(kD, 12) };
-      out.push(r);
-      if (!peak || r.security > peak.security) peak = r;
+
+  /**
+   * The ACM draft (art. 10.8(7)): 3A + 4B + 6C + 6D, with a €96,000 minimum. All amounts in €.
+   *   A        the highest daily net volume over two months × the average day-ahead price over two months
+   *   B, C, D  the imbalance, profile reconciliation and smart-meter reconciliation components
+   *   minimum  false for a Direct+ member's marginal collateral: no minimum, and never below €0 (ASSUMPTION)
+   */
+  function draft({ A = 0, B = 0, C = 0, D = 0, minimum = true }) {
+    const { weights } = RULES.draft;
+    const sum = weights.A * A + weights.B * B + weights.C * C + weights.D * D;
+    return { rule: 'draft', A, B, C, D, sum, security: Math.max(sum, minimum ? RULES.draft.minimum : 0) };
+  }
+
+  /* A component while its window fills up: `count` real invoices of mean μ and deviation σ among `n` (the rest count
+     €0), taken at its expected mean and spread: p·μ + factor·√(p(σ² + μ²) − (p·μ)²), with p = count / n. With σ = 0
+     this is exactly stats() on `count` copies of μ and n − count zeros. */
+  function expectedComponent(count, n, mean, sd, factor, sigma) {
+    const p = count / n;
+    let variance = Math.max(0, p * (sd * sd + mean * mean) - p * mean * p * mean);
+    if (sigma === 'sample') variance = (variance * n) / (n - 1);
+    return p * mean + factor * Math.sqrt(variance);
+  }
+
+  /**
+   * The draft rule for a new member, months 1 to 18 (wallet-model §4.2). Delivery starts at the beginning of month 1,
+   * and TenneT recalculates at the start of each month (ASSUMPTION: the texts do not give the day).
+   *   A                              from month 2, when there is a realised volume
+   *   weekly, weeklySd               mean and σ of one weekly imbalance invoice, the first about lagWeeks after delivery
+   *   profile, profileSd, smart, smartSd   the same for one monthly reconciliation invoice
+   *   sigma, minimum                 as for stats() and draft()
+   * Returns { months, peak }: each month's draft() with its month number and the real invoices in each window.
+   */
+  function rampUp({
+    A = 0,
+    weekly = 0,
+    weeklySd = 0,
+    profile = 0,
+    profileSd = 0,
+    smart = 0,
+    smartSd = 0,
+    sigma,
+    minimum = true,
+    lagWeeks = DEFAULT_LAG_WEEKS,
+  }) {
+    const { weeksB, sigmaB, monthsCD, sigmaCD } = RULES.draft;
+    const months = [];
+    let peak = null;
+    for (let month = 1; month <= RAMP_MONTHS; month++) {
+      const delivered = month - 1; // whole months delivered before this month's recalculation
+      const deliveredWeeks = Math.floor((delivered * 52) / 12);
+      const invoices = {
+        B: Math.min(Math.max(0, deliveredWeeks - lagWeeks), weeksB),
+        C: Math.min(Math.max(0, delivered - PROFILE_LAG_MONTHS), monthsCD),
+        D: Math.min(Math.max(0, delivered - SMART_LAG_MONTHS), monthsCD),
+      };
+      const security = draft({
+        A: delivered > 0 ? A : 0,
+        B: expectedComponent(invoices.B, weeksB, weekly, weeklySd, sigmaB, sigma),
+        C: expectedComponent(invoices.C, monthsCD, profile, profileSd, sigmaCD, sigma),
+        D: expectedComponent(invoices.D, monthsCD, smart, smartSd, sigmaCD, sigma),
+        minimum,
+      });
+      const row = { ...security, month, invoices };
+      months.push(row);
+      if (!peak || row.security > peak.security) peak = row;
     }
-    return { months: out, peak: peak };
+    return { months, peak };
   }
 
-  return { RULES: RULES, ruleFor: ruleFor, dayVolume: dayVolume, countedCapacity: countedCapacity, current: current,
-           stats: stats, componentB: componentB, componentCD: componentCD, draft: draft, rampUp: rampUp };
+  return { RULES, ruleFor, countedCapacity, current, stats, componentB, draft, rampUp };
 })();
-/* Direct+ wallet: the TenneT account: imbalance and reconciliation invoices, their dates, and the account/security check
-   (docs/wallet-model.md §5, §6.2). Each member pays its own invoices, as if it were its own BRP (Direct+ decision, 26 Sep 2026).
-   Sources: SC 2026 art. 10.26, 10.27, 10.29 (reference/tennet/systeemcode-elektriciteit_wetten-overheid_…txt);
-   ACM draft ACM/25/196985 art. 10.8(9)-(10), amended 10.26(5)-(6) and 10.27(13)-(14), explanatory paras 15-17. */
-var WalletTennet = (function () {
+/* Direct+ wallet: the member's TenneT account: the weekly imbalance invoice, the day TenneT debits it, and how long the
+   security stays committed after the member stops (docs/wallet-model.md §5 and §6.2). Each member pays its own
+   invoices, as if it were its own BRP.
+   Sources: SC 2026 art. 10.26, 10.27 and 10.29 (reference/tennet/systeemcode-elektriciteit_wetten-overheid_…txt); ACM
+   draft ACM/25/196985 art. 10.8(9)-(10), amended 10.26(5)-(6) and 10.27(13)-(14), explanatory paras 15-17. */
+const WalletTennet = ((Engine, Dates, Brp) => {
   'use strict';
-  var DAY = 86400000;
-  function parse(iso) { var p = iso.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
-  function iso(d) { return d.toISOString().slice(0, 10); }
-  function add(d, n) { return new Date(d.getTime() + n * DAY); }
 
-  /* ---------- imbalance price (SC 2026 art. 10.29) ----------
-     prices = { up (opregelen), down (afregelen), mid (middenprijs) } for one settlement period; v = imbalance in MWh,
-     + short ("afnemen": the BRP pays), − long ("invoeden": TenneT pays). Returns the signed amount, + = the BRP pays.
-     It is the full imbalance price, not a spread against day-ahead; negative prices flip the flow by themselves. */
-  function price(state, side, p) {
-    if (state === -1) return p.down;                                                   // para 2: afregelen, both sides
-    if (state === 1) return p.up;                                                      // para 3: opregelen, both sides
-    if (state === 0) return p.mid;                                                     // para 5: middenprijs, both sides
-    if (state === 2) return side === 'short' ? Math.max(p.mid, p.up) : Math.min(p.mid, p.down);   // para 4a-4d
-    throw new Error('Unknown regulation state ' + state);
-  }
-  function periodAmount(v, state, p) { return v * price(state, v > 0 ? 'short' : 'long', p); }
+  const DEFAULT_LAG_WEEKS = 4; // ACM draft para 15: "Tussen het moment van levering en facturatie zitten vier weken."
 
-  /* ---------- Dutch working days ----------
-     TenneT's deadlines count Dutch working days, not ECC's T2 days. Holidays as in the Algemene termijnenwet (art. 3):
-     New Year's Day, Easter Monday, King's Day (27 April, 26 April when that is a Sunday), 5 May, Ascension Day,
-     Whit Monday, Christmas Day and Boxing Day. To be confirmed with TenneT (Q11). */
-  function easter(y) {                                   // anonymous Gregorian algorithm
-    var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
-    var g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
-    var l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
-    var month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
-    return new Date(Date.UTC(y, month - 1, day));
-  }
-  var holidayCache = {};
-  function holidays(y) {
-    if (holidayCache[y]) return holidayCache[y];
-    var e = easter(y), king = new Date(Date.UTC(y, 3, 27)), h = {};
-    if (king.getUTCDay() === 0) king = new Date(Date.UTC(y, 3, 26));
-    h[y + '-01-01'] = "Nieuwjaarsdag"; h[iso(add(e, 1))] = 'Tweede Paasdag'; h[iso(king)] = 'Koningsdag';
-    h[y + '-05-05'] = 'Bevrijdingsdag'; h[iso(add(e, 39))] = 'Hemelvaartsdag'; h[iso(add(e, 50))] = 'Tweede Pinksterdag';
-    h[y + '-12-25'] = 'Eerste Kerstdag'; h[y + '-12-26'] = 'Tweede Kerstdag';
-    return (holidayCache[y] = h);
-  }
-  function isWorkday(d) { var w = d.getUTCDay(); return w !== 0 && w !== 6 && !holidays(d.getUTCFullYear())[iso(d)]; }
-  function onOrAfterWorkday(d) { while (!isWorkday(d)) d = add(d, 1); return d; }
-  function workdaysBetween(a, b) { var n = 0; for (var x = add(a, 1); x < b; x = add(x, 1)) if (isWorkday(x)) n++; return n; }
-  function nthWorkday(y, m0, n) { var d = new Date(Date.UTC(y, m0, 1)), k = 0; for (;;) { if (isWorkday(d) && ++k === n) return d; d = add(d, 1); } }
+  // The stress end of component B (stressB)
+  const STRESS_SEED = 20260926;
+  const STRESS_RUNS = 10000;
+  const STRESS_QUANTILE = 0.95;
 
-  /* ---------- reconciliation dates ----------
-     month: 'YYYY-MM', the reconciliation month M. version 'current' | 'draft' (default: the draft for statements from
-     1 January 2027, when its 10.26(5) takes effect; ACM draft Artikel II B).
-     Profile (10.26): TenneT states the amount by the 10th working day of M+5 (para 4). Payment on the first Tuesday after;
-       current para 5: the Tuesday after that "tenzij tussen bedoelde moment en de eerste dinsdag niet meer dan drie
-       werkdagen zijn gelegen" applies; the draft drops that exception. Payout on the Wednesday after that Tuesday (para 6).
-       A Tuesday or Wednesday that is not a working day moves to the next working day (para 8; para 7 in the draft).
-     Smart-meter and telemetry (10.27): paid and paid out on the first working day of M+6 (paras 13-14). */
-  function monthShift(month, k) { var y = +month.slice(0, 4), m = +month.slice(5, 7) - 1 + k; return { y: y + Math.floor(m / 12), m0: ((m % 12) + 12) % 12 }; }
-  function paymentDates(statement, version) {
-    var s = typeof statement === 'string' ? parse(statement) : statement;
-    var v = version || (iso(s) >= '2027-01-01' ? 'draft' : 'current');
-    var tue = add(s, ((2 - s.getUTCDay() + 7) % 7) || 7);
-    if (v === 'current' && workdaysBetween(s, tue) <= 3) tue = add(tue, 7);
-    return { version: v, statement: iso(s), pay: iso(onOrAfterWorkday(tue)), payout: iso(onOrAfterWorkday(add(tue, 1))) };
-  }
-  function profileDates(month, version) {
-    var t = monthShift(month, 5), r = paymentDates(nthWorkday(t.y, t.m0, 10), version);
-    r.month = month;
-    return r;
-  }
-  function smartDates(month) {
-    var t = monthShift(month, 6), d = nthWorkday(t.y, t.m0, 1);
-    return { month: month, pay: iso(d), payout: iso(d) };
-  }
-  /* Weekly imbalance invoice for the delivery week starting weekStart (a Monday). ACM draft para 15: "Tussen het moment
-     van levering en facturatie zitten vier weken." The debit day is in TenneT's billing terms, not in the pack (Q11):
-     ASSUMPTION, the first working day on or after the end of the delivery week + lagWeeks (default 4). */
-  function imbalanceDebit(weekStart, lagWeeks) {
-    return iso(onOrAfterWorkday(add(parse(weekStart), 7 + 7 * (lagWeeks == null ? 4 : lagWeeks))));
+  // After the member stops (exitTail)
+  const EXIT_IMBALANCE_DAYS = 28; // the last imbalance invoice, about four weeks after delivery (ACM draft para 15)
+  const EXIT_SMART_MONTHS = 6; // smart-meter and telemetry reconciliation (para 17)
+  const EXIT_PROFILE_MONTHS = 21; // profile reconciliation (para 16)
+
+  // ---------- Dutch working days ----------
+  // TenneT's deadlines count Dutch working days, not ECC's T2 days. The holidays are those of the Algemene termijnenwet
+  // (art. 3): New Year's Day, Easter Monday, King's Day (27 April, or 26 April when that is a Sunday), 5 May, Ascension
+  // Day, Whit Monday, Christmas Day and Boxing Day. To be confirmed with TenneT (open question W7).
+
+  /** Easter Sunday of `year`: the anonymous Gregorian algorithm, with its customary variable names. */
+  function easter(year) {
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(Date.UTC(year, month - 1, day));
   }
 
-  /* ---------- account vs security ----------
-     Draft art. 10.8(10): enough balance for the weekly and monthly settlements (a), and enough security after them (b).
-     INTERPRETATION, processing debits in date order: balance before a debit ≥ max(invoice, 0), and
-     balance after it + guarantee ≥ security. Returns the smallest opening balance that passes, and the binding event.
-     invoices: [{ date, amount }] (+ the BRP pays, − TenneT pays); security: € or a function of the date.
-     rule 'current': invoice cash and security are additive (the deposit tops the guarantee up to the security). */
-  function accountNeed(invoices, security, guarantee, rule) {
-    var sec = typeof security === 'function' ? security : function () { return security; };
-    var g = guarantee || 0, ev = invoices.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
-    var cum = 0, need = 0, why = null;
-    var consider = function (v, what) { if (v > need + 1e-9) { need = v; why = what; } };
-    if (rule === 'current') {
-      var peak = 0;
-      ev.forEach(function (e) { if (cum + Math.max(e.amount, 0) > peak) { peak = cum + Math.max(e.amount, 0); why = { date: e.date, check: 'invoice' }; } cum += e.amount; });
-      var dep = Math.max(sec(ev.length ? ev[0].date : null) - g, 0);
-      return { need: peak + dep, invoices: peak, deposit: dep, binding: why };
+  const holidaysByYear = new Map();
+
+  /** The Dutch public holidays of `year`, as { isoDate: name }. */
+  function holidays(year) {
+    if (!holidaysByYear.has(year)) {
+      const easterSunday = easter(year);
+      const afterEaster = (days) => Engine.iso(Dates.addDays(easterSunday, days));
+      let kingsDay = new Date(Date.UTC(year, 3, 27));
+      if (kingsDay.getUTCDay() === 0) kingsDay = new Date(Date.UTC(year, 3, 26));
+      holidaysByYear.set(year, {
+        [`${year}-01-01`]: 'Nieuwjaarsdag',
+        [afterEaster(1)]: 'Tweede Paasdag',
+        [Engine.iso(kingsDay)]: 'Koningsdag',
+        [`${year}-05-05`]: 'Bevrijdingsdag',
+        [afterEaster(39)]: 'Hemelvaartsdag',
+        [afterEaster(50)]: 'Tweede Pinksterdag',
+        [`${year}-12-25`]: 'Eerste Kerstdag',
+        [`${year}-12-26`]: 'Tweede Kerstdag',
+      });
     }
-    consider(sec(ev.length ? ev[0].date : null) - g, { date: ev.length ? ev[0].date : null, check: 'security at the start' });
-    ev.forEach(function (e) {
-      consider(cum + Math.max(e.amount, 0), { date: e.date, check: 'balance before the debit' });
-      cum += e.amount;
-      consider(cum + sec(e.date) - g, { date: e.date, check: 'security after the debit' });
-    });
-    return { need: need, binding: why };
+    return holidaysByYear.get(year);
   }
 
-  /* ---------- weekly imbalance model (wallet-model §6.2) ----------
-     o = { weeklyVolume (MWh traded, nominated or produced a week), share, bias (−1 long … +1 short), price (typical
-     imbalance price €/MWh), statePrice2Share, stateGap2 (€/MWh), cv }. A normal model: it understates NL imbalance-price
-     tails, and says so on the page. */
-  /* shortVolume (MWh a week, optional) is imbalance that is always short, such as an aggregator's non-delivery. */
-  function weekly(o) {
-    var V = o.weeklyVolume * o.share, Vs = o.shortVolume || 0, delta = (o.statePrice2Share || 0) * (o.stateGap2 || 0), b = o.bias || 0;
-    var mu = V * (b * o.price + (1 - Math.abs(b)) * delta / 2) + Vs * o.price, sigma = (o.cv == null ? 0.5 : o.cv) * (V + Vs) * o.price;
-    return { volume: V + Vs, delta: delta, mu: mu, sigma: sigma, B: mu + 2 * sigma };
+  function isWorkday(date) {
+    const weekday = date.getUTCDay();
+    return weekday !== 0 && weekday !== 6 && !holidays(date.getUTCFullYear())[Engine.iso(date)];
   }
-  // Seeded pseudo-random numbers (mulberry32) and standard normals (Box-Muller), so the stress end is reproducible.
-  // Math.imul is ES2015; the fallback keeps the module ES5.
-  var imul = Math.imul || function (a, b) {
-    var ah = (a >>> 16) & 0xffff, al = a & 0xffff, bh = (b >>> 16) & 0xffff, bl = b & 0xffff;
-    return (al * bl + (((ah * bl + al * bh) << 16) >>> 0)) | 0;
-  };
-  function mulberry32(a) {
-    return function () {
-      a = (a + 0x6D2B79F5) | 0;
-      var t = imul(a ^ (a >>> 15), 1 | a);
-      t = (t + imul(t ^ (t >>> 7), 61 | t)) ^ t;
+
+  function workdayOnOrAfter(date) {
+    let day = date;
+    while (!isWorkday(day)) day = Dates.addDays(day, 1);
+    return day;
+  }
+
+  // ---------- the weekly imbalance invoice ----------
+
+  /**
+   * The day TenneT debits the weekly imbalance invoice for the delivery week that starts on `weekStart` (a Monday).
+   * The debit day is in TenneT's billing terms, not in the texts (open question W7). ASSUMPTION: the first working
+   * day on or after the end of the delivery week plus `lagWeeks`.
+   */
+  function imbalanceDebit(weekStart, lagWeeks = DEFAULT_LAG_WEEKS) {
+    const due = Dates.addDays(Engine.parse(weekStart), 7 + 7 * lagWeeks);
+    return Engine.iso(workdayOnOrAfter(due));
+  }
+
+  /**
+   * The weekly imbalance invoice as a normal distribution (wallet-model §6.2). A normal model understates the tails of
+   * NL imbalance prices, and the page says so.
+   *   volume       MWh a week that the imbalance is measured against (traded, nominated or produced)
+   *   share        the imbalance as a share of that volume
+   *   bias         −1 always long … +1 always short: short pays the imbalance price, long receives it (art. 10.29)
+   *   price        the typical imbalance price, €/MWh
+   *   state2Share, state2Gap  the share of periods with dual pricing (regulation state 2), and the gap between the
+   *                short and long prices then, €/MWh (art. 10.29(4))
+   *   cv           σ of the invoice as a multiple of the imbalance value
+   *   shortVolume  MWh a week that is always short, such as an aggregator's non-delivery
+   * Returns { volume, delta, mean, sd, B }: MWh a week, € per MWh of dual pricing, and € a week. B is component B of
+   * the draft when every weekly invoice follows this distribution: the mean plus two standard deviations.
+   */
+  function weekly({ volume, share, bias = 0, price, state2Share = 0, state2Gap = 0, cv = 0.5, shortVolume = 0 }) {
+    const imbalance = volume * share;
+    const delta = state2Share * state2Gap;
+    const mean = imbalance * (bias * price + ((1 - Math.abs(bias)) * delta) / 2) + shortVolume * price;
+    const sd = cv * (imbalance + shortVolume) * price;
+    return { volume: imbalance + shortVolume, delta, mean, sd, B: mean + Brp.RULES.draft.sigmaB * sd };
+  }
+
+  /** A seeded pseudo-random generator (mulberry32) of numbers in [0, 1), so the stress end is reproducible. */
+  function mulberry32(seed) {
+    let state = seed;
+    return () => {
+      state = (state + 0x6d2b79f5) | 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  /* Stress end of B: the q-quantile of B = mean + 2σ over `runs` simulated windows of ten weekly invoices N(mu, sigma).
-     sigmaType 'population' (default) or 'sample'. */
-  function stressB(mu, sigma, o) {
-    o = o || {};
-    var rnd = mulberry32(o.seed == null ? 20260926 : o.seed), runs = o.runs || 10000, n = 10, q = o.q == null ? 0.95 : o.q, bs = [];
-    var normal = function () { var u = 1 - rnd(), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
-    for (var r = 0; r < runs; r++) {
-      var w = [], mean = 0, ss = 0, i;
-      for (i = 0; i < n; i++) { w.push(mu + sigma * normal()); mean += w[i]; }
-      mean /= n;
-      for (i = 0; i < n; i++) ss += (w[i] - mean) * (w[i] - mean);
-      bs.push(mean + 2 * Math.sqrt(ss / (o.sigmaType === 'sample' ? n - 1 : n)));
+
+  /**
+   * The stress end of component B: its 95th percentile over simulated ten-week windows of weekly invoices, each drawn
+   * from N(mean, sd). Seeded, so the same inputs always give the same amount. sigma: as for WalletBrp.stats().
+   */
+  function stressB(mean, sd, { sigma, seed = STRESS_SEED } = {}) {
+    const random = mulberry32(seed);
+    const normal = () => {
+      // Box-Muller
+      const u = 1 - random();
+      const v = random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    };
+    const outcomes = [];
+    for (let run = 0; run < STRESS_RUNS; run++) {
+      const invoices = Array.from({ length: Brp.RULES.draft.weeksB }, () => mean + sd * normal());
+      outcomes.push(Brp.componentB(invoices, sigma));
     }
-    bs.sort(function (a, b) { return a - b; });
-    return bs[Math.min(runs - 1, Math.floor(q * runs))];
+    outcomes.sort((a, b) => a - b);
+    return outcomes[Math.min(STRESS_RUNS - 1, Math.floor(STRESS_QUANTILE * STRESS_RUNS))];
   }
 
-  /* ---------- exit tail (draft art. 10.8(10c); proposal BR-2024-2077 p.2) ----------
-     After the member stops on date `stop`, security and cash stay committed until the last invoices are settled:
-     imbalance about four weeks after the last delivery (ACM draft para 15), profile reconciliation up to 21 months
-     (para 16), smart-meter and telemetry reconciliation six months (para 17). has = { profile, smart }. */
-  function exitTail(stop, has) {
-    var d = parse(stop), addMonths = function (k) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, d.getUTCDate())); };
-    var out = { imbalance: iso(add(d, 28)) };
-    if (has && has.smart) out.smart = iso(addMonths(6));
-    if (has && has.profile) out.profile = iso(addMonths(21));
-    var last = out.imbalance; Object.keys(out).forEach(function (k) { if (out[k] > last) last = out[k]; });
-    out.released = last;
-    return out;
+  // ---------- after the member stops ----------
+
+  /**
+   * When the security is released after the member stops on `stop` (draft art. 10.8(10c); proposal BR-2024-2077
+   * p.2): once the last invoices are settled. `profile` and `smart` say whether the member's connections have those
+   * reconciliations. Returns ISO dates: { imbalance, smart?, profile?, released }.
+   */
+  function exitTail(stop, { profile = false, smart = false } = {}) {
+    const date = Engine.parse(stop);
+    const monthsLater = (months) =>
+      Engine.iso(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, date.getUTCDate())));
+    const tail = { imbalance: Engine.iso(Dates.addDays(date, EXIT_IMBALANCE_DAYS)) };
+    if (smart) tail.smart = monthsLater(EXIT_SMART_MONTHS);
+    if (profile) tail.profile = monthsLater(EXIT_PROFILE_MONTHS);
+    const released = Object.values(tail).reduce((latest, day) => (day > latest ? day : latest));
+    return { ...tail, released };
   }
 
-  return { price: price, periodAmount: periodAmount, holidays: holidays, isWorkday: isWorkday, paymentDates: paymentDates, profileDates: profileDates,
-           smartDates: smartDates, imbalanceDebit: imbalanceDebit, accountNeed: accountNeed, weekly: weekly,
-           mulberry32: mulberry32, stressB: stressB, exitTail: exitTail };
-})();
-/* Direct+ wallet: what one member needs, by purpose and by wallet segment (docs/wallet-model.md).
-   Every setting the page shows (its label, unit, kind, tag and source) is listed here, so the Settings view and the
-   "Assumptions and sources" list come from one place. Each member is treated as its own BRP, and the wallet pools
-   all members at one connected bank, so nothing nets between members (Direct+ decision, 26 Sep 2026; wallet-model §11.1). */
-var WalletCalc = (function (E, B, S, L, R, W) {
+  return { isWorkday, imbalanceDebit, weekly, mulberry32, stressB, exitTail };
+})(
+  typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
+  typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
+  typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
+);
+/* Direct+ wallet: every setting of the calculator (label, unit, kind, tag, source and default), grouped as the
+   Settings view shows them, and the three example members. The Settings view and the "Assumptions and sources" list
+   are generated from GROUPS.
+     kind  number | share (0-1, shown as %) | bool | select | list (MW, comma-separated) | optional (number or empty)
+     tag   input (the member's own plan) | ASSUMPTION | INTERPRETATION | ECC setting (set with ECC; no built-in value) |
+           Direct+ contract */
+const WalletSettings = (() => {
   'use strict';
 
-  // ---------- settings ----------
-  // kind: number | share (0-1, shown as %) | bool | select | list (MW, comma-separated) | optional (number or empty)
-  // tag: input (the member's plan) | ASSUMPTION | INTERPRETATION | ECC setting (set with ECC; no built-in value)
-  function f(key, label, unit, kind, tag, src, extra) {
-    var o = { key: key, label: label, unit: unit, kind: kind, tag: tag, src: src };
-    for (var k in extra || {}) o[k] = extra[k];
-    return o;
-  }
-  var GROUPS = [
-    { id: 'plan', title: 'Trading plan', note: 'Your own plan, NL only. The ECC limits also cover other delivery areas and SEMOpx; those are not included here.', fields: [
-      f('contBuy', 'Continuous: buy', 'MWh a day', 'number', 'input', 'EPEX continuous NL (M7)'),
-      f('contSell', 'Continuous: sell', 'MWh a day', 'number', 'input', 'EPEX continuous NL (M7)'),
-      f('aucBuy', 'Auctions: buy', 'MWh a day', 'number', 'input', 'EPEX day-ahead and intraday auctions NL'),
-      f('aucSell', 'Auctions: sell', 'MWh a day', 'number', 'input', 'EPEX day-ahead and intraday auctions NL; sell orders assumed to carry a limit price of €0 or more'),
-      f('aucLimitPrice', 'Highest price on auction buy orders', '€/MWh', 'optional', 'input', 'ECC manual §3.10: an order counts at its highest price × quantity; empty means no limit price (then the market maximum, below, applies)'),
-      f('nominatedIn', 'Nominated in from other BRPs', 'MWh a day', 'number', 'input', 'Aggregators: flexibility bought bilaterally from assets in other BRPs'),
-      f('nonDelivery', 'Non-delivery of nominated flexibility', '%', 'share', 'ASSUMPTION', 'By contract the aggregator carries it, as a short imbalance'),
-      f('weekend', 'Trade at weekends and on holidays', '', 'bool', 'input', 'Weekend days lengthen the Friday period (ECC manual §3.11)')
-    ] },
-    { id: 'prices', title: 'Prices', fields: [
-      f('price', 'Typical price', '€/MWh', 'number', 'ASSUMPTION', 'Check against current NL day-ahead data'),
-      f('stressPrice', 'Stress price', '€/MWh', 'number', 'ASSUMPTION', 'A spike day; every trading value scales with it at the stress end'),
-      f('stressAvgPrice', 'Stress two-to-three-month average price', '€/MWh', 'number', 'ASSUMPTION', 'BRP security uses averages (three months now, two in the draft), not spot prices'),
-      f('negShare', 'Hours with negative prices', '%', 'share', 'ASSUMPTION', 'Share of the hours traded'),
-      f('negPrice', 'Average price in those hours', '€/MWh', 'number', 'ASSUMPTION', 'Needed to value negative-price hours')
-    ] },
-    { id: 'ecc', title: 'ECC limits and collateral', note: 'Direct+ accepts cash only: collateral is never a bank guarantee.', fields: [
-      f('s', 'Buys already sold again when your open position is largest', '%', 'share', 'ASSUMPTION', 'Continuous target max(G × (1 − s), peak): the largest open position is (1 − s) of the day\'s buys; 0 is the cautious default (wallet-model §2.2)'),
-      f('restingCont', 'Continuous orders resting over 16:00', '€', 'number', 'ASSUMPTION', 'Risk-bearing orders count against the limit (ECC manual §3.11); they need the base limit after 16:00 (ECC deck p.4)'),
-      f('eveningCont', 'Net buying between 16:00 and the evening update', '€', 'number', 'ASSUMPTION', 'Covered by the base limit (ECC deck p.2)'),
-      f('restingAuc', 'Auction orders resting over 16:00', '€', 'number', 'ASSUMPTION', 'ECC deck p.4: future orders above the base limit are deleted after 16:00'),
-      f('restingAucWeekend', 'Weekend auction orders placed on Friday before 16:00', '€', 'number', 'ASSUMPTION', 'Sets the non-business-day auction base limit'),
-      f('updateHour', 'Evening update, expected case', '', 'select', 'ASSUMPTION', 'ECC deck p.2: "approximately 18:00-19:00 CET on best effort basis"', { options: [[18, 'Around 18:00'], [19, 'Around 19:00']] }),
-      f('stressUpdateHour', 'Evening update, stress case', '', 'select', 'ASSUMPTION', 'ECC deck p.2: best effort, so the late end of the window', { options: [[18, 'Around 18:00'], [19, 'Around 19:00']] }),
-      f('measure', 'Limit that must hold the continuous target', '', 'select', 'ASSUMPTION', 'The evening limit applies until settlement (by 10:45 next business day, ECC deck p.3)', { options: [['l18', 'Evening limit (cautious)'], ['l09', 'Limit after settlement']] }),
-      f('splitMode', 'Split between continuous and auctions', '', 'select', 'input', 'Set in the Direct+ platform', { options: [['cheapest', 'The split that needs the least collateral'], ['mine', 'My split']] }),
-      f('key', 'My split: continuous share', '%', 'number', 'input', 'Auctions get the rest'),
-      f('collateralMode', 'Collateral at ECC', '', 'select', 'input', 'Keep one amount all week (sized for the weekend), or change it every business day: less during the week, more before weekends and holidays. Assumed to be in place by that day\'s evening calculation; how fast the Direct+ platform applies changes is open (W4)', { options: [['static', 'Static: the same all week'], ['daily', 'Optimised by day']] }),
-      f('cap', 'Cap limit', '€', 'optional', 'ECC setting', 'Set by ECC at KYC, reviewed yearly (ECC DCP risk page); collateral above it does not raise limits'),
-      f('eccCollateral', 'Collateral from the limit calculator', '€', 'optional', 'input', 'Blank: the wallet works out what your trading needs. Set: this amount at ECC, with My split and the base limits below; the result says if your trading needs more'),
-      f('blContBD', 'Base limit, continuous, business day', '€', 'optional', 'input', 'Blank: from resting orders and buying until the evening update (ECC deck p.2, p.4)'),
-      f('blContNBD', 'Base limit, continuous, non-business day', '€', 'optional', 'input', 'Blank: 0 (continuous has no weekend reset)'),
-      f('blAucBD', 'Base limit, auctions, business day', '€', 'optional', 'input', 'Blank: from auction orders resting over 16:00'),
-      f('blAucNBD', 'Base limit, auctions, non-business day', '€', 'optional', 'input', 'Blank: from auction orders resting over a weekend'),
-      f('aucMaxPrice', 'Market maximum price (orders without a limit price)', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10; no built-in value (Q9)'),
-      f('aucMinPrice', 'Market minimum price (sells without a limit price)', '€/MWh', 'optional', 'ECC setting', 'INTERPRETATION of ECC manual §3.10 (Q9)'),
-      f('realMin', 'Realistic price range: minimum', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10 p.25: set by the clearing member; both ends or neither (Q9)'),
-      f('realMax', 'Realistic price range: maximum', '€/MWh', 'optional', 'ECC setting', 'ECC manual §3.10 p.25 (Q9)')
-    ] },
-    { id: 'settlement', title: 'ECC settlement', fields: [
-      f('carryShare', 'Purchases paid before their sale', '% of a day\'s buys', 'share', 'ASSUMPTION', 'Positions bought before the 16:00 booking cut and sold after it (e.g. bought day-ahead, sold intraday the next day): ECC collects the purchase one business day before the sale comes back, so this much stays in the wallet as a float (ECC DCP payments page: one net payment per business day)'),
-      f('badMove', 'Bad day: price move against your open position', '€/MWh', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026: the wallet keeps room for a bad day\'s trading loss, the largest open position times this move'),
-      f('badDays', 'Bad days the wallet can absorb, normal week', 'days', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026: one or two bad days, not a bad week; traders only (0 for aggregators and asset owners, whose buying is a planned cost)'),
-      f('badDaysStress', 'Bad days the wallet can absorb, tough week', 'days', 'number', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026'),
-      f('lossShare', 'Extra loss every business day, tough week', '% of gross buys', 'share', 'ASSUMPTION', 'Off by default: bad days above replace it (wallet-model §3)'),
-      f('replenish', 'Topping up the wallet', '', 'select', 'ASSUMPTION', 'How often you replace what ECC collects', { options: [['none', 'Not within the period'], ['daily', 'Every business day'], ['weekly', 'Every Monday']] }),
-      f('feesPerWindow', 'Fees per business day', '€', 'number', 'ASSUMPTION', 'ECC, EPEX and Direct+ fees: not set until the price lists are in (Q7)')
-    ] },
-    { id: 'imbalance', title: 'Imbalance', note: 'A normal model: it understates the tails of NL imbalance prices.', fields: [
-      f('imbShare', 'Imbalance', '% of volume', 'share', 'ASSUMPTION', 'Of the volume chosen below'),
-      f('imbBase', 'Imbalance measured against', '', 'select', 'ASSUMPTION', 'Traded, nominated or produced volume', { options: [['traded', 'Traded volume'], ['nominated', 'Nominated volume'], ['production', 'Net sold volume (production)']] }),
-      f('bias', 'Bias: +1 always short, −1 always long', '', 'number', 'ASSUMPTION', 'Short pays the imbalance price; long receives it (SC 2026 art. 10.29)'),
-      f('cv', 'Weekly invoice volatility', '× imbalance value', 'number', 'ASSUMPTION', 'σ of the weekly invoice as a multiple of volume × price (wallet-model §6.2)'),
-      f('state2Share', 'Periods with dual pricing (regulation state 2)', '%', 'share', 'ASSUMPTION', 'SC 2026 art. 10.29(4)'),
-      f('state2Gap', 'Price gap in those periods', '€/MWh', 'number', 'ASSUMPTION', 'Short price minus long price'),
-      f('shiftShare', 'Volume bought and sold in different settlement periods', '%', 'share', 'ASSUMPTION', 'Only used with reading (ii) of the daily net volume, below (batteries, shifting)')
-    ] },
-    { id: 'connections', title: 'Connections in the Direct+ BRP', fields: [
-      f('connectionsMW', 'Large connections', 'MW each, comma-separated', 'list', 'input', 'SC 2026 art. 10.8(8)-(10): counted per class at the class minimum; above 50 MW actual'),
-      f('between', 'A capacity between two classes (e.g. 10.5 MW)', '', 'select', 'INTERPRETATION', 'The classes are 2-10, 11-25, 26-50 MW', { options: [['down', 'Counts in the lower class'], ['up', 'Counts in the higher class']] }),
-      f('profileMean', 'Profile reconciliation: average monthly invoice', '€', 'number', 'ASSUMPTION', 'Component C of the draft; may be €0 for new connections after cSMA (Q15)'),
-      f('profileSd', 'Profile reconciliation: monthly σ', '€', 'number', 'ASSUMPTION', 'Component C of the draft'),
-      f('smartMean', 'Smart-meter and telemetry reconciliation: average monthly invoice', '€', 'number', 'ASSUMPTION', 'Component D of the draft'),
-      f('smartSd', 'Smart-meter and telemetry reconciliation: monthly σ', '€', 'number', 'ASSUMPTION', 'Component D of the draft')
-    ] },
-    { id: 'brp', title: 'BRP security', note: 'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum.', fields: [
-      f('brpBasis', 'Basis', '', 'select', 'Direct+ contract', 'Direct+ decision (26 Sep 2026): no minimum for members, only the marginal collateral; the €96,000 minimum and the 50 MW floors apply once to the Direct+ BRP. ASSUMPTION: the rule\'s formula on your own figures, never below €0; netting inside the Direct+ portfolio is not modelled', { options: [['marginal', 'Direct+: your marginal collateral'], ['standalone', 'On your own as a BRP (with the minimum), for comparison']] }),
-      f('brpPrice', 'Price for BRP collateral', '€/MWh', 'optional', 'ASSUMPTION', 'Direct+ decision, 26 Sep 2026: €40 for now, TenneT\'s price floor (SC 2026 art. 10.8). Blank: the average market price (normal week) or the stress average (tough week)'),
-      f('rule', 'Rule', '', 'select', 'input', 'The draft takes effect on 1 January 2027 once ACM decides (ACM draft Artikel II B)', { options: [['auto', 'By date (the draft from 2027)'], ['current', 'Rule in force now'], ['draft', 'ACM draft']] }),
-      f('reading', 'The current rule\'s 50 MW floor (on your own as a BRP)', '', 'select', 'INTERPRETATION', 'SC 2026 art. 10.8(3), (6), (11); the €96,000 minimum is on TenneT\'s page only (Q14). Not used for the marginal basis', { options: [['1200', '50 MW × 24 h = 1,200 MWh'], ['flat', 'A flat €96,000 minimum']] }),
-      f('perPeriod', 'Daily net volume', '', 'select', 'INTERPRETATION', '"voor alle uren gedurende één kalenderdag" (current) / "één etmaal" (draft)', { options: [['i', '(i) Net over the day'], ['ii', '(ii) Net per settlement period, added up']] }),
-      f('counterparties', 'Counterparties', '', 'select', 'INTERPRETATION', '"met enige andere balanceringsverantwoordelijke" (current), "met een andere" (draft)', { options: [['max', 'The largest single counterparty'], ['total', 'All counterparties netted']] }),
-      f('sigma', 'Standard deviation', '', 'select', 'INTERPRETATION', 'ACM draft art. 10.8(3)-(5) does not say which', { options: [['population', 'Population'], ['sample', 'Sample']] }),
-    ] },
-    { id: 'tennet', title: 'TenneT account', fields: [
-      f('debitLagWeeks', 'Weekly imbalance invoice after delivery', 'weeks', 'number', 'ASSUMPTION', 'ACM draft para 15: four weeks between delivery and invoicing; the debit day is in TenneT\'s billing terms (Q11)')
-    ] }
+  const DIRECT_PLUS = 'Direct+ decision, 26 Sep 2026';
+  const UPDATE_HOURS = [
+    [18, 'Around 18:00'],
+    [19, 'Around 19:00'],
   ];
 
-  var BASE = {
-    week: '2026-10-05',
-    contBuy: 0, contSell: 0, aucBuy: 0, aucSell: 0, aucLimitPrice: 150, nominatedIn: 0, nonDelivery: 0, weekend: true,
-    price: 100, stressPrice: 250, stressAvgPrice: 150, negShare: 0.05, negPrice: -20,   // normal price €100/MWh (Direct+ decision, 26 Sep 2026)
-    s: 0, restingCont: 0, eveningCont: 0, restingAuc: 0, restingAucWeekend: 0, updateHour: 18, stressUpdateHour: 19,
-    measure: 'l18', splitMode: 'cheapest', key: 60, collateralMode: 'static', cap: null,
-    eccCollateral: null, blContBD: null, blContNBD: null, blAucBD: null, blAucNBD: null,
-    aucMaxPrice: null, aucMinPrice: null, realMin: null, realMax: null,
-    carryShare: 0, lossShare: 0, badMove: 100, badDays: 1, badDaysStress: 2, replenish: 'none', feesPerWindow: 0,
-    imbShare: 0.005, imbBase: 'traded', bias: 0, cv: 0.5, state2Share: 0.05, state2Gap: 150, shiftShare: 0,
-    brpPrice: 40, connectionsMW: '', between: 'down', profileMean: 0, profileSd: 0, smartMean: 0, smartSd: 0,
-    brpBasis: 'marginal', rule: 'auto', reading: '1200', perPeriod: 'i', counterparties: 'max', sigma: 'population',
-    debitLagWeeks: 4
+  const GROUPS = [
+    {
+      id: 'plan',
+      title: 'Trading plan',
+      note: 'Your own plan, NL only. The ECC limits also cover other delivery areas and SEMOpx; those are not included here.',
+      fields: [
+        {
+          key: 'contBuy',
+          label: 'Continuous: buy',
+          unit: 'MWh a day',
+          kind: 'number',
+          tag: 'input',
+          src: 'EPEX continuous NL (M7)',
+          default: 0,
+        },
+        {
+          key: 'contSell',
+          label: 'Continuous: sell',
+          unit: 'MWh a day',
+          kind: 'number',
+          tag: 'input',
+          src: 'EPEX continuous NL (M7)',
+          default: 0,
+        },
+        {
+          key: 'aucBuy',
+          label: 'Auctions: buy',
+          unit: 'MWh a day',
+          kind: 'number',
+          tag: 'input',
+          src: 'EPEX day-ahead and intraday auctions NL',
+          default: 0,
+        },
+        {
+          key: 'aucSell',
+          label: 'Auctions: sell',
+          unit: 'MWh a day',
+          kind: 'number',
+          tag: 'input',
+          src: 'EPEX day-ahead and intraday auctions NL; sell orders assumed to carry a limit price of €0 or more',
+          default: 0,
+        },
+        {
+          key: 'aucLimitPrice',
+          label: 'Highest price on auction buy orders',
+          unit: '€/MWh',
+          kind: 'optional',
+          tag: 'input',
+          src: 'ECC manual §3.10: an order counts at its highest price × quantity; empty means no limit price (then the market maximum, below, applies)',
+          default: 150,
+        },
+        {
+          key: 'nominatedIn',
+          label: 'Nominated in from other BRPs',
+          unit: 'MWh a day',
+          kind: 'number',
+          tag: 'input',
+          src: 'Aggregators: flexibility bought bilaterally from assets in other BRPs',
+          default: 0,
+        },
+        {
+          key: 'nonDelivery',
+          label: 'Non-delivery of nominated flexibility',
+          unit: '%',
+          kind: 'share',
+          tag: 'ASSUMPTION',
+          src: 'By contract the aggregator carries it, as a short imbalance',
+          default: 0,
+        },
+        {
+          key: 'weekend',
+          label: 'Trade at weekends and on holidays',
+          unit: '',
+          kind: 'bool',
+          tag: 'input',
+          src: 'Weekend days lengthen the Friday period (ECC manual §3.11)',
+          default: true,
+        },
+      ],
+    },
+    {
+      id: 'prices',
+      title: 'Prices',
+      fields: [
+        {
+          key: 'price',
+          label: 'Typical price',
+          unit: '€/MWh',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Check against current NL day-ahead data',
+          default: 100, // the normal price (Direct+ decision)
+        },
+        {
+          key: 'stressPrice',
+          label: 'Stress price',
+          unit: '€/MWh',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'A spike day; every trading value scales with it at the stress end',
+          default: 250,
+        },
+        {
+          key: 'stressAvgPrice',
+          label: 'Stress two-to-three-month average price',
+          unit: '€/MWh',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'BRP security uses averages (three months now, two in the draft), not spot prices',
+          default: 150,
+        },
+        {
+          key: 'negShare',
+          label: 'Hours with negative prices',
+          unit: '%',
+          kind: 'share',
+          tag: 'ASSUMPTION',
+          src: 'Share of the hours traded',
+          default: 0.05,
+        },
+        {
+          key: 'negPrice',
+          label: 'Average price in those hours',
+          unit: '€/MWh',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Needed to value negative-price hours',
+          default: -20,
+        },
+      ],
+    },
+    {
+      id: 'ecc',
+      title: 'ECC limits and collateral',
+      note: 'Direct+ accepts cash only: collateral is never a bank guarantee.',
+      fields: [
+        {
+          key: 's',
+          label: 'Buys already sold again when your open position is largest',
+          unit: '%',
+          kind: 'share',
+          tag: 'ASSUMPTION',
+          src: "Continuous target max(G × (1 − s), peak): the largest open position is (1 − s) of the day's buys; 0 is the cautious default",
+          default: 0,
+        },
+        {
+          key: 'restingCont',
+          label: 'Continuous orders resting over 16:00',
+          unit: '€',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Risk-bearing orders count against the limit (ECC manual §3.11); they need the base limit after 16:00 (ECC deck p.4)',
+          default: 0,
+        },
+        {
+          key: 'eveningCont',
+          label: 'Net buying between 16:00 and the evening update',
+          unit: '€',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Covered by the base limit (ECC deck p.2)',
+          default: 0,
+        },
+        {
+          key: 'restingAuc',
+          label: 'Auction orders resting over 16:00',
+          unit: '€',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'ECC deck p.4: future orders above the base limit are deleted after 16:00',
+          default: 0,
+        },
+        {
+          key: 'restingAucWeekend',
+          label: 'Weekend auction orders placed on Friday before 16:00',
+          unit: '€',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Sets the non-business-day auction base limit',
+          default: 0,
+        },
+        {
+          key: 'updateHour',
+          label: 'Evening update, expected case',
+          unit: '',
+          kind: 'select',
+          tag: 'ASSUMPTION',
+          src: 'ECC deck p.2: "approximately 18:00-19:00 CET on best effort basis"',
+          default: 18,
+          options: UPDATE_HOURS,
+        },
+        {
+          key: 'stressUpdateHour',
+          label: 'Evening update, stress case',
+          unit: '',
+          kind: 'select',
+          tag: 'ASSUMPTION',
+          src: 'ECC deck p.2: best effort, so the late end of the window',
+          default: 19,
+          options: UPDATE_HOURS,
+        },
+        {
+          key: 'measure',
+          label: 'Limit that must hold the continuous target',
+          unit: '',
+          kind: 'select',
+          tag: 'ASSUMPTION',
+          src: 'The evening limit applies until settlement (by 10:45 next business day, ECC deck p.3)',
+          default: 'l18',
+          options: [
+            ['l18', 'Evening limit (cautious)'],
+            ['l09', 'Limit after settlement'],
+          ],
+        },
+        {
+          key: 'splitMode',
+          label: 'Split between continuous and auctions',
+          unit: '',
+          kind: 'select',
+          tag: 'input',
+          src: 'Set in the Direct+ platform',
+          default: 'cheapest',
+          options: [
+            ['cheapest', 'The split that needs the least collateral'],
+            ['mine', 'My split'],
+          ],
+        },
+        {
+          key: 'key',
+          label: 'My split: continuous share',
+          unit: '%',
+          kind: 'number',
+          tag: 'input',
+          src: 'Auctions get the rest',
+          default: 60,
+        },
+        {
+          key: 'collateralMode',
+          label: 'Collateral at ECC',
+          unit: '',
+          kind: 'select',
+          tag: 'input',
+          src: "Keep one amount all week (sized for the weekend), or change it every business day: less during the week, more before weekends and holidays. Assumed to be in place by that day's evening calculation; how fast the Direct+ platform applies changes is still open",
+          default: 'static',
+          options: [
+            ['static', 'Static: the same all week'],
+            ['daily', 'Optimised by day'],
+          ],
+        },
+        {
+          key: 'cap',
+          label: 'Cap limit',
+          unit: '€',
+          kind: 'optional',
+          tag: 'ECC setting',
+          src: 'Set by ECC at KYC, reviewed yearly (ECC DCP risk page); collateral above it does not raise limits',
+          default: null,
+        },
+        {
+          key: 'eccCollateral',
+          label: 'Collateral from the limit calculator',
+          unit: '€',
+          kind: 'optional',
+          tag: 'input',
+          src: 'Blank: the wallet works out what your trading needs. Set: this amount at ECC, with My split and the base limits below; the result says if your trading needs more',
+          default: null,
+        },
+        {
+          key: 'blContBD',
+          label: 'Base limit, continuous, business day',
+          unit: '€',
+          kind: 'optional',
+          tag: 'input',
+          src: 'Blank: from resting orders and buying until the evening update (ECC deck p.2, p.4)',
+          default: null,
+        },
+        {
+          key: 'blContNBD',
+          label: 'Base limit, continuous, non-business day',
+          unit: '€',
+          kind: 'optional',
+          tag: 'input',
+          src: 'Blank: 0 (continuous has no weekend reset)',
+          default: null,
+        },
+        {
+          key: 'blAucBD',
+          label: 'Base limit, auctions, business day',
+          unit: '€',
+          kind: 'optional',
+          tag: 'input',
+          src: 'Blank: from auction orders resting over 16:00',
+          default: null,
+        },
+        {
+          key: 'blAucNBD',
+          label: 'Base limit, auctions, non-business day',
+          unit: '€',
+          kind: 'optional',
+          tag: 'input',
+          src: 'Blank: from auction orders resting over a weekend',
+          default: null,
+        },
+        {
+          key: 'aucMaxPrice',
+          label: 'Market maximum price (orders without a limit price)',
+          unit: '€/MWh',
+          kind: 'optional',
+          tag: 'ECC setting',
+          src: 'ECC manual §3.10; no built-in value',
+          default: null,
+        },
+        {
+          key: 'aucMinPrice',
+          label: 'Market minimum price (sells without a limit price)',
+          unit: '€/MWh',
+          kind: 'optional',
+          tag: 'ECC setting',
+          src: 'INTERPRETATION of ECC manual §3.10',
+          default: null,
+        },
+        {
+          key: 'realMin',
+          label: 'Realistic price range: minimum',
+          unit: '€/MWh',
+          kind: 'optional',
+          tag: 'ECC setting',
+          src: 'ECC manual §3.10 p.25: set by the clearing member; both ends or neither',
+          default: null,
+        },
+        {
+          key: 'realMax',
+          label: 'Realistic price range: maximum',
+          unit: '€/MWh',
+          kind: 'optional',
+          tag: 'ECC setting',
+          src: 'ECC manual §3.10 p.25',
+          default: null,
+        },
+      ],
+    },
+    {
+      id: 'settlement',
+      title: 'ECC settlement',
+      fields: [
+        {
+          key: 'carryShare',
+          label: 'Purchases paid before their sale',
+          unit: "% of a day's buys",
+          kind: 'share',
+          tag: 'ASSUMPTION',
+          src: 'Positions bought before the 16:00 booking cut and sold after it (e.g. bought day-ahead, sold intraday the next day): ECC collects the purchase one business day before the sale comes back, so this much stays in the wallet as a float (ECC DCP payments page: one net payment per business day)',
+          default: 0,
+        },
+        {
+          key: 'badMove',
+          label: 'Bad day: price move against your open position',
+          unit: '€/MWh',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: `${DIRECT_PLUS}: the wallet keeps room for a bad day's trading loss, the largest open position times this move`,
+          default: 100,
+        },
+        {
+          key: 'badDays',
+          label: 'Bad days the wallet can absorb, normal week',
+          unit: 'days',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: `${DIRECT_PLUS}: one or two bad days, not a bad week; traders only (0 for aggregators and asset owners, whose buying is a planned cost)`,
+          default: 1,
+        },
+        {
+          key: 'badDaysStress',
+          label: 'Bad days the wallet can absorb, tough week',
+          unit: 'days',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: DIRECT_PLUS,
+          default: 2,
+        },
+        {
+          key: 'lossShare',
+          label: 'Extra loss every business day, tough week',
+          unit: '% of gross buys',
+          kind: 'share',
+          tag: 'ASSUMPTION',
+          src: 'Off by default: bad days above replace it',
+          default: 0,
+        },
+        {
+          key: 'replenish',
+          label: 'Topping up the wallet',
+          unit: '',
+          kind: 'select',
+          tag: 'ASSUMPTION',
+          src: 'How often you replace what ECC collects',
+          default: 'none',
+          options: [
+            ['none', 'Not within the period'],
+            ['daily', 'Every business day'],
+            ['weekly', 'Every Monday'],
+          ],
+        },
+        {
+          key: 'feesPerWindow',
+          label: 'Fees per business day',
+          unit: '€',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'ECC, EPEX and Direct+ fees: not set until the price lists are in',
+          default: 0,
+        },
+      ],
+    },
+    {
+      id: 'imbalance',
+      title: 'Imbalance',
+      note: 'A normal model: it understates the tails of NL imbalance prices.',
+      fields: [
+        {
+          key: 'imbShare',
+          label: 'Imbalance',
+          unit: '% of volume',
+          kind: 'share',
+          tag: 'ASSUMPTION',
+          src: 'Of the volume chosen below',
+          default: 0.005,
+        },
+        {
+          key: 'imbBase',
+          label: 'Imbalance measured against',
+          unit: '',
+          kind: 'select',
+          tag: 'ASSUMPTION',
+          src: 'Traded, nominated or produced volume',
+          default: 'traded',
+          options: [
+            ['traded', 'Traded volume'],
+            ['nominated', 'Nominated volume'],
+            ['production', 'Net sold volume (production)'],
+          ],
+        },
+        {
+          key: 'bias',
+          label: 'Bias: +1 always short, −1 always long',
+          unit: '',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Short pays the imbalance price; long receives it (SC 2026 art. 10.29)',
+          default: 0,
+        },
+        {
+          key: 'cv',
+          label: 'Weekly invoice volatility',
+          unit: '× imbalance value',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'σ of the weekly invoice as a multiple of volume × price',
+          default: 0.5,
+        },
+        {
+          key: 'state2Share',
+          label: 'Periods with dual pricing (regulation state 2)',
+          unit: '%',
+          kind: 'share',
+          tag: 'ASSUMPTION',
+          src: 'SC 2026 art. 10.29(4)',
+          default: 0.05,
+        },
+        {
+          key: 'state2Gap',
+          label: 'Price gap in those periods',
+          unit: '€/MWh',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Short price minus long price',
+          default: 150,
+        },
+        {
+          key: 'shiftShare',
+          label: 'Volume bought and sold in different settlement periods',
+          unit: '%',
+          kind: 'share',
+          tag: 'ASSUMPTION',
+          src: 'Only used with reading (ii) of the daily net volume, below (batteries, shifting)',
+          default: 0,
+        },
+      ],
+    },
+    {
+      id: 'connections',
+      title: 'Connections in the Direct+ BRP',
+      fields: [
+        {
+          key: 'connectionsMW',
+          label: 'Large connections',
+          unit: 'MW each, comma-separated',
+          kind: 'list',
+          tag: 'input',
+          src: 'SC 2026 art. 10.8(8)-(10): counted per class at the class minimum; above 50 MW actual',
+          default: '',
+        },
+        {
+          key: 'between',
+          label: 'A capacity between two classes (e.g. 10.5 MW)',
+          unit: '',
+          kind: 'select',
+          tag: 'INTERPRETATION',
+          src: 'The classes are 2-10, 11-25, 26-50 MW',
+          default: 'down',
+          options: [
+            ['down', 'Counts in the lower class'],
+            ['up', 'Counts in the higher class'],
+          ],
+        },
+        {
+          key: 'profileMean',
+          label: 'Profile reconciliation: average monthly invoice',
+          unit: '€',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Component C of the draft; may be €0 for new connections after cSMA',
+          default: 0,
+        },
+        {
+          key: 'profileSd',
+          label: 'Profile reconciliation: monthly σ',
+          unit: '€',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Component C of the draft',
+          default: 0,
+        },
+        {
+          key: 'smartMean',
+          label: 'Smart-meter and telemetry reconciliation: average monthly invoice',
+          unit: '€',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Component D of the draft',
+          default: 0,
+        },
+        {
+          key: 'smartSd',
+          label: 'Smart-meter and telemetry reconciliation: monthly σ',
+          unit: '€',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: 'Component D of the draft',
+          default: 0,
+        },
+      ],
+    },
+    {
+      id: 'brp',
+      title: 'BRP security',
+      note: 'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum.',
+      fields: [
+        {
+          key: 'brpBasis',
+          label: 'Basis',
+          unit: '',
+          kind: 'select',
+          tag: 'Direct+ contract',
+          src: `${DIRECT_PLUS}: no minimum for members, only the marginal collateral; the €96,000 minimum and the 50 MW floors apply once to the Direct+ BRP. ASSUMPTION: the rule's formula on your own figures, never below €0; netting inside the Direct+ portfolio is not modelled`,
+          default: 'marginal',
+          options: [
+            ['marginal', 'Direct+: your marginal collateral'],
+            ['standalone', 'On your own as a BRP (with the minimum), for comparison'],
+          ],
+        },
+        {
+          key: 'brpPrice',
+          label: 'Price for BRP collateral',
+          unit: '€/MWh',
+          kind: 'optional',
+          tag: 'ASSUMPTION',
+          src: `${DIRECT_PLUS}: €40 for now, TenneT's price floor (SC 2026 art. 10.8). Blank: the average market price (normal week) or the stress average (tough week)`,
+          default: 40,
+        },
+        {
+          key: 'rule',
+          label: 'Rule',
+          unit: '',
+          kind: 'select',
+          tag: 'input',
+          src: 'The draft takes effect on 1 January 2027 once ACM decides (ACM draft Artikel II B)',
+          default: 'auto',
+          options: [
+            ['auto', 'By date (the draft from 2027)'],
+            ['current', 'Rule in force now'],
+            ['draft', 'ACM draft'],
+          ],
+        },
+        {
+          key: 'reading',
+          label: "The current rule's 50 MW floor (on your own as a BRP)",
+          unit: '',
+          kind: 'select',
+          tag: 'INTERPRETATION',
+          src: "SC 2026 art. 10.8(3), (6), (11); the €96,000 minimum is on TenneT's page only. Not used for the marginal basis",
+          default: '1200',
+          options: [
+            ['1200', '50 MW × 24 h = 1,200 MWh'],
+            ['flat', 'A flat €96,000 minimum'],
+          ],
+        },
+        {
+          key: 'perPeriod',
+          label: 'Daily net volume',
+          unit: '',
+          kind: 'select',
+          tag: 'INTERPRETATION',
+          src: '"voor alle uren gedurende één kalenderdag" (current) / "één etmaal" (draft)',
+          default: 'i',
+          options: [
+            ['i', '(i) Net over the day'],
+            ['ii', '(ii) Net per settlement period, added up'],
+          ],
+        },
+        {
+          key: 'counterparties',
+          label: 'Counterparties',
+          unit: '',
+          kind: 'select',
+          tag: 'INTERPRETATION',
+          src: '"met enige andere balanceringsverantwoordelijke" (current), "met een andere" (draft)',
+          default: 'max',
+          options: [
+            ['max', 'The largest single counterparty'],
+            ['total', 'All counterparties netted'],
+          ],
+        },
+        {
+          key: 'sigma',
+          label: 'Standard deviation',
+          unit: '',
+          kind: 'select',
+          tag: 'INTERPRETATION',
+          src: 'ACM draft art. 10.8(3)-(5) does not say which',
+          default: 'population',
+          options: [
+            ['population', 'Population'],
+            ['sample', 'Sample'],
+          ],
+        },
+      ],
+    },
+    {
+      id: 'tennet',
+      title: 'TenneT account',
+      fields: [
+        {
+          key: 'debitLagWeeks',
+          label: 'Weekly imbalance invoice after delivery',
+          unit: 'weeks',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: "ACM draft para 15: four weeks between delivery and invoicing; the debit day is in TenneT's billing terms",
+          default: 4,
+        },
+      ],
+    },
+  ];
+
+  const FIELDS = GROUPS.flatMap((group) => group.fields);
+
+  /** Every setting at its default, for the week of 5 October 2026 (the worked example of docs/wallet-model.md §8). */
+  const BASE = { week: '2026-10-05', ...Object.fromEntries(FIELDS.map((field) => [field.key, field.default])) };
+
+  // Named levels of some settings, shared by the presets and the prospect questionnaire (answers.js), so that each
+  // member type's default answers give exactly its preset.
+  const LEVELS = {
+    imbShare: { tight: 0.005, normal: 0.03, forecast: 0.05 }, // imbalance as a share of volume
+    bias: { neither: 0, short: 0.3, long: -0.2 }, // leaning short (+) or long (−)
+    carryShare: { none: 0, some: 0.3, most: 0.7 }, // purchases paid before their sale
+    // Traders: buys already sold again when the open position is largest, so that it is 100%, 66% or 33% of the buys
+    s: { block: 0, mixed: 0.34, flat: 0.67 },
   };
-  // Presets approved by Direct+ "for now" (26 Sep 2026); wallet-model §7. Shown as assumed on the page. All three trade the
-  // equivalent of about 50 GWh a year (buys and sells on both markets, every day): about 137 MWh a day (Direct+ decision,
-  // 26 Sep 2026), so the examples compare like with like.
-  var PRESETS = {
-    trader: { label: 'Financial trader', note: 'A small desk that ends each day flat.',
-      values: { contBuy: 55, contSell: 55, aucBuy: 14, aucSell: 14, aucLimitPrice: 150, restingCont: 2300, eveningCont: 1150, carryShare: 0.3,
-                s: 0.34,   // largest open position 66% of the day's buys: buys and sells mixed through the day (Direct+ decision, 26 Sep 2026)
-                imbShare: 0.005, imbBase: 'traded', bias: 0 } },
-    aggregator: { label: 'Aggregator', note: 'Flexibility from assets that stay in other BRPs.',
-      values: { contBuy: 8, contSell: 32, aucBuy: 0, aucSell: 97, nominatedIn: 121, nonDelivery: 0.05, restingCont: 2000, eveningCont: 1000, carryShare: 0.3,
-                badDays: 0, badDaysStress: 0,   // buying is a planned cost, paid through daily settlement, not a trading loss (Direct+ decision, 26 Sep 2026)
-                imbShare: 0.03, imbBase: 'nominated', bias: 0.3 } },
-    asset: { label: 'Asset-controlling party', note: 'A 30 MW solar park with a 10 MW battery.',
-      values: { contBuy: 21, contSell: 21, aucBuy: 0, aucSell: 95, restingCont: 2000, eveningCont: 1000, carryShare: 0.3, connectionsMW: '30',
-                badDays: 0, badDaysStress: 0,   // as for the aggregator: consumption and battery charging are planned costs
-                imbShare: 0.05, imbBase: 'production', bias: -0.2, shiftShare: 1, smartMean: 0, smartSd: 300 } }
+
+  // The three example members (docs/wallet-model.md §7), approved by Direct+ for now and shown as assumed on the page.
+  // Each trades the equivalent of about 50 GWh a year (buys and sells on both markets, every day, about 137 MWh a day),
+  // so the examples compare like with like.
+  const PRESETS = {
+    trader: {
+      label: 'Financial trader',
+      note: 'A small desk that ends each day flat.',
+      values: {
+        contBuy: 55,
+        contSell: 55,
+        aucBuy: 14,
+        aucSell: 14,
+        aucLimitPrice: 150,
+        restingCont: 2300,
+        eveningCont: 1150,
+        carryShare: LEVELS.carryShare.some,
+        s: LEVELS.s.mixed, // buys and sells mixed through the day
+        imbShare: LEVELS.imbShare.tight,
+        imbBase: 'traded',
+        bias: LEVELS.bias.neither,
+      },
+    },
+    aggregator: {
+      label: 'Aggregator',
+      note: 'Flexibility from assets that stay in other BRPs.',
+      values: {
+        contBuy: 8,
+        contSell: 32,
+        aucBuy: 0,
+        aucSell: 97,
+        nominatedIn: 121,
+        nonDelivery: 0.05,
+        restingCont: 2000,
+        eveningCont: 1000,
+        carryShare: LEVELS.carryShare.some,
+        // Buying is a planned cost that daily settlement collects, not a trading loss: no bad days.
+        badDays: 0,
+        badDaysStress: 0,
+        imbShare: LEVELS.imbShare.normal,
+        imbBase: 'nominated',
+        bias: LEVELS.bias.short,
+      },
+    },
+    asset: {
+      label: 'Asset-controlling party',
+      note: 'A 30 MW solar park with a 10 MW battery.',
+      values: {
+        contBuy: 21,
+        contSell: 21,
+        aucBuy: 0,
+        aucSell: 95,
+        restingCont: 2000,
+        eveningCont: 1000,
+        carryShare: LEVELS.carryShare.some,
+        connectionsMW: '30',
+        // As for the aggregator: consumption and battery charging are planned costs.
+        badDays: 0,
+        badDaysStress: 0,
+        imbShare: LEVELS.imbShare.forecast,
+        imbBase: 'production',
+        bias: LEVELS.bias.long,
+        shiftShare: 1, // it both produces and consumes
+        smartMean: 0,
+        smartSd: 300, // €10 a month per MW connected
+      },
+    },
   };
-  function preset(id) {
-    var s = {}, k;
-    for (k in BASE) s[k] = BASE[k];
-    for (k in PRESETS[id].values) s[k] = PRESETS[id].values[k];
-    s.member = id;
-    return s;
+
+  /** The settings of example member `id`: the defaults with its preset on top. */
+  const preset = (id) => ({ ...BASE, ...PRESETS[id].values, member: id });
+
+  /** Every setting that is not the member's own input, with its current value and source, for the page's list. */
+  const assumptions = (settings) =>
+    GROUPS.flatMap((group) =>
+      group.fields
+        .filter((field) => field.tag !== 'input')
+        .map(({ key, label, unit, kind, tag, src }) => ({
+          group: group.title,
+          key,
+          label,
+          value: settings[key],
+          unit,
+          kind,
+          tag,
+          src,
+        })),
+    );
+
+  return { GROUPS, BASE, LEVELS, PRESETS, preset, assumptions };
+})();
+/* Direct+ wallet: the prospect questionnaire (src/wallet/prospect.html). Its plain answers map onto the settings of
+   settings.js, and with each member type's default answers they give exactly its preset (docs/wallet-model.md §12). */
+const WalletAnswers = ((Settings) => {
+  'use strict';
+
+  const { BASE, LEVELS, PRESETS, preset } = Settings;
+
+  const NATURAL_STRATEGY = { trader: 'flat', aggregator: 'seller', asset: 'seller' };
+  const STRATEGY_SPLIT = { flat: [0.5, 0.5], seller: [0.1, 0.9], buyer: [0.9, 0.1] }; // shares of the volume: buy, sell
+  const DEFAULT_BALANCE = { trader: 'tight', aggregator: 'normal', asset: 'forecast' };
+  const DEFAULT_LEAN = { trader: 'neither', aggregator: 'short', asset: 'long' };
+  const NO_ASSETS = { production: false, consumption: false };
+  const RECONCILIATION_SD_PER_MW = 10; // ASSUMPTION: σ of the monthly reconciliation invoice, € per MW connected
+  const STRESS_AVERAGE_FACTOR = 1.5; // ASSUMPTION: the stress average price, as a multiple of the typical price
+
+  /** How closely a portfolio can match its positions: production (solar, wind) usually needs a forecast. */
+  function suggestBalance(type, portfolio) {
+    const assets = portfolio || NO_ASSETS;
+    if (assets.production) return 'forecast';
+    if (assets.consumption) return 'normal';
+    return DEFAULT_BALANCE[type];
   }
 
-  // ---------- the prospect questionnaire (src/wallet/prospect.html) ----------
-  // Plain answers map onto the settings above; with each type's default answers they give exactly its preset.
-  var NATURAL = { trader: 'flat', aggregator: 'seller', asset: 'seller' };
-  var IMB_BASE = { trader: 'traded', aggregator: 'nominated', asset: 'production' };
-  var BALANCE = { tight: 0.005, normal: 0.03, forecast: 0.05 };          // imbalance as a share of volume
-  var LEAN = { neither: 0, short: 0.3, long: -0.2 };                      // bias
-  var CARRY = { none: 0, some: 0.3, most: 0.7 };                          // purchases paid before their sale
-  var NETTING = { block: 0, mixed: 0.34, flat: 0.67 };                    // traders: share of buys offset at the peak (largest open position 100%, 66%, 33%)
-  var RECONCILIATION_SD_PER_MW = 10;                                      // ASSUMPTION: € a month per MW connected
-  var ASSETS = ['production', 'consumption'];                             // portfolio answers (Direct+ decision: production vs consumption)
-  var NO_ASSETS = { production: false, consumption: false };
-  // How closely a portfolio can match its positions: production output (solar, wind) usually needs a forecast.
-  function suggestBalance(type, portfolio) {
-    var pf = portfolio || NO_ASSETS;
-    if (pf.production) return 'forecast';
-    if (pf.consumption) return 'normal';
-    return type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast';
-  }
-  // Buy and sell volumes (MWh a day) that a trading strategy suggests, starting from the member type's preset.
+  /** Buy and sell volumes (MWh a day) that a trading strategy suggests, from the member type's preset: its own
+   *  strategy keeps the preset's volumes, another one splits the same total. */
   function strategyVolumes(type, strategy) {
-    var v = PRESETS[type].values, out = {};
-    [['cont', v.contBuy || 0, v.contSell || 0], ['auc', v.aucBuy || 0, v.aucSell || 0]].forEach(function (m) {
-      var buy = m[1], sell = m[2], t = buy + sell;
-      if (strategy !== NATURAL[type]) {
-        if (strategy === 'flat') { buy = t / 2; sell = t / 2; }
-        else if (strategy === 'seller') { buy = 0.1 * t; sell = 0.9 * t; }
-        else { buy = 0.9 * t; sell = 0.1 * t; }
-      }
-      out[m[0]] = { buy: Math.round(buy), sell: Math.round(sell) };
-    });
-    return out;
-  }
-  function defaultAnswers(type) {
-    var v = PRESETS[type].values, vol = strategyVolumes(type, NATURAL[type]);
+    const own = PRESETS[type].values;
+    const split = (buy, sell) => {
+      if (strategy === NATURAL_STRATEGY[type]) return { buy: Math.round(buy), sell: Math.round(sell) };
+      const [buyShare, sellShare] = STRATEGY_SPLIT[strategy];
+      const total = buy + sell;
+      return { buy: Math.round(buyShare * total), sell: Math.round(sellShare * total) };
+    };
     return {
-      type: type, markets: 'both', weekend: 'yes', tough: false, strategy: NATURAL[type],
-      contBuy: vol.cont.buy, contSell: vol.cont.sell, aucBuy: vol.auc.buy, aucSell: vol.auc.sell,
-      carry: 'some', netting: type === 'trader' ? 'mixed' : null, nominatedIn: v.nominatedIn || 0, nonDelivery: v.nonDelivery || 0,
-      price: BASE.price, stressPrice: BASE.stressPrice, aucLimitPrice: v.aucLimitPrice != null ? v.aucLimitPrice : BASE.aucLimitPrice,
-      portfolio: type === 'asset' ? { production: true, consumption: true } : { production: false, consumption: false },
-      capacityMW: type === 'asset' ? 30 : 0, sites: type === 'asset' ? 1 : 0,
-      balance: type === 'trader' ? 'tight' : type === 'aggregator' ? 'normal' : 'forecast',
-      lean: type === 'aggregator' ? 'short' : type === 'asset' ? 'long' : 'neither',
-      replenish: 'none', collateral: 'static', week: BASE.week
+      cont: split(own.contBuy || 0, own.contSell || 0),
+      auc: split(own.aucBuy || 0, own.aucSell || 0),
     };
   }
-  function fromAnswers(a) {
-    var s = preset(a.type), p = PRESETS[a.type].values;
-    var useC = a.markets !== 'auctions', useA = a.markets !== 'continuous';
-    s.contBuy = useC ? +a.contBuy || 0 : 0; s.contSell = useC ? +a.contSell || 0 : 0;
-    s.aucBuy = useA ? +a.aucBuy || 0 : 0; s.aucSell = useA ? +a.aucSell || 0 : 0;
-    // Orders resting over 16:00 and evening buying scale with continuous buying (the preset's ratio).
-    var scale = p.contBuy ? s.contBuy / p.contBuy : 0;
-    s.restingCont = (p.restingCont || 0) * scale; s.eveningCont = (p.eveningCont || 0) * scale;
-    s.weekend = a.weekend === true || a.weekend === 'yes' || a.weekend === 'both'; s.aucLimitPrice = a.aucLimitPrice == null || a.aucLimitPrice === '' ? null : +a.aucLimitPrice;
-    s.price = +a.price; s.stressPrice = +a.stressPrice; s.stressAvgPrice = 1.5 * s.price;   // ASSUMPTION: averages move less than spot
-    s.carryShare = CARRY[a.carry] || 0;
-    if (a.type === 'trader' && a.netting in NETTING) s.s = NETTING[a.netting];
-    s.nominatedIn = a.type === 'aggregator' ? +a.nominatedIn || 0 : 0; s.nonDelivery = a.type === 'aggregator' ? +a.nonDelivery || 0 : 0;
-    s.imbShare = BALANCE[a.balance]; s.imbBase = IMB_BASE[a.type]; s.bias = LEAN[a.lean];
-    // Portfolio: the capacity joining the Direct+ BRP, split over equal sites (ASSUMPTION), metered by telemetry or smart
-    // meter (reconciliation D; no profile metering for new connections after cSMA, Q15). A portfolio that both produces
-    // and consumes (for example solar with a battery) buys and sells in different settlement periods.
-    var pf = a.portfolio || NO_ASSETS, any = ASSETS.some(function (k) { return pf[k]; });
-    var cap = any ? +a.capacityMW || 0 : 0, n = any && cap > 0 ? Math.max(1, Math.round(+a.sites || 1)) : 0, sites = [];
-    for (var i = 0; i < n; i++) sites.push(Math.round(cap / n * 10) / 10);
-    s.connectionsMW = sites.join(', ');
-    s.profileMean = 0; s.smartMean = 0; s.profileSd = 0; s.smartSd = RECONCILIATION_SD_PER_MW * cap;
-    s.shiftShare = pf.production && pf.consumption ? 1 : 0;
-    s.replenish = a.replenish; s.collateralMode = a.collateral === 'daily' ? 'daily' : 'static';
-    if (a.week) s.week = a.week;
-    return s;
+
+  /** The questionnaire's starting answers for a member type. */
+  function defaultAnswers(type) {
+    const own = PRESETS[type].values;
+    const strategy = NATURAL_STRATEGY[type];
+    const volumes = strategyVolumes(type, strategy);
+    const assetOwner = type === 'asset';
+    return {
+      type,
+      markets: 'both',
+      weekend: 'yes',
+      tough: false,
+      strategy,
+      contBuy: volumes.cont.buy,
+      contSell: volumes.cont.sell,
+      aucBuy: volumes.auc.buy,
+      aucSell: volumes.auc.sell,
+      carry: 'some',
+      netting: type === 'trader' ? 'mixed' : null,
+      nominatedIn: own.nominatedIn || 0,
+      nonDelivery: own.nonDelivery || 0,
+      price: BASE.price,
+      stressPrice: BASE.stressPrice,
+      aucLimitPrice: own.aucLimitPrice ?? BASE.aucLimitPrice,
+      portfolio: { production: assetOwner, consumption: assetOwner },
+      capacityMW: assetOwner ? 30 : 0, // the asset preset's 30 MW connection
+      sites: assetOwner ? 1 : 0,
+      balance: DEFAULT_BALANCE[type],
+      lean: DEFAULT_LEAN[type],
+      replenish: 'none',
+      collateral: 'static',
+      week: BASE.week,
+    };
   }
 
-  var SEGMENTS = {
+  /* The connections a portfolio brings into the Direct+ BRP: the capacity split over equal sites (ASSUMPTION), metered
+     by telemetry or smart meter (reconciliation D; new connections are not profile-metered after cSMA, open question
+     W9). A portfolio that both produces and consumes (solar with a battery, say) buys and sells in different
+     settlement periods. */
+  function portfolioSettings(answers) {
+    const portfolio = answers.portfolio || NO_ASSETS;
+    const hasAssets = portfolio.production || portfolio.consumption;
+    const capacity = hasAssets ? +answers.capacityMW || 0 : 0;
+    const sites = hasAssets && capacity > 0 ? Math.max(1, Math.round(+answers.sites || 1)) : 0;
+    const siteMW = Math.round((capacity / sites) * 10) / 10;
+    return {
+      connectionsMW: Array(sites).fill(siteMW).join(', '),
+      profileMean: 0,
+      smartMean: 0,
+      profileSd: 0,
+      smartSd: RECONCILIATION_SD_PER_MW * capacity,
+      shiftShare: portfolio.production && portfolio.consumption ? 1 : 0,
+    };
+  }
+
+  /** The settings that a set of answers gives: the member type's preset, with the answers on top. */
+  function fromAnswers(answers) {
+    const { type } = answers;
+    const own = PRESETS[type].values;
+    const settings = preset(type);
+    const continuous = answers.markets !== 'auctions';
+    const auctions = answers.markets !== 'continuous';
+    const volume = (traded, value) => (traded ? +value || 0 : 0);
+    settings.contBuy = volume(continuous, answers.contBuy);
+    settings.contSell = volume(continuous, answers.contSell);
+    settings.aucBuy = volume(auctions, answers.aucBuy);
+    settings.aucSell = volume(auctions, answers.aucSell);
+    // Orders resting over 16:00 and evening buying scale with continuous buying (the preset's ratio).
+    const scale = own.contBuy ? settings.contBuy / own.contBuy : 0;
+    settings.restingCont = (own.restingCont || 0) * scale;
+    settings.eveningCont = (own.eveningCont || 0) * scale;
+    settings.weekend = [true, 'yes', 'both'].includes(answers.weekend);
+    settings.aucLimitPrice =
+      answers.aucLimitPrice == null || answers.aucLimitPrice === '' ? null : +answers.aucLimitPrice;
+    settings.price = +answers.price;
+    settings.stressPrice = +answers.stressPrice;
+    settings.stressAvgPrice = STRESS_AVERAGE_FACTOR * settings.price; // averages move less than spot prices
+    settings.carryShare = LEVELS.carryShare[answers.carry] || 0;
+    if (type === 'trader' && Object.hasOwn(LEVELS.s, answers.netting)) settings.s = LEVELS.s[answers.netting];
+    const aggregator = type === 'aggregator';
+    settings.nominatedIn = aggregator ? +answers.nominatedIn || 0 : 0;
+    settings.nonDelivery = aggregator ? +answers.nonDelivery || 0 : 0;
+    settings.imbShare = LEVELS.imbShare[answers.balance];
+    settings.bias = LEVELS.bias[answers.lean];
+    Object.assign(settings, portfolioSettings(answers));
+    settings.replenish = answers.replenish;
+    settings.collateralMode = answers.collateral === 'daily' ? 'daily' : 'static';
+    if (answers.week) settings.week = answers.week;
+    return settings;
+  }
+
+  return { suggestBalance, strategyVolumes, defaultAnswers, fromAnswers };
+})(typeof WalletSettings !== 'undefined' ? WalletSettings : require('./settings.js'));
+/* Direct+ wallet: what one member needs, by purpose and by wallet segment (docs/wallet-model.md). Each member is treated
+   as its own BRP, and the wallet pools all members at one connected bank, so nothing nets between members
+   (wallet-model §11.1). WalletCalc is the one object the pages use: the calculation, plus the settings (settings.js)
+   and the prospect questionnaire (answers.js). */
+const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet, Settings, Answers) => {
+  'use strict';
+
+  const SEGMENTS = {
     trading: 'Trading collateral (at ECC)',
     brp: 'BRP collateral',
-    available: 'Available balance'
+    available: 'Available balance',
   };
-  function num(v) { return v == null || v === '' ? null : +v; }
-  function listMW(v) { return String(v || '').split(/[,;\s]+/).filter(function (x) { return x !== ''; }).map(Number).filter(function (x) { return isFinite(x) && x > 0; }); }
-  function sunday(isoMonday) { return E.iso(new Date(E.parse(isoMonday).getTime() + 6 * 86400000)); }
 
-  /* One scenario. o = { stress, priceStress, volMult, imbMult }:
-       stress       the stress end: stress price, stress average price, stress loss share, stress update time, B at its
-                    95th percentile;
-       priceStress  prices at the stress price only (a sensitivity);
-       volMult, imbMult  scale the volumes or the imbalance (sensitivities). */
-  function scenario(st, o) {
-    o = o || {};
-    var hot = o.stress || o.priceStress, fp = hot ? st.stressPrice / st.price : 1, vm = o.volMult || 1, im = o.imbMult || 1;
-    var b = { weekend: st.weekend, price: st.price, negShare: st.negShare, negPrice: st.negPrice,
-              cont: { buy: st.contBuy * vm, sell: st.contSell * vm },
-              auc: { buy: st.aucBuy * vm, sell: st.aucSell * vm, limitPrice: num(st.aucLimitPrice) },
-              lossShare: o.stress ? st.lossShare : 0 };
-    var px = { maxMarket: num(st.aucMaxPrice), minMarket: num(st.aucMinPrice), minReal: num(st.realMin), maxReal: num(st.realMax) };
-    var flowOf = function (d) { return B.dayFlows(b, fp, E.isBD(E.parse(d)) || !!st.weekend, px); };
-    var days = E.weekDays(st.week), isoDays = days.map(E.iso);
+  const SENSITIVITIES = [
+    { id: 'vol+', label: 'Volumes +50%', variant: { volMult: 1.5 } },
+    { id: 'vol-', label: 'Volumes −50%', variant: { volMult: 0.5 } },
+    { id: 'price', label: 'All prices at the stress price', variant: { priceStress: true } },
+    { id: 'imb', label: 'Imbalance twice the assumption', variant: { imbMult: 2 } },
+  ];
 
-    // Part 2: settlement windows and cash
-    var ws = S.windows(isoDays, flowOf, function () { return st.feesPerWindow || 0; });
-    var cash = S.cashPath(ws, st.replenish);
-    // Bad days (Direct+ decision, 26 Sep 2026): room for one bad day's trading loss in a normal week, two in a tough week,
-    // not a loss every day. A bad day moves the price against the largest open position: M7 buys not yet sold again
-    // (1 − s of them) plus auction buys, which stay open until sold or used. Traders only: for aggregators and asset owners
-    // buying is a planned cost that daily settlement already collects (their presets set no bad days).
-    var openMWh = ((1 - (+st.s || 0)) * st.contBuy + st.aucBuy) * vm;
-    var badDays = +(o.stress ? st.badDaysStress : st.badDays) || 0, badDay = badDays * openMWh * (+st.badMove || 0);
-    // Float: purchases paid one collection before their sale (bought before the 16:00 cut, sold after). In steady state each
-    // collection pays the new carried purchases and receives the previous ones, so the amount stays in the wallet.
-    var carry = (st.carryShare || 0) * (st.contBuy + st.aucBuy) * vm * st.price * fp;
+  const UNREACHABLE =
+    'The targets cannot be reached with this split: a market with a 0% share only has its base limit.';
+  const SAME_AMOUNT = 0.5; // a carried amount within 50 cents of what the trading needs is enough
 
-    // Part 1: ECC collateral
-    var tg = L.targets(days, flowOf, st.s, st.restingCont * fp);
-    var bl = L.baseLimits({ restingCont: st.restingCont * fp, eveningCont: st.eveningCont * fp, updateHour: +(o.stress ? st.stressUpdateHour : st.updateHour),
-                            restingAuc: st.restingAuc * fp, restingAucWeekend: st.restingAucWeekend * fp,
-                            override: { cont: { bd: num(st.blContBD), nbd: num(st.blContNBD) }, da: { bd: num(st.blAucBD), nbd: num(st.blAucNBD) } } });
-    // Collateral carried over from the limit calculator: that amount sits at ECC; what the trading needs is still worked out.
-    var fixedC = num(st.eccCollateral);
-    var OR = {};
-    ws.forEach(function (w) { OR[w.close] = w.OR; });
-    var ctx = { days: days, key: +st.key, measure: st.measure, bl: bl,
-                OR: function (d) { return OR[d]; }, cont: function (d) { return tg.cont[d]; }, auc: function (d) { return tg.auc[d] || 0; } };
-    var split = st.splitMode === 'mine' ? { key: +st.key, C: L.solve(ctx, +st.key) } : L.cheapest(ctx);
-    if (!split || split.C === null) {
-      if (fixedC == null) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
-      split = { key: +st.key, C: null };
-    }
-    var binding = null;
-    days.forEach(function (d) {                        // the calculation day that sets the amount
-      var one = { days: [d], key: ctx.key, measure: ctx.measure, bl: bl, OR: ctx.OR, cont: ctx.cont, auc: ctx.auc };
-      var c = L.solve(one, split.key);
-      if (!binding || c > binding.C) binding = { date: E.iso(d), C: c, gap: E.day(d, { C: 0, OR: 0, cont: { bd: 0, nbd: 0, key: 0 }, da: { bd: 0, nbd: 0, key: 0 } }).gap1 };
-    });
-    // Collateral by calculation day, each day on its own (with its own cheapest split when that is the choice). With
-    // 'daily' collateral the member changes it every business day (Direct+ decision, 26 Sep 2026): less during the week, more before
-    // weekends and holidays. ASSUMPTION: a change is in place by that day's evening calculation; how fast the Direct+
-    // platform applies it is open (W4). For one day the engine's own search gives the same answer as ecc-link.js.
-    var perDay = days.map(function (d) {
-      var iso = E.iso(d), nb = E.nextBD(d), tAuc = 0;
-      for (var x = new Date(d.getTime() + 864e5); x <= nb; x = new Date(x.getTime() + 864e5)) tAuc = Math.max(tAuc, tg.auc[E.iso(x)] || 0);
-      var p1 = { OR: OR[iso], cont: { bd: bl.cont.bd, nbd: bl.cont.nbd, key: +st.key }, da: { bd: bl.da.bd, nbd: bl.da.nbd, key: 100 - (+st.key) } };
-      var t1 = { cont: tg.cont[iso], contMeasure: st.measure || 'l18', da: tAuc, daNonBD: !!st.weekend };
-      var r = st.splitMode === 'mine' ? { key: +st.key, C: E.solve([d], p1, t1) } : E.cheapestKey([d], p1, t1);
-      return { date: iso, gap: Math.round((nb - d) / 864e5), key: r ? r.key : null, C: r ? r.C : null };
-    });
-    if (fixedC == null && perDay.some(function (x) { return x.C === null; })) throw new Error('The targets cannot be reached with this split: a market with a 0% share only has its base limit.');
-    var maxOf = function (f) { var xs = perDay.filter(f).map(function (x) { return x.C; }); return xs.length ? Math.max.apply(null, xs) : null; };
-    var daily = st.collateralMode === 'daily';
-    var peakC = daily ? maxOf(function () { return true; }) : split.C;
-    var weekdayC = daily ? (maxOf(function (x) { return x.gap === 1; }) || peakC) : split.C;
-    // need: what the trading needs at this split (null: out of reach at this split); short: the carried amount is less.
-    var fixed = null;
-    if (fixedC != null) { fixed = { C: fixedC, need: split.C, short: split.C === null || split.C > fixedC + 0.5 }; peakC = weekdayC = fixedC; daily = false; }
-    // Direct+ accepts cash only (Direct+ decision, 26 Sep 2026): no bank guarantees, and the wallet holds no ECC default fund.
-    // A cap limit (ECC, optional) caps the collateral that counts for limits, so collateral needed above it is out of reach.
-    var cap = num(st.cap), overCap = cap != null && peakC > cap;
+  /** A setting that may be left blank: null when it is, else a number. */
+  const optional = (value) => (value == null || value === '' ? null : +value);
 
-    // Part 3: BRP security on the member's own figures. Direct+ members put up their marginal collateral: no minimum and
-    // no volume floors, which apply once to the Direct+ BRP (Direct+ decision, 26 Sep 2026). 'standalone' is the member as its own
-    // BRP, with both, for comparison.
-    var marginal = st.brpBasis !== 'standalone';
-    var bx = (st.contBuy + st.aucBuy) * vm, sx = (st.contSell + st.aucSell) * vm, nom = st.nominatedIn * vm;
-    var shift = st.perPeriod === 'ii' ? st.shiftShare : 0;
-    var vol = function (buy, sell) { return Math.abs(buy - sell) + 2 * Math.min(buy, sell) * shift; };
-    var V = st.counterparties === 'total' ? vol(bx + nom, sx) : Math.max(vol(bx, sx), nom);
-    // Price for BRP collateral: €40 for now (Direct+ decision, 26 Sep 2026), in a tough week too; blank = the market averages.
-    var pAvg = num(st.brpPrice) != null ? num(st.brpPrice) : hot ? st.stressAvgPrice : st.price;
-    var ruleId = st.rule === 'auto' ? R.ruleFor(isoDays[0]) : st.rule;
-    var cur = R.current({ kind: 'first', expected: V, price3m: pAvg, capacityMW: R.countedCapacity(listMW(st.connectionsMW), st.between), reading: st.reading, floors: !marginal });
-    var floor = marginal || st.reading === 'flat' ? 0 : 1200, pFl = Math.max(pAvg, 40);
-    cur.Aup = V * pFl; cur.Adown = Math.max(V, floor) * pFl;
-    var base = st.imbBase === 'nominated' ? nom : st.imbBase === 'production' ? Math.max(sx - bx, 0) : bx + sx;
-    var wk = W.weekly({ weeklyVolume: base * 7, share: st.imbShare * im, bias: st.bias, price: st.price * fp, statePrice2Share: st.state2Share,
-                        stateGap2: st.state2Gap, cv: st.cv, shortVolume: st.nonDelivery * nom * 7 * im });
-    var Bc = o.stress ? W.stressB(wk.mu, wk.sigma, { sigmaType: st.sigma }) : wk.B;
-    var Cc = st.profileMean + 0.5 * st.profileSd, Dc = st.smartMean + 0.5 * st.smartSd;
-    var dr = R.draft({ A: V * pAvg, B: Bc, C: Cc, D: Dc, minimum: !marginal });
-    // ASSUMPTION: a marginal share never goes below €0, even when the draft's components are negative.
-    if (marginal) { cur.security = Math.max(cur.security, 0); dr.security = Math.max(dr.security, 0); }
-    var byRule = { current: cur, draft: dr };
-    var security = byRule[ruleId].security;
-    var ramp = R.rampUp({ A: V * pAvg, weekly: wk.mu, weeklySd: wk.sigma, profile: st.profileMean, profileSd: st.profileSd, smart: st.smartMean,
-                          smartSd: st.smartSd, sigma: st.sigma, minimum: !marginal, lagWeeks: +st.debitLagWeeks });
-    if (marginal) {
-      ramp.peak = null;
-      ramp.months.forEach(function (mo) { mo.security = Math.max(mo.security, 0); if (!ramp.peak || mo.security > ramp.peak.security) ramp.peak = mo; });
-    }
-    var exit = W.exitTail(sunday(isoDays[0]), { profile: st.profileMean !== 0 || st.profileSd > 0, smart: st.smartMean !== 0 || st.smartSd > 0 });
+  /** The MW list setting ('30, 15') as numbers, ignoring anything that is not a positive number. */
+  const listMW = (value) =>
+    String(value || '')
+      .split(/[,;\s]+/)
+      .filter((part) => part !== '')
+      .map(Number)
+      .filter((mw) => Number.isFinite(mw) && mw > 0);
 
-    // Part 4: TenneT account
-    var invoice = o.stress ? wk.mu + 2 * wk.sigma : Math.max(wk.mu, 0);
-    var debit = W.imbalanceDebit(isoDays[0], +st.debitLagWeeks);
-    var account = W.accountNeed([{ date: debit, amount: invoice }], security, 0, ruleId === 'current' ? 'current' : undefined);
+  const highestC = (days) => (days.length ? Math.max(...days.map((day) => day.C)) : null);
 
-    var parts = [
-      { id: 'ecc', label: 'ECC trading collateral', segment: 'trading', value: peakC, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
-      { id: 'settlement', label: 'ECC settlement', segment: 'available', value: cash.need + carry + badDay, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate · ECC rule' },
-      { id: 'brp', label: marginal ? 'BRP collateral (marginal)' : 'BRP security (TenneT)', segment: 'brp', value: security, form: 'Cash', formRule: 'Cash only', confidence: (ruleId === 'current' ? 'TenneT rule' : 'Draft rule') + ' · Direct+ contract' },
-      { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, form: 'Cash', formRule: 'Cash only', confidence: 'Estimate' }
-    ];
-    var total = 0, seg = {};
-    parts.forEach(function (p) { total += p.value; seg[p.segment] = (seg[p.segment] || 0) + p.value; });
+  /** The daily trading plan, as WalletBehaviour.dayFlows() reads it. */
+  function tradingPlan(st, stress, volMult) {
     return {
-      total: total, parts: parts, segments: seg,
-      // With daily collateral: what the wallet needs Monday to Thursday, when only the weekday amount sits at ECC.
-      weekdayTotal: total - peakC + weekdayC,
-      ecc: { key: split.key, C: peakC, mode: daily ? 'daily' : 'static', weekday: weekdayC, peak: peakC, perDay: perDay, overCap: overCap, fixed: fixed, targets: tg, baseLimits: bl, binding: binding, windows: ws },
-      settlement: { windows: ws, need: cash.need + carry + badDay, flows: cash.need, float: carry, badDay: badDay, badDays: badDays, openMWh: openMWh, path: cash.path },
-      brp: { basis: marginal ? 'marginal' : 'standalone', rule: ruleId, other: ruleId === 'current' ? 'draft' : 'current', current: cur, draft: dr, security: security, volume: V, price: pAvg, weekly: wk, ramp: ramp, exit: exit },
-      tennet: { invoice: invoice, debit: debit, account: account, weekly: wk }
+      price: st.price,
+      negShare: st.negShare,
+      negPrice: st.negPrice,
+      cont: { buy: st.contBuy * volMult, sell: st.contSell * volMult },
+      auc: { buy: st.aucBuy * volMult, sell: st.aucSell * volMult, limitPrice: optional(st.aucLimitPrice) },
+      lossShare: stress ? st.lossShare : 0,
     };
   }
 
-  /* Everything the page shows for one set of settings. */
-  function compute(st) {
-    var exp = scenario(st, {}), str = scenario(st, { stress: true });
-    var sens = [
-      { id: 'vol+', label: 'Volumes +50%', total: scenario(st, { volMult: 1.5 }).total },
-      { id: 'vol-', label: 'Volumes −50%', total: scenario(st, { volMult: 0.5 }).total },
-      { id: 'price', label: 'All prices at the stress price', total: scenario(st, { priceStress: true }).total },
-      { id: 'imb', label: 'Imbalance twice the assumption', total: scenario(st, { imbMult: 2 }).total }
+  /**
+   * ECC settlement (wallet-model §3): the cash that the daily collections need, and two buffers on top.
+   *   float    purchases paid one collection before their sale (bought before the 16:00 cut, sold after it). Each
+   *            collection pays the new carried purchases and receives the previous ones, so the amount stays.
+   *   bad days room for one bad day's trading loss in a normal week and two in a tough week, not a loss every day
+   *            (Direct+ decision). A bad day moves the price against the largest open position: the M7 buys not yet
+   *            sold again (1 − s of them) and the auction buys, which stay open until sold or used. Traders only: for
+   *            aggregators and asset owners buying is a planned cost that the collections already cover.
+   */
+  function settlementNeed({ st, days, flowOf, stress, priceFactor, volMult }) {
+    const windows = Settlement.windows(days, flowOf, () => st.feesPerWindow || 0);
+    const cash = Settlement.cashPath(windows, st.replenish);
+    const float = (st.carryShare || 0) * (st.contBuy + st.aucBuy) * volMult * st.price * priceFactor;
+    const openMWh = ((1 - (+st.s || 0)) * st.contBuy + st.aucBuy) * volMult;
+    const badDays = +(stress ? st.badDaysStress : st.badDays) || 0;
+    const badDay = badDays * openMWh * (+st.badMove || 0);
+    return {
+      windows,
+      need: cash.need + float + badDay,
+      flows: cash.need,
+      float,
+      badDay,
+      badDays,
+      openMWh,
+      path: cash.path,
+    };
+  }
+
+  /**
+   * ECC trading collateral (wallet-model §2) for the week's calculation days, at the split chosen (splitMode).
+   *   Static collateral is one amount all week. With 'daily' the member changes it every business day (Direct+
+   *   decision): less during the week, more before weekends and holidays, each day with its own cheapest split when
+   *   that is the choice. ASSUMPTION: a change is in place by that day's evening calculation; how fast the Direct+
+   *   platform applies it is open (open question W4).
+   *   An amount carried over from the limit calculator (eccCollateral) sits at ECC as it is. What the trading needs is
+   *   still worked out, so that the page can say when the amount falls short (fixed.short).
+   *   A cap limit (ECC, optional) caps the collateral that counts for limits: collateral needed above it is out of
+   *   reach (overCap).
+   */
+  function eccCollateral({ st, days, flowOf, stress, priceFactor }, windows) {
+    const restingCont = st.restingCont * priceFactor;
+    const targets = EccLink.targets(days, flowOf, st.s, restingCont);
+    const baseLimits = EccLink.baseLimits({
+      restingCont,
+      eveningCont: st.eveningCont * priceFactor,
+      updateHour: +(stress ? st.stressUpdateHour : st.updateHour),
+      restingAuc: st.restingAuc * priceFactor,
+      restingAucWeekend: st.restingAucWeekend * priceFactor,
+      override: {
+        cont: { bd: optional(st.blContBD), nbd: optional(st.blContNBD) },
+        da: { bd: optional(st.blAucBD), nbd: optional(st.blAucNBD) },
+      },
+    });
+    const openRisk = Object.fromEntries(windows.map((window) => [window.close, window.OR]));
+    const key = +st.key;
+    const search = {
+      days,
+      key,
+      measure: st.measure,
+      bl: baseLimits,
+      OR: (date) => openRisk[date],
+      cont: (date) => targets.cont[date],
+      auc: (date) => targets.auc[date] || 0,
+    };
+    const carried = optional(st.eccCollateral);
+    const found = st.splitMode === 'mine' ? { key, C: EccLink.solve(search, key) } : EccLink.cheapest(search);
+    const split = found && found.C !== null ? found : { key, C: null };
+    if (split.C === null && carried === null) throw new Error(UNREACHABLE);
+
+    // The calculation day that sets the amount: the one that needs the most collateral on its own.
+    let binding = null;
+    for (const day of days) {
+      const C = EccLink.solve({ ...search, days: [day] }, split.key);
+      if (!binding || C > binding.C) {
+        binding = { date: Engine.iso(day), C, gap: Dates.daysBetween(day, Engine.nextBD(day)) };
+      }
+    }
+
+    // Each calculation day on its own. For one day the engine's own search gives the same answer as EccLink.solve().
+    const perDay = days.map((day) => {
+      const date = Engine.iso(day);
+      const next = Engine.nextBD(day);
+      let aucTarget = 0;
+      for (const auctionDay of Dates.eachDay(Dates.addDays(day, 1), next)) {
+        aucTarget = Math.max(aucTarget, targets.auc[Engine.iso(auctionDay)] || 0);
+      }
+      const params = { OR: openRisk[date], ...EccLink.marketParams(baseLimits, key) };
+      const target = {
+        cont: targets.cont[date],
+        contMeasure: st.measure || 'l18',
+        da: aucTarget,
+        daNonBD: !!st.weekend,
+      };
+      const best =
+        st.splitMode === 'mine'
+          ? { key, C: Engine.solve([day], params, target) }
+          : Engine.cheapestKey([day], params, target);
+      return { date, gap: Dates.daysBetween(day, next), key: best ? best.key : null, C: best ? best.C : null };
+    });
+    if (carried === null && perDay.some((one) => one.C === null)) throw new Error(UNREACHABLE);
+
+    const fixed =
+      carried === null
+        ? null
+        : { C: carried, need: split.C, short: split.C === null || split.C > carried + SAME_AMOUNT };
+    const daily = !fixed && st.collateralMode === 'daily';
+    let C = split.C;
+    let weekday = split.C;
+    if (fixed) {
+      C = carried;
+      weekday = carried;
+    } else if (daily) {
+      C = highestC(perDay);
+      weekday = highestC(perDay.filter((one) => one.gap === 1)) ?? C;
+    }
+    const cap = optional(st.cap);
+    return {
+      key: split.key,
+      C,
+      mode: daily ? 'daily' : 'static',
+      weekday,
+      perDay,
+      overCap: cap !== null && C > cap,
+      fixed,
+      targets,
+      baseLimits,
+      binding,
+    };
+  }
+
+  /** The volume (MWh a day) that the imbalance is measured against: the imbBase setting. */
+  function imbalanceBase(basis, { buys, sells, nominated }) {
+    if (basis === 'nominated') return nominated;
+    if (basis === 'production') return Math.max(sells - buys, 0); // the net sold volume
+    return buys + sells;
+  }
+
+  /** The weekly imbalance invoice (wallet-model §6.2). An aggregator's non-delivery is imbalance that is always short. */
+  function weeklyImbalance({ st, volumes, priceFactor, imbMult }) {
+    return Tennet.weekly({
+      volume: imbalanceBase(st.imbBase, volumes) * 7,
+      share: st.imbShare * imbMult,
+      bias: st.bias,
+      price: st.price * priceFactor,
+      state2Share: st.state2Share,
+      state2Gap: st.state2Gap,
+      cv: st.cv,
+      shortVolume: st.nonDelivery * volumes.nominated * 7 * imbMult,
+    });
+  }
+
+  /* The member's highest daily net volume (MWh) as the BRP rules read it (INTERPRETATION settings, wallet-model §4.3).
+     Reading (ii) nets per settlement period, so volume bought and sold in different periods (shiftShare) counts twice.
+     'max' takes the largest single counterparty (the exchange, or the BRPs it nominates from); 'total' nets them all. */
+  function brpVolume({ st, volumes: { buys, sells, nominated } }) {
+    const shift = st.perPeriod === 'ii' ? st.shiftShare : 0;
+    const net = (buy, sell) => Math.abs(buy - sell) + 2 * Math.min(buy, sell) * shift;
+    return st.counterparties === 'total' ? net(buys + nominated, sells) : Math.max(net(buys, sells), nominated);
+  }
+
+  /**
+   * BRP collateral on the member's own figures (wallet-model §4). Direct+ members put up their marginal collateral:
+   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). 'standalone' is the
+   * member as its own BRP, with both, for comparison.
+   */
+  function brpCollateral(run, weekly) {
+    const { st, days, hot, stress } = run;
+    const marginal = st.brpBasis !== 'standalone';
+    const volume = brpVolume(run);
+    // €40 for now (Direct+ decision), in a tough week too; blank: the market's average price.
+    const price = optional(st.brpPrice) ?? (hot ? st.stressAvgPrice : st.price);
+    const rule = Brp.ruleFor(Engine.iso(days[0]), st.rule);
+    const current = Brp.current({
+      volume,
+      price3m: price,
+      capacityMW: Brp.countedCapacity(listMW(st.connectionsMW), st.between),
+      reading: st.reading,
+      floors: !marginal,
+    });
+    const { sigmaCD } = Brp.RULES.draft;
+    const draft = Brp.draft({
+      A: volume * price,
+      B: stress ? Tennet.stressB(weekly.mean, weekly.sd, { sigma: st.sigma }) : weekly.B,
+      C: st.profileMean + sigmaCD * st.profileSd, // in steady state: the monthly invoice's mean + ½σ
+      D: st.smartMean + sigmaCD * st.smartSd,
+      minimum: !marginal,
+    });
+    const ramp = Brp.rampUp({
+      A: volume * price,
+      weekly: weekly.mean,
+      weeklySd: weekly.sd,
+      profile: st.profileMean,
+      profileSd: st.profileSd,
+      smart: st.smartMean,
+      smartSd: st.smartSd,
+      sigma: st.sigma,
+      minimum: !marginal,
+      lagWeeks: +st.debitLagWeeks,
+    });
+    const exit = Tennet.exitTail(Engine.iso(Dates.addDays(days[0], 6)), {
+      profile: st.profileMean !== 0 || st.profileSd > 0,
+      smart: st.smartMean !== 0 || st.smartSd > 0,
+    });
+    return {
+      basis: marginal ? 'marginal' : 'standalone',
+      rule,
+      other: rule === 'current' ? 'draft' : 'current',
+      current,
+      draft,
+      security: (rule === 'current' ? current : draft).security,
+      volume,
+      price,
+      ramp,
+      exit,
+    };
+  }
+
+  /**
+   * One scenario for settings `st`. variant = { stress, priceStress, volMult, imbMult }:
+   *   stress       the tough week: stress prices and averages, the stress loss share and update hour, two bad days,
+   *                and B at its 95th percentile
+   *   priceStress  every price at the stress price, and nothing else (a sensitivity)
+   *   volMult, imbMult  scale the volumes or the imbalance (sensitivities)
+   */
+  function scenario(st, { stress = false, priceStress = false, volMult = 1, imbMult = 1 } = {}) {
+    const hot = stress || priceStress;
+    const priceFactor = hot ? st.stressPrice / st.price : 1;
+    const plan = tradingPlan(st, stress, volMult);
+    const prices = {
+      maxMarket: optional(st.aucMaxPrice),
+      minMarket: optional(st.aucMinPrice),
+      minReal: optional(st.realMin),
+      maxReal: optional(st.realMax),
+    };
+    const run = {
+      st,
+      days: Engine.weekDays(st.week),
+      flowOf: (day) => Behaviour.dayFlows(plan, priceFactor, Engine.isBD(Engine.parse(day)) || !!st.weekend, prices),
+      stress,
+      hot,
+      priceFactor,
+      volMult,
+      imbMult,
+      volumes: {
+        buys: (st.contBuy + st.aucBuy) * volMult,
+        sells: (st.contSell + st.aucSell) * volMult,
+        nominated: st.nominatedIn * volMult,
+      },
+    };
+
+    const settlement = settlementNeed(run);
+    const ecc = eccCollateral(run, settlement.windows);
+    const weekly = weeklyImbalance(run);
+    const brp = brpCollateral(run, weekly);
+    // The next imbalance invoice: the weekly mean, or in a tough week the mean plus two standard deviations (as
+    // component B reads the invoices).
+    const invoice = stress ? weekly.B : Math.max(weekly.mean, 0);
+    const debit = Tennet.imbalanceDebit(Engine.iso(run.days[0]), +st.debitLagWeeks);
+
+    const parts = [
+      {
+        id: 'ecc',
+        label: 'ECC trading collateral',
+        segment: 'trading',
+        value: ecc.C,
+        confidence: 'Estimate · ECC rule',
+      },
+      {
+        id: 'settlement',
+        label: 'ECC settlement',
+        segment: 'available',
+        value: settlement.need,
+        confidence: 'Estimate · ECC rule',
+      },
+      {
+        id: 'brp',
+        label: brp.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security (TenneT)',
+        segment: 'brp',
+        value: brp.security,
+        confidence: `${brp.rule === 'current' ? 'TenneT rule' : 'Draft rule'} · Direct+ contract`,
+      },
+      { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, confidence: 'Estimate' },
     ];
-    return { settings: st, expected: exp, stress: str, sensitivity: sens, segments: SEGMENTS, assumptions: assumptions(st) };
+    let total = 0;
+    const segments = {};
+    for (const part of parts) {
+      total += part.value;
+      segments[part.segment] = (segments[part.segment] || 0) + part.value;
+    }
+    return {
+      total,
+      parts,
+      segments,
+      // With daily collateral: what the wallet needs Monday to Thursday, when only the weekday amount sits at ECC.
+      weekdayTotal: total - ecc.C + ecc.weekday,
+      ecc,
+      settlement,
+      brp,
+      tennet: { invoice, debit },
+    };
   }
 
-  function assumptions(st) {
-    var out = [];
-    GROUPS.forEach(function (g) { g.fields.forEach(function (fl) { if (fl.tag !== 'input') out.push({ group: g.title, key: fl.key, label: fl.label, value: st[fl.key], unit: fl.unit, kind: fl.kind, tag: fl.tag, src: fl.src }); }); });
-    return out;
+  /** Everything the pages show for one set of settings. */
+  function compute(st) {
+    return {
+      settings: st,
+      expected: scenario(st),
+      stress: scenario(st, { stress: true }),
+      sensitivity: SENSITIVITIES.map(({ id, label, variant }) => ({ id, label, total: scenario(st, variant).total })),
+      segments: SEGMENTS,
+      assumptions: Settings.assumptions(st),
+    };
   }
 
-  return { NETTING: NETTING, GROUPS: GROUPS, BASE: BASE, PRESETS: PRESETS, SEGMENTS: SEGMENTS, preset: preset, scenario: scenario, compute: compute,
-           strategyVolumes: strategyVolumes, defaultAnswers: defaultAnswers, fromAnswers: fromAnswers, suggestBalance: suggestBalance };
-})(typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
-   typeof WalletBehaviour !== 'undefined' ? WalletBehaviour : require('./behaviour.js'),
-   typeof WalletSettlement !== 'undefined' ? WalletSettlement : require('./settlement.js'),
-   typeof WalletEccLink !== 'undefined' ? WalletEccLink : require('./ecc-link.js'),
-   typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
-   typeof WalletTennet !== 'undefined' ? WalletTennet : require('./tennet-account.js'));
+  return {
+    SEGMENTS,
+    scenario,
+    compute,
+    GROUPS: Settings.GROUPS,
+    BASE: Settings.BASE,
+    PRESETS: Settings.PRESETS,
+    preset: Settings.preset,
+    suggestBalance: Answers.suggestBalance,
+    strategyVolumes: Answers.strategyVolumes,
+    defaultAnswers: Answers.defaultAnswers,
+    fromAnswers: Answers.fromAnswers,
+  };
+})(
+  typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
+  typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
+  typeof WalletBehaviour !== 'undefined' ? WalletBehaviour : require('./behaviour.js'),
+  typeof WalletSettlement !== 'undefined' ? WalletSettlement : require('./settlement.js'),
+  typeof WalletEccLink !== 'undefined' ? WalletEccLink : require('./ecc-link.js'),
+  typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
+  typeof WalletTennet !== 'undefined' ? WalletTennet : require('./tennet-account.js'),
+  typeof WalletSettings !== 'undefined' ? WalletSettings : require('./settings.js'),
+  typeof WalletAnswers !== 'undefined' ? WalletAnswers : require('./answers.js'),
+);
 (function () {
   'use strict';
   var E = LimitEngine, C = WalletCalc;
@@ -1751,7 +2847,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var e = x.ecc, day = e.binding && e.binding.date, key = e.key;
     if (e.mode === 'daily') { var pk = e.perDay.reduce(function (m, d) { return d.C > m.C ? d : m; }); day = pk.date; key = pk.key; }
     if (!day) return null;
-    var OR = 0; e.windows.forEach(function (w) { if (w.close === day) OR = w.OR; });
+    var OR = 0; x.settlement.windows.forEach(function (w) { if (w.close === day) OR = w.OR; });
     var nb = E.iso(E.nextBD(E.parse(day))), ta = 0;
     for (var d = E.parse(day); E.iso(d) < nb; ) { d = new Date(d.getTime() + 864e5); ta = Math.max(ta, e.targets.auc[E.iso(d)] || 0); }
     var w = { week: ans.week, C: Math.ceil(e.C), key: key, or: Math.floor(OR), cbd: Math.round(e.baseLimits.cont.bd), cnbd: Math.round(e.baseLimits.cont.nbd),
@@ -2103,7 +3199,7 @@ var WalletCalc = (function (E, B, S, L, R, W) {
     var box = clear($('when')), x = primary.exp, y = primary.str, se = x.settlement, parts = {};
     $('when-sub').hidden = !both; $('when-sub').textContent = 'Shown for trading at weekends and on holidays too.';
     x.parts.forEach(function (p) { parts[p.id] = p.value; });
-    var start = x.ecc.mode === 'daily' ? 'Trading collateral at ECC: ' + eur(x.ecc.weekday) + '. Raise it to ' + eur(x.ecc.peak) + ' for the evening calculation before each weekend or holiday, and lower it again after.' : 'Trading collateral at ECC: ' + eur(parts.ecc) + '.';
+    var start = x.ecc.mode === 'daily' ? 'Trading collateral at ECC: ' + eur(x.ecc.weekday) + '. Raise it to ' + eur(x.ecc.C) + ' for the evening calculation before each weekend or holiday, and lower it again after.' : 'Trading collateral at ECC: ' + eur(parts.ecc) + '.';
     if (parts.brp > 0.5) start += ' BRP collateral: ' + eur(parts.brp) + '.';
     if (se.float > 0.5) start += ' Float for positions held over 16:00: ' + eur(se.float) + '.';
     if (se.badDay > 0.5) start += ' Room for ' + (se.badDays === 1 ? 'a bad trading day' : se.badDays + ' bad trading days') + ': ' + eur(se.badDay) + '.';

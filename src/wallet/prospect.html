@@ -541,7 +541,7 @@
     var e = x.ecc, day = e.binding && e.binding.date, key = e.key;
     if (e.mode === 'daily') { var pk = e.perDay.reduce(function (m, d) { return d.C > m.C ? d : m; }); day = pk.date; key = pk.key; }
     if (!day) return null;
-    var OR = 0; e.windows.forEach(function (w) { if (w.close === day) OR = w.OR; });
+    var OR = 0; x.settlement.windows.forEach(function (w) { if (w.close === day) OR = w.OR; });
     var nb = E.iso(E.nextBD(E.parse(day))), ta = 0;
     for (var d = E.parse(day); E.iso(d) < nb; ) { d = new Date(d.getTime() + 864e5); ta = Math.max(ta, e.targets.auc[E.iso(d)] || 0); }
     var w = { week: ans.week, C: Math.ceil(e.C), key: key, or: Math.floor(OR), cbd: Math.round(e.baseLimits.cont.bd), cnbd: Math.round(e.baseLimits.cont.nbd),
@@ -893,7 +893,7 @@
     var box = clear($('when')), x = primary.exp, y = primary.str, se = x.settlement, parts = {};
     $('when-sub').hidden = !both; $('when-sub').textContent = 'Shown for trading at weekends and on holidays too.';
     x.parts.forEach(function (p) { parts[p.id] = p.value; });
-    var start = x.ecc.mode === 'daily' ? 'Trading collateral at ECC: ' + eur(x.ecc.weekday) + '. Raise it to ' + eur(x.ecc.peak) + ' for the evening calculation before each weekend or holiday, and lower it again after.' : 'Trading collateral at ECC: ' + eur(parts.ecc) + '.';
+    var start = x.ecc.mode === 'daily' ? 'Trading collateral at ECC: ' + eur(x.ecc.weekday) + '. Raise it to ' + eur(x.ecc.C) + ' for the evening calculation before each weekend or holiday, and lower it again after.' : 'Trading collateral at ECC: ' + eur(parts.ecc) + '.';
     if (parts.brp > 0.5) start += ' BRP collateral: ' + eur(parts.brp) + '.';
     if (se.float > 0.5) start += ' Float for positions held over 16:00: ' + eur(se.float) + '.';
     if (se.badDay > 0.5) start += ' Room for ' + (se.badDays === 1 ? 'a bad trading day' : se.badDays + ' bad trading days') + ': ' + eur(se.badDay) + '.';
