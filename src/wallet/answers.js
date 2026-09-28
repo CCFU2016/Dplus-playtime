@@ -114,7 +114,7 @@ const WalletAnswers = ((Settings) => {
     settings.stressPrice = +answers.stressPrice;
     settings.stressAvgPrice = STRESS_AVERAGE_FACTOR * settings.price; // averages move less than spot prices
     settings.carryShare = LEVELS.carryShare[answers.carry] || 0;
-    if (type === 'trader' && Object.hasOwn(LEVELS.s, answers.netting)) settings.s = LEVELS.s[answers.netting];
+    if (type === 'trader' && Object.keys(LEVELS.s).includes(answers.netting)) settings.s = LEVELS.s[answers.netting];
     const aggregator = type === 'aggregator';
     settings.nominatedIn = aggregator ? +answers.nominatedIn || 0 : 0;
     settings.nonDelivery = aggregator ? +answers.nonDelivery || 0 : 0;
