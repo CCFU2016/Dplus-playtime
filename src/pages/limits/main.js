@@ -566,18 +566,35 @@
       tab.type = 'button';
       tab.setAttribute('role', 'tab');
       tab.setAttribute('aria-selected', row.date === selectedDay ? 'true' : 'false');
+      tab.setAttribute('aria-controls', 'cycle');
+      tab.tabIndex = row.date === selectedDay ? 0 : -1;
       tab.appendChild(document.createTextNode(labels.short(row.date)));
       if (row.gap1 > 1 || !standardWeek) {
         tab.appendChild(
           el('small', null, row.gap1 > 1 ? `to ${labels.short(row.nextBD)}` : MONTHS[E.parse(row.date).getUTCMonth()]),
         );
       }
-      tab.addEventListener('click', () => {
-        selectedDay = row.date;
-        render();
-      });
+      tab.addEventListener('click', () => selectDay(row.date));
       box.appendChild(tab);
     }
+  }
+
+  /** Shows another calculation day, keeping the keyboard focus on its tab when a tab had it. */
+  function selectDay(date) {
+    const focused = $('day-tabs').contains(document.activeElement);
+    selectedDay = date;
+    render();
+    if (focused) $('day-tabs').querySelector('[aria-selected="true"]').focus();
+  }
+
+  /** Arrow keys, Home and End move between the day tabs (the tab pattern of the ARIA practices). */
+  function moveBetweenDays(event) {
+    const dates = current ? current.rows.map((row) => row.date) : [];
+    const at = dates.indexOf(selectedDay);
+    const to = { ArrowLeft: at - 1, ArrowRight: at + 1, Home: 0, End: dates.length - 1 }[event.key];
+    if (to === undefined || at < 0) return;
+    event.preventDefault();
+    selectDay(dates[(to + dates.length) % dates.length]);
   }
 
   function cycleHeader(time, what) {
@@ -1194,6 +1211,7 @@
     button.addEventListener('click', () => showWeekView(button.dataset.view));
   }
   $('copy-o09').addEventListener('click', copyPlatformSettings);
+  $('day-tabs').addEventListener('keydown', moveBetweenDays);
   if (window.ResizeObserver) {
     new ResizeObserver(() => {
       if (current) renderAuctions(current);

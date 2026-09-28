@@ -18,6 +18,7 @@
     wholeNumber,
     dateLabel,
     addDays,
+    last,
     tableHead,
     stackedBars,
     legendItem,
@@ -36,12 +37,16 @@
   ];
   const capitalise = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
-  // The weeks to show: next week, and the weeks with an ECC holiday.
+  // The weeks to show: next week, and the weeks with an ECC holiday in the next 12 months.
   const NEXT_WEEK = PageUI.nextMonday();
   const WEEKS = [
     { monday: NEXT_WEEK, label: `Next week (${dateLabel(NEXT_WEEK, true)})` },
-    { monday: '2026-12-21', label: 'Christmas 2026 (from Mon 21 Dec)' },
-    { monday: '2027-03-22', label: 'Easter 2027 (from Mon 22 Mar)' },
+    ...PageUI.holidayWeeks()
+      .filter(({ monday }) => monday !== NEXT_WEEK)
+      .map(({ monday, days, names }) => ({
+        monday,
+        label: `${names.join(' and ')} ${E.parse(last(days)).getUTCFullYear()} (from ${dateLabel(monday)})`,
+      })),
   ];
 
   // ---------- page state ----------
@@ -352,15 +357,17 @@
     });
   }
 
+  /** Shows the estimate for the answers; false when it can't be worked out (the reason shows above the page). */
   function showResults() {
     let runs;
     try {
       runs = estimate();
     } catch (error) {
-      $('step-error').textContent = `We can't estimate this: ${error.message}`;
-      $('step-error').hidden = false;
-      return;
+      $('estimate-error').textContent = `We can't estimate this: ${error.message}`;
+      $('estimate-error').hidden = false;
+      return false;
     }
+    $('estimate-error').hidden = true;
     const primary = runs[runs.length - 1];
     const { settings } = primary;
     try {
@@ -401,6 +408,7 @@
     renderAssumed(primary.full, settings);
     renderCore(primary.full, settings);
     window.scrollTo(0, 0);
+    return true;
   }
 
   function renderHero(runs, settings) {
@@ -1010,8 +1018,7 @@
       if (!ensureWeek(answers.week)) answers.week = WEEKS[0].monday;
       example = hash.get('ex') === '1';
       fillForm();
-      showResults();
-      return;
+      if (showResults()) return;
     }
     if (eccSetup) answers.week = eccSetup.week;
     fillForm();
