@@ -16,7 +16,8 @@ PAGES = {
 # The pages pick their weeks from today: fixed at Monday 28 Sep 2026, so the default week is 5 Oct 2026, the week of
 # the worked examples, and the rule in force is the current one.
 TODAY = '2026-09-28T09:00:00'
-# The calculators redraw a moment after an input (the limit calculator after 60 ms, the wallet after 120 ms).
+# The calculators redraw a moment after an input (the limit calculator after 60 ms, the wallet after 120 ms), and their
+# charts in the next frame after a resize (a ResizeObserver).
 REDRAW_MS = 250
 DESKTOP = {'width': 1280, 'height': 1000}
 PHONE = {'width': 390, 'height': 844}
@@ -27,7 +28,7 @@ def url(page):
 
 
 def redrawn(tab):
-    """Waits until the page has redrawn after an input."""
+    """Waits until the page has redrawn after an input or a resize."""
     tab.wait_for_timeout(REDRAW_MS)
 
 

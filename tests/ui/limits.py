@@ -250,6 +250,7 @@ def sizing(run):
         'the reservation shows its M7 + MATS split: ' + ' | '.join(first_row),
     )
     tab.set_viewport_size(PHONE)
+    redrawn(tab)  # the chart redraws for the new width in the next frame
     check(fits(tab, PHONE['width']), 'sizing fits a 390 px phone screen')
 
 
