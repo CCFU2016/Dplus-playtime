@@ -1,23 +1,66 @@
-# Direct+ limit calculator and wallet calculator
+# Direct+ calculators
 
-Two single-file calculators for Direct+ members clearing with ECC as Direct Clearing Participants:
+Browser calculators for Direct+ members, who trade on EPEX SPOT and clear with ECC as Direct Clearing Participants:
 
-- **Limit calculator** (`src/engine.js`, `src/page.html`): collateral to trading limit and back, for EPEX continuous and day-ahead. GO auctions are left out for now (see `TASKS.md`).
-- **Wallet calculator** (`src/wallet/`): how much money a member needs, in which part of the Direct+ wallet, and by when (Direct+ works with cash only). It covers ECC collateral and settlement, TenneT BRP security and imbalance invoices. Every assumption can be changed on its Settings page.
-- **Prospect questionnaire** (`src/wallet/prospect.html`): a shareable page that asks seven questions (type, trading days, strategy and volumes, prices, portfolio, balancing, managing the wallet) and shows a plain-English estimate from the same calculation. "Skip the questions" on question 1 shows an example estimate from typical answers, marked as for show only.
-- **Between the two:** "Detailed calculation" under "Trading collateral at ECC" opens the limit calculator prefilled with the estimate's collateral, split, base limits, open risk and week; "Use in the wallet estimate" on the limit calculator carries a setup back. Values travel in the link after the `#` (nothing is stored); the estimate keeps its answers there too, so Back reopens it. The links only show where the other page is reachable (the hosted site, or `dist/` on disk).
+- **Limit calculator** (`/limits`): the trading limits a member's collateral gives on M7 continuous and the MATS
+  auctions, day by day through weekends and holidays, or the collateral that target limits need. It applies ECC's
+  dynamic limit rules and reproduces ECC's own worked examples exactly. EPEX GO auctions are left out for now
+  (`TASKS.md`).
+- **Wallet estimate** (`/estimate`): a short questionnaire for prospects, then how much money their Direct+ wallet
+  needs, what for and when: ECC collateral and settlement, TenneT BRP collateral, imbalance invoices. All in cash.
+- **Wallet calculator** (`/wallet`, for Direct+ staff): the same calculation, with every assumption and its source in a
+  Settings view.
 
-      npm test          # ECC's worked examples, engine snapshot, markets, ECC dist hashes, wallet tests
-      npm run build     # writes dist/ (all pages)
-      npm run test:ui   # headless checks of the built pages
-      npm start         # serves dist/ on $PORT (default 3000): /, /estimate, /limits, /wallet
+The limit calculator and the estimate hand setups to each other in the link (after the `#`); nothing is stored.
 
-**Hosting (Railway or any Node host):** `npm start` runs `scripts/serve.js`, which uses only Node's built-in modules. It serves the landing page at `/`, the prospect questionnaire at `/estimate` and the limit calculator at `/limits`. The full wallet calculator at `/wallet` is for Direct+ staff: it is only served when `WALLET_PASSWORD` is set, behind a browser login with user name `WALLET_USER` (default `directplus`). The build runs on deploy, and `dist/` is committed as well.
+> A proof of concept by NVS: explanatory tools, not ECC's or TenneT's calculations. Their own figures always prevail.
+
+## How it is built
+
+Plain JavaScript: no framework and no runtime dependencies. Each page builds into one self-contained HTML file, so it
+opens from disk, runs as a claude.ai artifact, or is served by a small Node server.
+
+    src/
+      engine.js     ECC's limit rules: the calendar, base limits, evening and morning limits, sizing
+      wallet/       the wallet calculation, one module per part, no DOM
+      pages/        one folder per page (markup, stylesheet, script), and shared/ for what the pages share
+    scripts/
+      build.js      inlines each page's stylesheets and scripts into dist/
+      serve.js      the hosted site: /, /estimate, /limits and /wallet
+    tests/
+      engine/       ECC's worked examples, the engine snapshot, the market definitions
+      wallet/       the wallet modules, and the worked example of docs/wallet-model.md
+      ui/           browser checks of the built pages (Python, Playwright)
+    docs/           the models, the open questions and the sources
+
+**Why the numbers can be trusted.** ECC's worked examples are the ground truth (`tests/engine/ecc-examples.test.js`).
+A snapshot pins the engine's output on every business day, the wallet tests pin the model document's worked example,
+and the ECC calculator's published files are pinned by their SHA-256. Every rule parameter cites its source, and the
+code marks where it fills a gap in the rules (`ASSUMPTION`, `INTERPRETATION`); `docs/open-questions.md` lists what is
+still to be confirmed.
+
+## Commands
+
+    npm install
+    npm test              # the Node tests (node:test)
+    npm run build         # rebuild dist/ after a change in src/
+    npm run test:ui       # build, then the browser tests
+    npm run lint          # ESLint (npm run lint:py: ruff on the browser tests)
+    npm run format        # Prettier (npm run format:py: ruff format)
+    npm start             # serve dist/ on $PORT (default 3000)
+
+Node 22 or later. The browser tests need Python 3.11+ with Playwright:
+`pip install -r requirements-dev.txt && python3 -m playwright install chromium`. GitHub Actions runs all of it on
+every push (`.github/workflows/ci.yml`).
+
+**Hosting.** `npm start` runs `scripts/serve.js`, which only uses Node's built-in modules. The wallet calculator at
+`/wallet` is only served when `WALLET_PASSWORD` is set, behind a browser login (user name `WALLET_USER`, default
+`directplus`). `dist/` is committed, and the build also runs on deploy.
+
+## Documentation
 
 - How the limits are modelled: `docs/model.md`
-- The wallet: brief `docs/wallet-brief.md`, model `docs/wallet-model.md`
+- The wallet: the brief `docs/wallet-brief.md` and the model `docs/wallet-model.md`
 - What ECC and TenneT have not confirmed: `docs/open-questions.md`
 - Sources: `docs/sources.md`
 - Working rules for Claude Code: `CLAUDE.md`
-
-These are explanatory tools, not ECC's or TenneT's calculations. Their own figures are what count.

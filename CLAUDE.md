@@ -1,9 +1,10 @@
-# Direct+ limit calculator
+# Direct+ calculators
 
 A browser calculator for Direct+ members (EPEX SPOT, clearing with ECC as Direct Clearing
 Participants, DCP). It turns collateral into trading limits per market, and trading goals back into
 the collateral needed. The audience is members and prospects, not ECC or EPEX staff: keep the
-wording plain and every number traceable to ECC's rules.
+wording plain and every number traceable to ECC's rules. The wallet calculator and the estimate for prospects are
+described below.
 
 ## Layout
 
@@ -28,7 +29,21 @@ wording plain and every number traceable to ECC's rules.
     npm run lint          # ESLint (npm run lint:py: ruff on the UI tests)
     npm run format        # Prettier (npm run format:py: ruff format)
 
-Run `npm test` before and after every engine change.
+Run `npm test` before and after every engine change. CI (`.github/workflows/ci.yml`) runs the lint, the format
+check, `npm test` and the UI tests on every push.
+
+## Code style
+
+- Plain modern JavaScript, formatted by Prettier and checked by ESLint (`npm run format`, `npm run lint`); ruff for
+  the Python UI tests. No dependencies at runtime and no build framework.
+- Each module is an IIFE that defines one global (`LimitEngine`, `WalletCalc`, `PageUI`, `Handoff`, …). The
+  calculation modules (`src/engine.js`, `src/wallet/`) end with `if (typeof module !== 'undefined') module.exports = X;`
+  so the tests can load them in Node; the build strips that line. A page's `main.js` is an IIFE that defines nothing
+  global. New globals go in `eslint.config.mjs`, and new modules in the `PAGES` list of `scripts/build.js`.
+- Page code avoids browser APIs newer than 2021 (for example `Object.hasOwn` and `Array.prototype.at`): members
+  and prospects don't all have new browsers.
+- Node tests use `node:test`; money compares with `assertMoney` (`tests/helpers.js`). A deliberate change to a
+  page's look shows in its UI test or in a screenshot check; say what changed in the commit message.
 
 ## Rules
 
@@ -36,7 +51,7 @@ Run `npm test` before and after every engine change.
 2. **Separate ECC's rules from our assumptions.** Wherever the engine fills a gap ECC has not documented (see `docs/open-questions.md`), mark it in code with `// ASSUMPTION:` and say so in the page text. Never present an assumption as ECC's rule.
 3. **The source for new markets is ECC's own tool.** Its logic is in `reference/ecc/DCP_SimulationTool4Clients_vba.txt`, and its market table is in `reference/ecc/markets_table.csv`. Port from there, and cite the VBA line numbers in comments. Where the VBA and ECC's slide deck disagree, flag it in `docs/open-questions.md` rather than picking one silently.
 4. **Don't change what the page says about ECC timing without a source.** Say "around 18:00" and "best effort". Don't give 17:00 or 20:00 as fixed times.
-5. **The page must stay one self-contained HTML file.** It may load fonts from Google Fonts and nothing else. No build framework: plain JS keeps it portable into the claude.ai artifact.
+5. **Each page must build into one self-contained HTML file.** Its sources are split (markup, stylesheet, script, shared files); `scripts/build.js` inlines them. A page may load fonts from Google Fonts and nothing else. No build framework: plain JS keeps it portable into the claude.ai artifact.
 6. **No browser storage** (localStorage etc.) for anything that matters.
 7. **Keep the engine's public API stable** (`day`, `week`, `weekDays`, `solve`, `binding`, `cheapestKey`, `parse`, `iso`, `isBD`, `nextBD`, `prevBD`, `holidayName`, `MARKETS`), or update the page and the deck copy in the same change. Both parameter forms stay supported: the markets list and the original `cont` / `da` (see `docs/model.md`).
 
@@ -56,5 +71,5 @@ A second page in the same repo: how much money a Direct+ member needs, in which 
 
 ## Outside this repo
 
-- The published calculator lives at a claude.ai artifact link and is republished from a Claude chat, not from here. Hand over `dist/direct-plus-limit-calculator.html`. It changed on 26 Sep 2026 (the static vs daily-optimised collateral option; the markets named M7 and MATS; amounts with thousands separators and arrow buttons), so the published link needs republishing. The same page is also served at `/limits` on Railway (`scripts/serve.js`). The wallet calculator's equivalents are `dist/wallet/direct-plus-wallet-calculator.html` and, for prospects, `dist/wallet/direct-plus-wallet-prospect.html` (not published yet).
-- The member slide deck (a claude.ai Slides artifact) holds a **copy** of `src/engine.js` to generate its example numbers. After an engine change that alters numbers, say so, so the deck copy can be synced.
+- The published calculator lives at a claude.ai artifact link and is republished from a Claude chat, not from here. Hand over `dist/direct-plus-limit-calculator.html`. It changed on 26 Sep 2026 (the static vs daily-optimised collateral option; the markets named M7 and MATS; amounts with thousands separators and arrow buttons) and again on 28 Sep 2026 (the code restructured, with the same numbers and look, and a fix: the claude.ai copy could show the target-limit fields and an empty wallet button that should be hidden), so the published link needs republishing. The same page is also served at `/limits` on Railway (`scripts/serve.js`). The wallet calculator's equivalents are `dist/wallet/direct-plus-wallet-calculator.html` and, for prospects, `dist/wallet/direct-plus-wallet-prospect.html` (not published yet).
+- The member slide deck (a claude.ai Slides artifact) holds a **copy** of `src/engine.js` to generate its example numbers. After an engine change that alters numbers, say so, so the deck copy can be synced. The engine's code was rewritten on 28 Sep 2026 without changing a number (it now defines `const LimitEngine`), so the deck's older copy needs no sync.

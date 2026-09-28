@@ -9,8 +9,8 @@ the gate questions are in section 11.1.
 - The expected end of B uses μ + 2σ of the weekly model whichever σ type is set. The σ setting affects the ramp-up series and real invoice histories.
 - The ramp-up series takes k real invoices of mean μ and spread σ, the rest €0, at their expected mean and spread (`brp.js`, `rampUp`). With σ = 0 this is the constant-invoice window of section 4.2.
 
-The page answers: *how much money do I need, in which account, in what form (cash or bank guarantee), and by
-which moment, to trade the way I plan to through Direct+?* This document gives every formula the wallet will use
+The page answers: *how much money do I need, in which part of the wallet, and by which moment, to trade the way I
+plan to through Direct+?* All of it is cash: Direct+ accepts no bank guarantees. This document gives every formula the wallet will use
 and where it comes from, the presets, and one example worked through by hand. Section 10 lists where the brief and
 the source texts differ. Section 11 holds the questions only Niki can answer.
 
@@ -73,12 +73,12 @@ All wallet code lives in `src/wallet/`. It uses only the engine's public API, in
 
 - **Style:** every module is an IIFE that defines one global and exports it for Node; modern JavaScript, no dependencies, no build framework.
 - **Rule numbers:** each rule version (current and draft art. 10.8) keeps its numbers in one object, `RULES` in `brp.js`. Every number carries its source in a comment: document, article, paragraph.
-- **Build:** `scripts/build.js` is split.
-  - `build:ecc` keeps today's output byte for byte.
-  - `build:wallet` writes `dist/wallet/direct-plus-wallet-calculator.html` and `dist/wallet/standalone/…`, inlining the same `src/engine.js` file.
-  - `build` runs both.
+- **Build:** `scripts/build.js` assembles each page from `src/pages/` (its `PAGES` list says what each page inlines).
+  - `build:ecc` builds the limit calculator.
+  - `build:wallet` writes `dist/wallet/direct-plus-wallet-calculator.html`, `dist/wallet/direct-plus-wallet-prospect.html` and their `dist/wallet/standalone/…` copies, inlining the same `src/engine.js` file.
+  - `build` builds every page and the landing page.
 - **Hash test:** `tests/dist.test.js` builds the ECC pages into a temporary directory and compares their SHA-256.
-- **Engine version:** the engine on branch `worktree-limits-tasks` (Task 2) also accepts a list of markets. The wallet only uses the brief's list, so either version works. Record the ECC hashes after that branch is merged into `main`, or they will need re-recording.
+- **Engine:** the engine also accepts a list of markets (Task 2); the wallet uses its two-market form.
 - **Calendar:** the Dutch calendar, the ramp-up series (18 months) and the exit tail (up to 21 months) run past the engine's `MAX_DATE` (2027-12-24). They don't use ECC business days, so no engine change is needed. The Dutch working-day list must cover 2026–2029.
 
 ---
@@ -430,7 +430,7 @@ BRP.
 - **ASSUMPTION:** netting inside the Direct+ portfolio (a member's imbalance offsetting another's) is not modelled. The member's own spread is used, which usually overstates its true marginal share.
 - **Ramp-up:** the series still shows how a new member's own components build up.
 - **Comparison basis:** "On your own as a BRP" applies the minimum and floors, as in the brief's standalone mode. It's a Settings option only and isn't shown on the wallet view by default, because whether to show that comparison to members is open (W11).
-- **NEMO:** the rule stays in `brp.js` because both texts have it, but it doesn't apply to Direct+ members.
+- **NEMO:** both texts set €100,000 for a NEMO. It doesn't apply to Direct+ members, so `brp.js` leaves it out.
 
 The brief's pricelist mode is dropped.
 
