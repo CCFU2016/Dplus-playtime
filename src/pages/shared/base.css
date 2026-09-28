@@ -1,0 +1,195 @@
+/* Direct+ pages: the design tokens (light, and dark by system setting or data-theme) and the rules every page shares. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --ink: #121a24;
+  --ink-2: #445061;
+  --muted: #6b7686;
+  --rule: #dbe0e7;
+  --rule-strong: #b7c0cc;
+  --critical: #c3362c;
+  --critical-bg: #fbeceb;
+  --notice-ink: #7a5200;
+  --notice-bg: #fff5da;
+  --banner-bg: #fff5da;
+  --banner-ink: #5c3d00;
+  --banner-rule: #eda100;
+  --focus: #2a78d6;
+  --select-bg: #121a24;
+  --select-ink: #ffffff;
+  --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-cond: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0d1116;
+    --surface: #141a21;
+    --surface-2: #1b232c;
+    --ink: #eef2f6;
+    --ink-2: #c1cad4;
+    --muted: #8f9aa7;
+    --rule: #27313c;
+    --rule-strong: #3b4755;
+    --critical: #ef6b61;
+    --critical-bg: #3a1614;
+    --notice-ink: #f4c35a;
+    --notice-bg: #30260b;
+    --banner-bg: #2b2208;
+    --banner-ink: #ffe4a3;
+    --banner-rule: #c98500;
+    --focus: #6fa8f0;
+    --select-bg: #eef2f6;
+    --select-ink: #0d1116;
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0d1116;
+  --surface: #141a21;
+  --surface-2: #1b232c;
+  --ink: #eef2f6;
+  --ink-2: #c1cad4;
+  --muted: #8f9aa7;
+  --rule: #27313c;
+  --rule-strong: #3b4755;
+  --critical: #ef6b61;
+  --critical-bg: #3a1614;
+  --notice-ink: #f4c35a;
+  --notice-bg: #30260b;
+  --banner-bg: #2b2208;
+  --banner-ink: #ffe4a3;
+  --banner-rule: #c98500;
+  --focus: #6fa8f0;
+  --select-bg: #eef2f6;
+  --select-ink: #0d1116;
+}
+
+/* The hidden attribute always hides, whatever display a class sets. */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+  margin: 0;
+}
+p {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+.eyebrow {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  flex: none;
+}
+
+/* Buttons */
+.btn {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn.ghost {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+.linkbtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  font-size: 13.5px;
+  text-align: left;
+}
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+}
+thead th {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  vertical-align: bottom;
+}
+tbody td {
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+}
+
+/* Tooltip (PageUI.hoverable) */
+#tip {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  max-width: 260px;
+}
+#tip .tv {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+#tip .tl {
+  color: var(--ink-2);
+}

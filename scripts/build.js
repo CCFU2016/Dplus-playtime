@@ -1,18 +1,80 @@
-// Builds the calculators from src/: inlines the engine (and the wallet modules) into the pages.
-//   ECC limit calculator (src/page.html):
-//     dist/direct-plus-limit-calculator.html              page body, as published at the claude.ai artifact link
-//     dist/standalone/direct-plus-limit-calculator.html   full HTML document that opens straight from disk
-//   Wallet calculator (src/wallet/page.html) and its questionnaire for prospects (src/wallet/prospect.html):
-//     dist/wallet/direct-plus-wallet-calculator.html, dist/wallet/direct-plus-wallet-prospect.html, and both under dist/wallet/standalone/
+// Builds the pages into dist/: each page's markup with its stylesheets and scripts inlined, so that every page is one
+// self-contained HTML file. No build framework: the pages keep working as a claude.ai artifact and straight from disk.
+//   ECC limit calculator:  direct-plus-limit-calculator.html              the page body, as published at the claude.ai link
+//                          standalone/direct-plus-limit-calculator.html   a full document that opens from disk
+//   Wallet calculator and the wallet estimate for prospects: the same pair each, under wallet/
+//   Landing page for the hosted site (scripts/serve.js): index.html
 // usage: node scripts/build.js [ecc|wallet|all] [--out <dir>]   (default: all, into dist/)
-const fs = require('fs'), path = require('path');
-const root = path.join(__dirname, '..');
-const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
-// Wallet modules in dependency order; each ends with the same node export line as the engine.
-const WALLET_MODULES = ['dates', 'behaviour', 'settlement', 'ecc-link', 'brp', 'tennet-account', 'settings', 'answers', 'wallet'];
+const fs = require('fs');
+const path = require('path');
+const { parseArgs } = require('util');
 
-function stripExport(src) { return src.replace(/\nif \(typeof module !== 'undefined'\) module\.exports = \w+;\s*$/, ''); }
-const head = `<!doctype html>
+const ROOT = path.join(__dirname, '..');
+const read = (file) => fs.readFileSync(path.join(ROOT, file), 'utf8');
+
+const ENGINE = 'src/engine.js';
+const WALLET_MODULES = [
+  'dates',
+  'behaviour',
+  'settlement',
+  'ecc-link',
+  'brp',
+  'tennet-account',
+  'settings',
+  'answers',
+  'wallet',
+];
+const WALLET = WALLET_MODULES.map((name) => `src/wallet/${name}.js`);
+const SHARED = 'src/pages/shared';
+
+// Each page: its folder (index.html, style.css and, for scripted pages, main.js) and what it inlines before its own
+// style.css and main.js, in dependency order.
+const PAGES = {
+  limits: {
+    dir: 'src/pages/limits',
+    out: 'direct-plus-limit-calculator.html',
+    styles: [`${SHARED}/base.css`],
+    scripts: [ENGINE, `${SHARED}/ui.js`, `${SHARED}/handoff.js`],
+  },
+  wallet: {
+    dir: 'src/pages/wallet',
+    out: 'wallet/direct-plus-wallet-calculator.html',
+    styles: [`${SHARED}/base.css`, `${SHARED}/wallet.css`],
+    scripts: [ENGINE, ...WALLET, `${SHARED}/ui.js`],
+  },
+  estimate: {
+    dir: 'src/pages/estimate',
+    out: 'wallet/direct-plus-wallet-prospect.html',
+    styles: [`${SHARED}/base.css`, `${SHARED}/wallet.css`],
+    scripts: [ENGINE, ...WALLET, `${SHARED}/ui.js`, `${SHARED}/handoff.js`],
+  },
+  home: {
+    dir: 'src/pages/home',
+    out: 'index.html',
+    styles: [`${SHARED}/base.css`],
+    scripts: [],
+    standalone: false, // already a full document
+  },
+};
+
+// Modules end with a Node export line; in the page each module is just a global.
+const stripExport = (source) =>
+  source.replace(/\nif \(typeof module !== 'undefined'\) module\.exports = \w+;\s*$/, '\n');
+
+/** The page's markup with its stylesheets and scripts in place of the /*__STYLES__*\/ and /*__SCRIPTS__*\/ markers. */
+function assemble(page) {
+  const template = read(`${page.dir}/index.html`);
+  const styles = [...page.styles, `${page.dir}/style.css`].map(read).join('\n');
+  const own = fs.existsSync(path.join(ROOT, page.dir, 'main.js')) ? [`${page.dir}/main.js`] : [];
+  const scripts = [...page.scripts, ...own].map((file) => stripExport(read(file))).join('\n');
+  for (const marker of ['/*__STYLES__*/', ...(scripts ? ['/*__SCRIPTS__*/'] : [])]) {
+    if (!template.includes(marker)) throw new Error(`${page.dir}/index.html has no ${marker} marker`);
+  }
+  return template.replace('/*__STYLES__*/', () => styles).replace('/*__SCRIPTS__*/', () => scripts);
+}
+
+// A full document around a page body, for opening the file straight from disk.
+const HEAD = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -24,59 +86,45 @@ const head = `<!doctype html>
   [hidden] { display: none !important; }
 </style>
 `;
-function standalone(body, src) {
+function standalone(body, name) {
   const split = '</style>\n\n<div class="page">';
-  if (!body.includes(split)) throw new Error(src + ': expected "</style>" followed by <div class="page"> to split head from body');
-  return head + body.replace(split, '</style>\n</head>\n<body>\n<div class="page">') + '</body>\n</html>\n';
-}
-function write(out, rel, text) {
-  const f = path.join(out, rel);
-  fs.mkdirSync(path.dirname(f), { recursive: true });
-  fs.writeFileSync(f, text);
-  return rel;
+  if (!body.includes(split))
+    throw new Error(`${name}: expected "</style>" followed by <div class="page"> to split head from body`);
+  return `${HEAD}${body.replace(split, '</style>\n</head>\n<body>\n<div class="page">')}</body>\n</html>\n`;
 }
 
-function buildEcc(out) {
-  const page = read('src/page.html');
-  if (!page.includes('/*__ENGINE__*/')) throw new Error('src/page.html lost its /*__ENGINE__*/ marker');
-  const body = page.replace('/*__ENGINE__*/', () => stripExport(read('src/engine.js')));
-  return [write(out, 'direct-plus-limit-calculator.html', body),
-          write(out, 'standalone/direct-plus-limit-calculator.html', standalone(body, 'src/page.html'))];
-}
-// Wallet pages: the full calculator with its Settings view, and the questionnaire for prospects.
-const WALLET_PAGES = [['src/wallet/page.html', 'direct-plus-wallet-calculator.html'], ['src/wallet/prospect.html', 'direct-plus-wallet-prospect.html']];
-function buildWallet(out) {
-  const built = [];
-  WALLET_PAGES.forEach(([src, name]) => {
-    if (!fs.existsSync(path.join(root, src))) return;
-    const page = read(src);
-    ['/*__ENGINE__*/', '/*__WALLET__*/'].forEach(m => { if (!page.includes(m)) throw new Error(src + ' lost its ' + m + ' marker'); });
-    const wallet = WALLET_MODULES.map(m => stripExport(read('src/wallet/' + m + '.js'))).join('\n');
-    const body = page.replace('/*__ENGINE__*/', () => stripExport(read('src/engine.js'))).replace('/*__WALLET__*/', () => wallet);
-    built.push(write(out, 'wallet/' + name, body), write(out, 'wallet/standalone/' + name, standalone(body, src)));
-  });
-  return built;
+function write(out, file, text) {
+  const target = path.join(out, file);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, text);
+  return file;
 }
 
-// Landing page for the hosted site (scripts/serve.js): a complete document, copied as is.
-function buildIndex(out) {
-  return [write(out, 'index.html', read('src/index.html'))];
+/** Builds one page into `out`: the file itself and, for a page body, its standalone document. Returns the files. */
+function buildPage(name, out) {
+  const page = PAGES[name];
+  const body = assemble(page);
+  const files = [write(out, page.out, body)];
+  if (page.standalone !== false) {
+    const dir = path.dirname(page.out);
+    files.push(write(out, path.join(dir, 'standalone', path.basename(page.out)), standalone(body, name)));
+  }
+  return files;
 }
 
-module.exports = { buildEcc, buildWallet, buildIndex };
+const buildEcc = (out) => buildPage('limits', out);
+const buildWallet = (out) => [...buildPage('wallet', out), ...buildPage('estimate', out)];
+const buildIndex = (out) => buildPage('home', out);
+
+module.exports = { PAGES, buildPage, buildEcc, buildWallet, buildIndex };
 
 if (require.main === module) {
-  const args = process.argv.slice(2), o = args.indexOf('--out');
-  const out = o >= 0 ? path.resolve(args[o + 1]) : path.join(root, 'dist');
-  const what = args.find((a, i) => !a.startsWith('--') && !(o >= 0 && i === o + 1)) || 'all';
-  if (!['ecc', 'wallet', 'all'].includes(what)) throw new Error('usage: node scripts/build.js [ecc|wallet|all] [--out <dir>]');
-  const built = [];
-  if (what !== 'wallet') built.push(...buildEcc(out));
-  if (what !== 'ecc') {
-    const w = buildWallet(out);
-    if (!w.length) console.log('wallet: skipped, src/wallet/page.html does not exist yet');
-    built.push(...w);
-  }
-  if (what === 'all') built.push(...buildIndex(out));
-  if (built.length) console.log('built ' + built.map(f => path.relative(root, path.join(out, f))).join(' and '));
+  const { values, positionals } = parseArgs({ options: { out: { type: 'string' } }, allowPositionals: true });
+  const out = values.out ? path.resolve(values.out) : path.join(ROOT, 'dist');
+  const what = positionals[0] || 'all';
+  const builders = { ecc: [buildEcc], wallet: [buildWallet], all: [buildEcc, buildWallet, buildIndex] }[what];
+  if (!builders || positionals.length > 1)
+    throw new Error('usage: node scripts/build.js [ecc|wallet|all] [--out <dir>]');
+  const built = builders.flatMap((build) => build(out));
+  console.log(`built ${built.map((file) => path.relative(ROOT, path.join(out, file))).join(', ')}`);
 }

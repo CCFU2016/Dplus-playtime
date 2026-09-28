@@ -4,211 +4,999 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  :root {
-    --bg: #f3f5f8; --surface: #ffffff; --surface-2: #eef1f5; --ex-bg: #fff5da; --ex-ink: #5c3d00; --ex-rule: #eda100; --ink: #121a24; --ink-2: #445061; --muted: #6b7686;
-    --rule: #dbe0e7; --rule-strong: #b7c0cc; --critical: #c3362c; --critical-bg: #fbeceb; --focus: #2a78d6;
-    --select-bg: #121a24; --select-ink: #ffffff; --accent-bg: #eaf2fc;
-    /* wallet segments: validated categorical slots (light, on #ffffff) */
-    --s-trading: #2a78d6; --s-available: #1baf7a; --s-brp: #eda100;
-    --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ex-bg: #2b2208; --ex-ink: #ffe4a3; --ex-rule: #c98500; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
-      --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --focus: #6fa8f0;
-      --select-bg: #eef2f6; --select-ink: #0d1116; --accent-bg: #16263a;
-      --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500;
-    }
-  }
-  :root[data-theme="dark"] {
+/* Direct+ pages: the design tokens (light, and dark by system setting or data-theme) and the rules every page shares. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --ink: #121a24;
+  --ink-2: #445061;
+  --muted: #6b7686;
+  --rule: #dbe0e7;
+  --rule-strong: #b7c0cc;
+  --critical: #c3362c;
+  --critical-bg: #fbeceb;
+  --notice-ink: #7a5200;
+  --notice-bg: #fff5da;
+  --banner-bg: #fff5da;
+  --banner-ink: #5c3d00;
+  --banner-rule: #eda100;
+  --focus: #2a78d6;
+  --select-bg: #121a24;
+  --select-ink: #ffffff;
+  --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-cond: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
-    --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ex-bg: #2b2208; --ex-ink: #ffe4a3; --ex-rule: #c98500; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
-    --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --focus: #6fa8f0;
-    --select-bg: #eef2f6; --select-ink: #0d1116; --accent-bg: #16263a;
-    --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500;
+    --bg: #0d1116;
+    --surface: #141a21;
+    --surface-2: #1b232c;
+    --ink: #eef2f6;
+    --ink-2: #c1cad4;
+    --muted: #8f9aa7;
+    --rule: #27313c;
+    --rule-strong: #3b4755;
+    --critical: #ef6b61;
+    --critical-bg: #3a1614;
+    --notice-ink: #f4c35a;
+    --notice-bg: #30260b;
+    --banner-bg: #2b2208;
+    --banner-ink: #ffe4a3;
+    --banner-rule: #c98500;
+    --focus: #6fa8f0;
+    --select-bg: #eef2f6;
+    --select-ink: #0d1116;
   }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0d1116;
+  --surface: #141a21;
+  --surface-2: #1b232c;
+  --ink: #eef2f6;
+  --ink-2: #c1cad4;
+  --muted: #8f9aa7;
+  --rule: #27313c;
+  --rule-strong: #3b4755;
+  --critical: #ef6b61;
+  --critical-bg: #3a1614;
+  --notice-ink: #f4c35a;
+  --notice-bg: #30260b;
+  --banner-bg: #2b2208;
+  --banner-ink: #ffe4a3;
+  --banner-rule: #c98500;
+  --focus: #6fa8f0;
+  --select-bg: #eef2f6;
+  --select-ink: #0d1116;
+}
 
-  body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
-  .page { max-width: 920px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 22px; }
-  .page > *, .card > * { min-width: 0; }
-  h1, h2, h3 { text-wrap: balance; margin: 0; }
-  p { margin: 0; }
-  button, input, select { font: inherit; color: inherit; }
-  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* The hidden attribute always hides, whatever display a class sets. */
+[hidden] {
+  display: none !important;
+}
 
-  .masthead { display: grid; gap: 8px; }
-  .eyebrow { font-family: var(--font-cond); font-weight: 600; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  h1 { font-size: clamp(28px, 4vw, 38px); line-height: 1.12; font-weight: 600; letter-spacing: -0.01em; }
-  .lede { font-size: 16.5px; color: var(--ink-2); max-width: 62ch; }
-  .fine { font-size: 12.5px; color: var(--muted); max-width: 80ch; }
-
-  .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
-  .btn { border: 1px solid var(--ink); background: var(--ink); color: var(--surface); border-radius: 7px; padding: 9px 18px; font-size: 14.5px; font-weight: 500; cursor: pointer; }
-  .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--rule-strong); }
-  .btn[hidden] { display: none; }
-
-  /* questionnaire */
-  .wizard { padding: 22px 24px 20px; display: grid; gap: 20px; }
-  .progress { display: grid; gap: 8px; }
-  .progress .pl { font-size: 13px; color: var(--muted); }
-  .track { height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
-  .track div { height: 100%; background: var(--ink); width: 0; transition: width .2s; }
-  .step { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 18px; }
-  .step[hidden] { display: none; }
-  .step h2 { font-size: 21px; font-weight: 600; }
-  .step .why { font-size: 14px; color: var(--ink-2); max-width: 66ch; }
-  .q { display: grid; gap: 8px; }
-  .q > .ql { font-size: 14.5px; font-weight: 600; }
-  .q .hint { font-size: 13px; color: var(--muted); max-width: 66ch; }
-  .choices { display: grid; gap: 8px; }
-  .choices.cols { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-  .choice { position: relative; }
-  .choice input { position: absolute; opacity: 0; pointer-events: none; }
-  .choice label { display: grid; gap: 3px; padding: 12px 14px; border: 1px solid var(--rule-strong); border-radius: 8px; cursor: pointer; background: var(--surface); height: 100%; box-sizing: border-box; }
-  .choice label b { font-weight: 600; font-size: 14.5px; }
-  .choice label span { font-size: 13px; color: var(--ink-2); }
-  .choice input:checked + label { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--accent-bg); }
-  .choice input:focus-visible + label { outline: 2px solid var(--focus); outline-offset: 2px; }
-  .nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 18px; }
-  .num { display: grid; gap: 5px; }
-  .num label { font-size: 13.5px; font-weight: 500; }
-  .num .in { display: flex; align-items: center; gap: 8px; }
-  .num input { border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); padding: 8px 10px; width: 110px; min-width: 0; font-variant-numeric: tabular-nums; }
-  .num .unit { font-size: 13px; color: var(--muted); white-space: nowrap; }
-  .note { font-size: 13px; color: var(--ink-2); background: var(--surface-2); border-radius: 7px; padding: 8px 12px; }
-  .note[hidden] { display: none; }
-  .error { font-size: 13.5px; color: var(--critical); }
-  .conn { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-  .conn select { border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); padding: 8px 10px; }
-  details.fold { padding: 0; }
-  details.fold > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; }
-  details.fold > summary::-webkit-details-marker { display: none; }
-  details.fold > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin: -4px 4px 0 0; transition: transform .15s; }
-  details.fold[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
-  details.fold > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 10px; }
-  .ft { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-width: 0; }
-  .ft h3 { font-size: 16.5px; font-weight: 600; margin: 0; }
-  .fh { font-size: 13px; color: var(--muted); }
-  .fold-body { padding: 0 20px 20px; display: grid; gap: 14px; }
-  .two { align-items: start; }
-  td details.why { margin-top: 2px; }
-  td details.why > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); width: max-content; }
-  td details.why[open] > summary { margin-bottom: 2px; }
-  .page.showing-results .masthead .lede, .page.showing-results .masthead .fine { display: none; }
-  td details.calc { margin-top: 6px; }
-  td details.calc > summary { cursor: pointer; font-size: 13.5px; text-decoration: underline; text-underline-offset: 3px; width: max-content; list-style: none; }
-  td details.calc > summary::-webkit-details-marker { display: none; }
-  .calc-body { margin-top: 8px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface-2); display: grid; gap: 8px; font-size: 13px; color: var(--ink-2); max-width: 60ch; }
-  .calc-body b { color: var(--ink); }
-  .calc-body ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
-  .calc-body .res { color: var(--ink); font-weight: 600; }
-  .rule-body { display: grid; gap: 8px; }
-  .calc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .calc-table th, .calc-table td { padding: 5px 0; border-bottom: 1px solid var(--rule); vertical-align: baseline; }
-  .calc-table th { text-align: left; font-weight: 400; padding-right: 12px; }
-  .calc-table td { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 500; }
-  .calc-table .cl { display: block; color: var(--ink); }
-  .calc-table .ch { display: block; font-size: 12px; color: var(--muted); }
-  .calc-table tr.sum th, .calc-table tr.sum td { border-top: 2px solid var(--ink); border-bottom: 0; padding-top: 7px; }
-  .calc-table tr.sum .cl, .calc-table tr.sum td { font-weight: 700; }
-  .rule-body p { margin: 0; }
-  .rule-switch { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: 999px; padding: 2px; background: var(--surface); width: max-content; max-width: 100%; }
-  .rule-switch button { border: 0; background: transparent; color: var(--ink-2); border-radius: 999px; padding: 4px 12px; font-size: 12.5px; font-weight: 500; cursor: pointer; }
-  .rule-switch button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
-  .rule-switch button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-  .handoff { display: grid; gap: 8px; justify-items: start; padding: 14px 16px; border: 1px solid var(--rule); border-left: 6px solid var(--s-trading); border-radius: 10px; background: var(--surface); }
-  .handoff[hidden] { display: none; }
-  .handoff b { font-size: 15px; }
-  .handoff p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 70ch; }
-  .detail-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; }
-  .carried { display: block; margin-top: 4px; font-size: 12.5px; color: var(--ink-2); }
-  .carried.short { color: var(--critical, #c3362c); font-weight: 500; }
-  .skip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule); }
-  .skip span { font-size: 13.5px; color: var(--muted); }
-  .example { display: grid; gap: 8px; justify-items: start; padding: 18px 20px; border: 2px solid var(--ex-rule); border-left-width: 8px; border-radius: 10px; background: var(--ex-bg); color: var(--ex-ink); }
-  .example[hidden] { display: none; }
-  .example b { font-size: clamp(19px, 2.6vw, 23px); line-height: 1.2; font-weight: 700; }
-  .example p { margin: 0; font-size: 15px; max-width: 70ch; }
-  .ex-types { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-  .ex-types span { font-size: 14px; font-weight: 600; margin-right: 4px; }
-  .ex-types button { border: 1.5px solid var(--ex-ink); background: transparent; color: var(--ex-ink); border-radius: 999px; padding: 5px 14px; font-size: 14px; font-weight: 500; cursor: pointer; }
-  .ex-types button[aria-pressed="true"] { background: var(--ex-ink); color: var(--ex-bg); }
-  .ex-types button:focus-visible { outline: 2px solid var(--ex-ink); outline-offset: 2px; }
-  .example .btn { background: var(--ex-ink); border-color: var(--ex-ink); color: var(--ex-bg); }
-  .linkbtn { border: 0; background: none; padding: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13.5px; color: var(--ink); text-align: left; }
-  .nav { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--rule); padding-top: 16px; }
-
-  /* results */
-  .results { display: grid; gap: 20px; }
-  .results[hidden] { display: none; }
-  .bar-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; justify-content: space-between; }
-  .bar-head h2 { font-size: 22px; font-weight: 600; }
-  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-  .controls label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); display: grid; gap: 4px; }
-  .controls select { border: 1px solid var(--rule-strong); border-radius: 7px; background: var(--surface); padding: 8px 10px; max-width: 100%; }
-  .card { padding: 18px 20px 20px; display: grid; gap: 14px; }
-  .card h3 { font-size: 16.5px; font-weight: 600; }
-  .card .sub { font-size: 13.5px; color: var(--ink-2); max-width: 70ch; }
-  .hero { padding: 22px 24px; display: grid; gap: 6px; }
-  .hero .h-label { font-size: 14px; color: var(--ink-2); }
-  .hero .h-value { font-size: clamp(30px, 6vw, 48px); font-weight: 600; line-height: 1.1; letter-spacing: -0.015em; }
-  .hero .h-value .to { color: var(--muted); font-weight: 500; font-size: .6em; }
-  .hero .h-sub { font-size: 13.5px; color: var(--muted); }
-  .table-wrap { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-  th, td { padding: 9px 8px; text-align: left; vertical-align: top; }
-  td.r, th.r { text-align: right; white-space: nowrap; }
-  thead th { font-family: var(--font-cond); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--rule-strong); vertical-align: bottom; }
-  tbody td { border-bottom: 1px solid var(--rule); font-size: 14px; }
-  tbody tr.total td { font-weight: 600; border-bottom: 0; }
-  td .what { display: block; font-size: 12.5px; color: var(--muted); max-width: 52ch; min-width: 190px; margin-top: 2px; }
-  .bars { display: grid; gap: 12px; }
-  .bar-row { display: grid; grid-template-columns: minmax(86px, 150px) minmax(0, 1fr); gap: 12px; align-items: center; }
-  .bar-row .rl { font-size: 13px; color: var(--ink-2); }
-  .bar-track { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .bar { display: flex; gap: 2px; height: 26px; min-width: 2px; }
-  .bar .sg { height: 100%; min-width: 2px; display: flex; align-items: center; justify-content: center; }
-  .bar .sg:last-child { border-radius: 0 4px 4px 0; }
-  .bar .sg span { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; padding: 0 4px; }
-  .bar .sg.light-ink span { color: #121a24; }
-  .bar .sg:hover, .bar .sg:focus-visible { filter: brightness(1.08); }
-  .bar-total { font-size: 13.5px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
-  .legend span { display: inline-flex; align-items: center; gap: 7px; }
-  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
-  .when { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-  .when li { display: grid; grid-template-columns: minmax(130px, 190px) minmax(0, 1fr); gap: 4px 16px; font-size: 14px; }
-  .when li b { font-weight: 600; }
-  .when li span { color: var(--ink-2); }
-  @media (max-width: 560px) { .when li { grid-template-columns: minmax(0, 1fr); } }
-  .beside { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
-  @media (max-width: 900px) { .beside { grid-template-columns: minmax(0, 1fr); } }
-  .core { align-content: start; }
-  .core dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
-  .core dl > div { display: grid; gap: 1px; align-content: start; }
-  .core dt { font-size: 12.5px; color: var(--muted); }
-  .core dd { text-align: left; font-size: 14px; }
-  @media (max-width: 420px) { .core dl { grid-template-columns: minmax(0, 1fr); } }
-  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-  @media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
-  dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; font-size: 13.5px; }
-  dt { color: var(--ink-2); }
-  dd { margin: 0; font-weight: 500; text-align: right; }
-  ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; color: var(--ink-2); }
-  .disclaimer { font-size: 12.5px; color: var(--muted); }
-
-  #tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12); max-width: 260px; }
-  #tip .tv { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
-  #tip .tl { color: var(--ink-2); }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  @media print {
-    :root { color-scheme: light; }
-    body { background: #fff; }
-    .no-print, #wizard, #tip { display: none !important; }
-    .panel { break-inside: avoid; border-color: #ccc; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+  margin: 0;
+}
+p {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
   }
+}
+
+.eyebrow {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  flex: none;
+}
+
+/* Buttons */
+.btn {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn.ghost {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+.linkbtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  font-size: 13.5px;
+  text-align: left;
+}
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+}
+thead th {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  vertical-align: bottom;
+}
+tbody td {
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+}
+
+/* Tooltip (PageUI.hoverable) */
+#tip {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  max-width: 260px;
+}
+#tip .tv {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+#tip .tl {
+  color: var(--ink-2);
+}
+
+/* Direct+ wallet pages (the calculator and the estimate): table rules and the stacked bars (PageUI.stackedBars). */
+thead th {
+  border-bottom: 1px solid var(--rule-strong);
+}
+tbody tr.total td {
+  font-weight: 600;
+  border-bottom: 0;
+}
+
+.bars {
+  display: grid;
+  gap: 12px;
+}
+.bar-row .rl {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.bar-track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  min-width: 2px;
+}
+.bar .sg {
+  height: 100%;
+  min-width: 2px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+.bar .sg:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.bar .sg span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+.bar .sg.light-ink span {
+  color: #121a24;
+}
+.bar .sg:hover,
+.bar .sg:focus-visible {
+  filter: brightness(1.08);
+}
+.bar-total {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Direct+ wallet estimate for prospects. Shared tokens and rules: shared/base.css and shared/wallet.css. */
+:root {
+  --accent-bg: #eaf2fc;
+  /* wallet segments: validated categorical slots (light, on #ffffff) */
+  --s-trading: #2a78d6;
+  --s-available: #1baf7a;
+  --s-brp: #eda100;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --accent-bg: #16263a;
+    --s-trading: #3987e5;
+    --s-available: #199e70;
+    --s-brp: #c98500;
+  }
+}
+:root[data-theme='dark'] {
+  --accent-bg: #16263a;
+  --s-trading: #3987e5;
+  --s-available: #199e70;
+  --s-brp: #c98500;
+}
+
+.page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 28px 56px;
+  display: grid;
+  gap: 22px;
+}
+.page > *,
+.card > * {
+  min-width: 0;
+}
+
+.masthead {
+  display: grid;
+  gap: 8px;
+}
+h1 {
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.lede {
+  font-size: 16.5px;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+.fine {
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 80ch;
+}
+.page.showing-results .masthead .lede,
+.page.showing-results .masthead .fine {
+  display: none;
+}
+
+.panel {
+  border-radius: 10px;
+}
+.btn {
+  border-radius: 7px;
+  padding: 9px 18px;
+  font-size: 14.5px;
+}
+
+/* questionnaire */
+.wizard {
+  padding: 22px 24px 20px;
+  display: grid;
+  gap: 20px;
+}
+.progress {
+  display: grid;
+  gap: 8px;
+}
+.progress .pl {
+  font-size: 13px;
+  color: var(--muted);
+}
+.track {
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.track div {
+  height: 100%;
+  background: var(--ink);
+  width: 0;
+  transition: width 0.2s;
+}
+.step {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+.step h2 {
+  font-size: 21px;
+  font-weight: 600;
+}
+.step .why {
+  font-size: 14px;
+  color: var(--ink-2);
+  max-width: 66ch;
+}
+.q {
+  display: grid;
+  gap: 8px;
+}
+.q > .ql {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.q .hint {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 66ch;
+}
+.choices {
+  display: grid;
+  gap: 8px;
+}
+.choices.cols {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.choice {
+  position: relative;
+}
+.choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.choice label {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--surface);
+  height: 100%;
+  box-sizing: border-box;
+}
+.choice label b {
+  font-weight: 600;
+  font-size: 14.5px;
+}
+.choice label span {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.choice input:checked + label {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  background: var(--accent-bg);
+}
+.choice input:focus-visible + label {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.nums {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px 18px;
+}
+.num {
+  display: grid;
+  gap: 5px;
+}
+.num label {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.num .in {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.num input {
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 8px 10px;
+  width: 110px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.num .unit {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.note {
+  font-size: 13px;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border-radius: 7px;
+  padding: 8px 12px;
+}
+.error {
+  font-size: 13.5px;
+  color: var(--critical);
+}
+.skip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+.skip span {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+}
+
+/* folded sections */
+details.fold {
+  padding: 0;
+}
+details.fold > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+}
+details.fold > summary::-webkit-details-marker {
+  display: none;
+}
+details.fold > summary::after {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  margin: -4px 4px 0 0;
+  transition: transform 0.15s;
+}
+details.fold[open] > summary::after {
+  transform: rotate(-135deg);
+  margin-top: 4px;
+}
+details.fold > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  border-radius: 10px;
+}
+.ft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  min-width: 0;
+}
+.ft h3 {
+  font-size: 16.5px;
+  font-weight: 600;
+  margin: 0;
+}
+.fh {
+  font-size: 13px;
+  color: var(--muted);
+}
+.fold-body {
+  padding: 0 20px 20px;
+  display: grid;
+  gap: 14px;
+}
+
+/* the purposes table: what each part is, and its detailed calculation */
+td details.why {
+  margin-top: 2px;
+}
+td details.why > summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--muted);
+  width: max-content;
+}
+td details.why[open] > summary {
+  margin-bottom: 2px;
+}
+td details.calc {
+  margin-top: 6px;
+}
+td details.calc > summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  width: max-content;
+  list-style: none;
+}
+td details.calc > summary::-webkit-details-marker {
+  display: none;
+}
+.calc-body {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface-2);
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  max-width: 60ch;
+}
+.calc-body b {
+  color: var(--ink);
+}
+.rule-body {
+  display: grid;
+  gap: 8px;
+}
+.rule-body p {
+  margin: 0;
+}
+.calc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.calc-table th,
+.calc-table td {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: baseline;
+}
+.calc-table th {
+  text-align: left;
+  font-weight: 400;
+  padding-right: 12px;
+}
+.calc-table td {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 500;
+}
+.calc-table .cl {
+  display: block;
+  color: var(--ink);
+}
+.calc-table .ch {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+.calc-table tr.sum th,
+.calc-table tr.sum td {
+  border-top: 2px solid var(--ink);
+  border-bottom: 0;
+  padding-top: 7px;
+}
+.calc-table tr.sum .cl,
+.calc-table tr.sum td {
+  font-weight: 700;
+}
+.rule-switch {
+  display: inline-flex;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 2px;
+  background: var(--surface);
+  width: max-content;
+  max-width: 100%;
+}
+.rule-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.rule-switch button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--surface);
+}
+.rule-switch button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.detail-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 6px;
+}
+.carried {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.carried.short {
+  color: var(--critical, #c3362c);
+  font-weight: 500;
+}
+
+/* the setup carried over from the limit calculator, and the example banner */
+.handoff {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-left: 6px solid var(--s-trading);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.handoff b {
+  font-size: 15px;
+}
+.handoff p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  max-width: 70ch;
+}
+.example {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 18px 20px;
+  border: 2px solid var(--banner-rule);
+  border-left-width: 8px;
+  border-radius: 10px;
+  background: var(--banner-bg);
+  color: var(--banner-ink);
+}
+.example b {
+  font-size: clamp(19px, 2.6vw, 23px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+.example p {
+  margin: 0;
+  font-size: 15px;
+  max-width: 70ch;
+}
+.example .btn {
+  background: var(--banner-ink);
+  border-color: var(--banner-ink);
+  color: var(--banner-bg);
+}
+.ex-types {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.ex-types span {
+  font-size: 14px;
+  font-weight: 600;
+  margin-right: 4px;
+}
+.ex-types button {
+  border: 1.5px solid var(--banner-ink);
+  background: transparent;
+  color: var(--banner-ink);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ex-types button[aria-pressed='true'] {
+  background: var(--banner-ink);
+  color: var(--banner-bg);
+}
+.ex-types button:focus-visible {
+  outline: 2px solid var(--banner-ink);
+  outline-offset: 2px;
+}
+
+/* results */
+.results {
+  display: grid;
+  gap: 20px;
+}
+.bar-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: end;
+  justify-content: space-between;
+}
+.bar-head h2 {
+  font-size: 22px;
+  font-weight: 600;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+.controls label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  display: grid;
+  gap: 4px;
+}
+.controls select {
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 8px 10px;
+  max-width: 100%;
+}
+.card {
+  padding: 18px 20px 20px;
+  display: grid;
+  gap: 14px;
+}
+.card h3 {
+  font-size: 16.5px;
+  font-weight: 600;
+}
+.card .sub {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  max-width: 70ch;
+}
+.hero {
+  padding: 22px 24px;
+  display: grid;
+  gap: 6px;
+}
+.hero .h-label {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.hero .h-value {
+  font-size: clamp(30px, 6vw, 48px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+.hero .h-value .to {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.6em;
+}
+.hero .h-sub {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  padding: 9px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+td.r,
+th.r {
+  text-align: right;
+  white-space: nowrap;
+}
+td .what {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 52ch;
+  min-width: 190px;
+  margin-top: 2px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(86px, 150px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+.when {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.when li {
+  display: grid;
+  grid-template-columns: minmax(130px, 190px) minmax(0, 1fr);
+  gap: 4px 16px;
+  font-size: 14px;
+}
+.when li b {
+  font-weight: 600;
+}
+.when li span {
+  color: var(--ink-2);
+}
+@media (max-width: 560px) {
+  .when li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.beside {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .beside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.core {
+  align-content: start;
+}
+.core dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+.core dl > div {
+  display: grid;
+  gap: 1px;
+  align-content: start;
+}
+.core dt {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.core dd {
+  text-align: left;
+  font-size: 14px;
+}
+@media (max-width: 420px) {
+  .core dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 14px;
+  font-size: 13.5px;
+}
+dt {
+  color: var(--ink-2);
+}
+dd {
+  margin: 0;
+  font-weight: 500;
+  text-align: right;
+}
+ul.plain {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.disclaimer {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+  body {
+    background: #fff;
+  }
+  .no-print,
+  #wizard,
+  #tip {
+    display: none !important;
+  }
+  .panel {
+    break-inside: avoid;
+    border-color: #ccc;
+  }
+}
+
 </style>
 
 <div class="page">
@@ -916,6 +1704,7 @@ const LimitEngine = (() => {
     MAX_DATE,
   };
 })();
+
 /* Direct+ wallet: date helpers shared by the wallet modules. Dates are UTC midnights, as in the engine; its parse()
    and iso() convert them to and from ISO strings. */
 const WalletDates = (() => {
@@ -939,6 +1728,7 @@ const WalletDates = (() => {
 
   return { DAY_MS, addDays, daysBetween, mondayOf, compareIso, eachDay };
 })();
+
 /* Direct+ wallet: from a trading plan to what each trading day costs and how much ECC limit it uses.
    Sources: ECC Risk Management Services Manual v056, §3.10 (auctions) and §3.11 (continuous).
    The formulas are explained in docs/wallet-model.md §2 and §6. */
@@ -1023,6 +1813,7 @@ const WalletBehaviour = (() => {
 
   return { orderExposure, dayFlows };
 })();
+
 /* Direct+ wallet: ECC settlement through the connected account (docs/wallet-model.md §3).
    Sources: ECC, "Linking a Connected Bank Settlement Account with ECC" 2025/2026, p.3: "all trades conducted before
    4 PM CET are settled in the next morning", one MT101 "at the end of the business day (6 PM CET) with value date the
@@ -1142,6 +1933,7 @@ const WalletSettlement = ((Engine, Dates) => {
   typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
   typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
 );
+
 /* Direct+ wallet: from the trading plan to ECC collateral (docs/wallet-model.md §2).
    Uses only the engine's public API. The engine's own solve() holds open risk and targets constant for all days; this
    solver takes both per calculation day. */
@@ -1281,6 +2073,7 @@ const WalletEccLink = ((Engine, Dates) => {
   typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
   typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
 );
+
 /* Direct+ wallet: BRP security for TenneT under art. 10.8, the rule in force and the ACM draft (docs/wallet-model.md §4).
    Each member is treated as its own BRP (wallet-model §4.4).
    Sources: reference/tennet/systeemcode-elektriciteit_wetten-overheid_art-10.8-10.26-10.27-10.29_2026-09-26.txt
@@ -1469,6 +2262,7 @@ const WalletBrp = (() => {
 
   return { RULES, ruleFor, countedCapacity, current, stats, componentB, draft, rampUp };
 })();
+
 /* Direct+ wallet: the member's TenneT account: the weekly imbalance invoice, the day TenneT debits it, and how long the
    security stays committed after the member stops (docs/wallet-model.md §5 and §6.2). Each member pays its own
    invoices, as if it were its own BRP.
@@ -1637,6 +2431,7 @@ const WalletTennet = ((Engine, Dates, Brp) => {
   typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
   typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
 );
+
 /* Direct+ wallet: every setting of the calculator (label, unit, kind, tag, source and default), grouped as the
    Settings view shows them, and the three example members. The Settings view and the "Assumptions and sources" list
    are generated from GROUPS.
@@ -2423,7 +3218,8 @@ const WalletSettings = (() => {
 
   return { GROUPS, BASE, LEVELS, PRESETS, preset, assumptions };
 })();
-/* Direct+ wallet: the prospect questionnaire (src/wallet/prospect.html). Its plain answers map onto the settings of
+
+/* Direct+ wallet: the prospect questionnaire (src/pages/estimate/). Its plain answers map onto the settings of
    settings.js, and with each member type's default answers they give exactly its preset (docs/wallet-model.md §12). */
 const WalletAnswers = ((Settings) => {
   'use strict';
@@ -2554,6 +3350,7 @@ const WalletAnswers = ((Settings) => {
 
   return { suggestBalance, strategyVolumes, defaultAnswers, fromAnswers };
 })(typeof WalletSettings !== 'undefined' ? WalletSettings : require('./settings.js'));
+
 /* Direct+ wallet: what one member needs, by purpose and by wallet segment (docs/wallet-model.md). Each member is treated
    as its own BRP, and the wallet pools all members at one connected bank, so nothing nets between members
    (wallet-model §11.1). WalletCalc is the one object the pages use: the calculation, plus the settings (settings.js)
@@ -2941,516 +3738,1468 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
   typeof WalletSettings !== 'undefined' ? WalletSettings : require('./settings.js'),
   typeof WalletAnswers !== 'undefined' ? WalletAnswers : require('./answers.js'),
 );
-(function () {
+
+/* Direct+ pages: the small DOM, formatting, calendar and chart helpers that every page uses. No framework: each page's
+   script builds its own DOM with these. */
+const PageUI = ((Engine) => {
   'use strict';
-  var E = LimitEngine, C = WalletCalc;
-  var $ = function (id) { return document.getElementById(id); };
-  var fmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
-  // Amounts are rounded to the nearest €1,000: these are estimates, not exact figures (Direct+ decision, 26 Sep 2026). Prices and
-  // amounts typed in are shown as entered (eurP).
-  function eur(v) { var a = Math.abs(v); if (a < 0.5) return '€0'; if (a < 1000) return 'under €1,000'; return (v < 0 ? '−€' : '€') + fmt.format(Math.round(a / 1000) * 1000); }
-  function eurP(v) { return (v < 0 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }
-  function eurDiff(d) { var r = Math.round(d / 1000) * 1000; return r === 0 ? 'about the same' : (r > 0 ? '+€' : '−€') + fmt.format(Math.abs(r)); }
-  function eurShort(v) { var a = Math.abs(v); if (a >= 1e6) return '€' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'm'; if (a >= 1e4) return '€' + Math.round(a / 1e3) + 'k'; if (a >= 500) return '€' + Math.round(a / 1e3) + 'k'; return a < 0.5 ? '€0' : '<€1k'; }   // whole €1,000s, like every amount here
-  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  function dLabel(iso, year) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (year ? ' ' + d.getUTCFullYear() : ''); }
-  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
-  function clear(n) { n.textContent = ''; return n; }
 
-  function nextMonday() {
-    var n = new Date(), t = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())), m = E.iso(new Date(t.getTime() + (((8 - t.getUTCDay()) % 7) || 7) * 864e5));
-    return m < '2026-01-05' ? '2026-01-05' : m > '2027-12-20' ? '2027-12-20' : m;
+  const DAY_MS = 86400000;
+
+  // ---------- DOM ----------
+
+  const $ = (id) => document.getElementById(id);
+
+  /** A new element, with an optional class and text. */
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
   }
-  var WEEKS = [[nextMonday(), 'Next week (' + dLabel(nextMonday(), true) + ')'], ['2026-12-21', 'Christmas 2026 (from Mon 21 Dec)'], ['2027-03-22', 'Easter 2027 (from Mon 22 Mar)']];
-  WEEKS.forEach(function (w) { var o = el('option', null, w[1]); o.value = w[0]; $('week').appendChild(o); });
 
-  // ---------- folded sections ----------
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('a[href="#assumed-card"]');
-    if (a) { e.preventDefault(); $('assumed-card').open = true; $('assumed-card').scrollIntoView({ block: 'start', behavior: 'smooth' }); }
-  });
-  var foldedForPrint = [];
-  window.addEventListener('beforeprint', function () {
-    foldedForPrint = Array.prototype.filter.call(document.querySelectorAll('#results details'), function (d) { return !d.open; });
-    foldedForPrint.forEach(function (d) { d.open = true; });
-  });
-  window.addEventListener('afterprint', function () { foldedForPrint.forEach(function (d) { d.open = false; }); foldedForPrint = []; });
+  /** Empties `node` and returns it. */
+  function clear(node) {
+    node.textContent = '';
+    return node;
+  }
+
+  const isDark = () => getComputedStyle(document.documentElement).colorScheme === 'dark';
+
+  /** A header row: columns = [{ text, className }]. */
+  function headerRow(columns) {
+    const row = el('tr');
+    for (const { text, className } of columns) {
+      const cell = el('th', className || null, text);
+      cell.scope = 'col';
+      row.appendChild(cell);
+    }
+    return row;
+  }
+
+  /** A table's head, with one header row. */
+  function tableHead(table, columns) {
+    const head = el('thead');
+    head.appendChild(headerRow(columns));
+    table.appendChild(head);
+  }
+
+  /** A body row: cells = [{ text | node, className }]. Returns the row. */
+  function tableRow(body, cells) {
+    const row = el('tr');
+    for (const { text, node, className } of cells) {
+      const cell = el('td', className || null);
+      if (node) cell.appendChild(node);
+      else cell.textContent = text == null ? '' : text;
+      row.appendChild(cell);
+    }
+    body.appendChild(row);
+    return row;
+  }
+
+  // ---------- numbers and euros ----------
+
+  const wholeNumber = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
+  const euroSign = (value) => (value < 0 ? '−€' : '€');
+
+  /** Whole euros: €1,234 or −€1,234. */
+  const euros = (value) => euroSign(value) + wholeNumber.format(Math.abs(Math.round(value)));
+
+  /** To the nearest €1,000, as the wallet pages show every estimate: €12,000, 'under €1,000' or €0. */
+  function thousands(value) {
+    const size = Math.abs(value);
+    if (size < 0.5) return '€0';
+    if (size < 1000) return 'under €1,000';
+    return euroSign(value) + wholeNumber.format(Math.round(size / 1000) * 1000);
+  }
+
+  /** A difference to the nearest €1,000: +€2,000, −€1,000 or 'about the same'. */
+  function thousandsDiff(difference) {
+    const rounded = Math.round(difference / 1000) * 1000;
+    if (rounded === 0) return 'about the same';
+    return (rounded > 0 ? '+€' : '−€') + wholeNumber.format(Math.abs(rounded));
+  }
+
+  const trimZeros = (text) => text.replace(/\.?0+$/, '');
+
+  /** Short euros for chart labels: €950, €1.5k, €12k, €1.25m. */
+  function shortEuros(value) {
+    const size = Math.abs(value);
+    const sign = euroSign(value);
+    if (size >= 1e6) return `${sign}${trimZeros((size / 1e6).toFixed(size >= 1e7 ? 1 : 2))}m`;
+    if (size >= 1e4) return `${sign}${Math.round(size / 1e3)}k`;
+    if (size >= 1e3) return `${sign}${(size / 1e3).toFixed(1).replace(/\.0$/, '')}k`;
+    return `${sign}${Math.round(size)}`;
+  }
+
+  /** Short euros in whole thousands, as the wallet pages round: <€1k, €12k, €1.25m. */
+  function shortThousands(value) {
+    const size = Math.abs(value);
+    const sign = euroSign(value);
+    if (size >= 1e6) return `${sign}${trimZeros((size / 1e6).toFixed(2))}m`;
+    if (size >= 500) return `${sign}${Math.round(size / 1e3)}k`;
+    return size < 0.5 ? '€0' : '<€1k';
+  }
+
+  // ---------- dates (ISO strings, UTC days) ----------
+
+  const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const addDays = (date, days) => new Date(date.getTime() + days * DAY_MS);
+  const plusDays = (iso, days) => Engine.iso(addDays(Engine.parse(iso), days));
+  const mondayOf = (date) => addDays(date, -((date.getUTCDay() + 6) % 7));
+
+  /** 'Mon 5 Oct', or 'Mon 5 Oct 2026' with the year. */
+  function dateLabel(iso, withYear) {
+    const date = Engine.parse(iso);
+    const label = `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+    return withYear ? `${label} ${date.getUTCFullYear()}` : label;
+  }
+
+  // The weeks the pages can show: the full weeks of ECC's calendar in the engine.
+  const FIRST_WEEK = Engine.iso(mondayOf(addDays(Engine.parse(Engine.MIN_DATE), 6)));
+  const LAST_WEEK = Engine.iso(mondayOf(Engine.parse(Engine.MAX_DATE)));
+
+  /** The Monday of the week that holds `iso`, within the calendar's weeks. */
+  function clampWeek(iso) {
+    const monday = Engine.iso(mondayOf(Engine.parse(iso)));
+    if (monday < FIRST_WEEK) return FIRST_WEEK;
+    if (monday > LAST_WEEK) return LAST_WEEK;
+    return monday;
+  }
+
+  /** Next Monday (never today), within the calendar's weeks. */
+  function nextMonday() {
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    return clampWeek(Engine.iso(addDays(today, (8 - today.getUTCDay()) % 7 || 7)));
+  }
+
+  const HOLIDAY_SHORT_NAMES = {
+    "New Year's Day": 'New Year',
+    'Good Friday': 'Easter',
+    'Easter Monday': 'Easter',
+    'Christmas Day': 'Christmas',
+  };
+
+  /**
+   * The weekday ECC holidays of the next 12 months, by week: each goes to the week that holds the last business day
+   * before it, whose calculation has to bridge the holiday. Holidays in the same week share it.
+   * Returns [{ monday, days: [iso], names: [short names, once each] }].
+   */
+  function holidayWeeks() {
+    const today = Engine.iso(new Date());
+    const until = plusDays(today, 365);
+    const weeks = new Map();
+    for (const day of Object.keys(Engine.HOLIDAYS).sort()) {
+      if (day < today || day > until || day > Engine.MAX_DATE) continue;
+      const monday = Engine.iso(mondayOf(Engine.prevBD(Engine.parse(day))));
+      if (monday < Engine.MIN_DATE) continue;
+      if (!weeks.has(monday)) weeks.set(monday, { monday, days: [] });
+      weeks.get(monday).days.push(day);
+    }
+    return [...weeks.values()].map((week) => {
+      const names = week.days.map((day) => HOLIDAY_SHORT_NAMES[Engine.HOLIDAYS[day]] || Engine.HOLIDAYS[day]);
+      return { ...week, names: [...new Set(names)] };
+    });
+  }
+
+  // ---------- tooltip (the page's #tip element) ----------
+
+  function showTip(event, value, label) {
+    const tip = clear($('tip'));
+    tip.appendChild(el('div', 'tv', value));
+    tip.appendChild(el('div', 'tl', label));
+    tip.hidden = false;
+    let x;
+    let y;
+    if (event.clientX != null && event.type.startsWith('pointer')) {
+      x = event.clientX;
+      y = event.clientY;
+    } else {
+      const box = event.target.getBoundingClientRect();
+      x = box.left + box.width / 2;
+      y = box.top;
+    }
+    tip.style.left = `${Math.min(Math.max(8, x + 12), window.innerWidth - tip.offsetWidth - 8)}px`;
+    const top = y - tip.offsetHeight - 12;
+    tip.style.top = `${top < 8 ? y + 16 : top}px`;
+  }
+  const hideTip = () => {
+    $('tip').hidden = true;
+  };
+
+  /** Makes `node` focusable, with a tooltip on hover and focus: the value in bold, then the label. */
+  function hoverable(node, value, label) {
+    node.tabIndex = 0;
+    node.setAttribute('aria-label', `${label}: ${value}`);
+    node.addEventListener('pointermove', (event) => showTip(event, value, label));
+    node.addEventListener('pointerleave', hideTip);
+    node.addEventListener('focus', (event) => showTip(event, value, label));
+    node.addEventListener('blur', hideTip);
+  }
+
+  // ---------- charts ----------
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  /** An <svg> of the given size, and add(tag, attributes, text) to draw in it. */
+  function svgCanvas(width, height) {
+    const root = document.createElementNS(SVG_NS, 'svg');
+    root.setAttribute('width', width);
+    root.setAttribute('height', height);
+    root.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    const add = (tag, attributes, text) => {
+      const node = document.createElementNS(SVG_NS, tag);
+      for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
+      if (text != null) node.textContent = text;
+      root.appendChild(node);
+      return node;
+    };
+    return { root, add };
+  }
+
+  /** The outline of a bar from `bottom` up to `top` (SVG y), with rounded top corners. */
+  function barPath(x, width, top, bottom) {
+    const r = Math.min(4, (bottom - top) / 2);
+    return (
+      `M${x},${bottom}V${top + r}Q${x},${top} ${x + r},${top}` +
+      `H${x + width - r}Q${x + width},${top} ${x + width},${top + r}V${bottom}Z`
+    );
+  }
+
+  /** A round step for about `count` gridlines up to `max`: 1, 2, 2.5 or 5 times a power of ten. */
+  function niceStep(max, count) {
+    const raw = max / count;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+    const factor = raw / magnitude;
+    const nice = factor <= 1 ? 1 : factor <= 2 ? 2 : factor <= 2.5 ? 2.5 : factor <= 5 ? 5 : 10;
+    return nice * magnitude;
+  }
+
+  /**
+   * Horizontal stacked bars (the wallet pages): one row per bar, its width relative to the largest total.
+   *   rows    [{ label, total, totalText, segments: [{ value, color, lightInk, text, tip: { value, label } }] }];
+   *           segments of €0.50 or less are left out, and lightInk marks light fills that take dark text in light mode
+   *   reserve the px each row keeps for its total, next to the bar
+   * A segment's label that does not fit is hidden: the tooltip and the table still give it.
+   */
+  function stackedBars(box, rows, reserve) {
+    clear(box);
+    const max = Math.max(...rows.map((row) => row.total), 1);
+    for (const row of rows) {
+      const line = el('div', 'bar-row');
+      line.appendChild(el('div', 'rl', row.label));
+      const track = el('div', 'bar-track');
+      const bar = el('div', 'bar');
+      bar.style.width = `calc((100% - ${reserve}px) * ${row.total / max})`;
+      for (const segment of row.segments) {
+        if (segment.value <= 0.5) continue;
+        const piece = el('div', segment.lightInk && !isDark() ? 'sg light-ink' : 'sg');
+        piece.style.flex = `${segment.value} 0 0`;
+        piece.style.background = segment.color;
+        piece.appendChild(el('span', null, segment.text));
+        hoverable(piece, segment.tip.value, segment.tip.label);
+        bar.appendChild(piece);
+      }
+      track.appendChild(bar);
+      track.appendChild(el('div', 'bar-total', row.totalText));
+      line.appendChild(track);
+      box.appendChild(line);
+    }
+    requestAnimationFrame(() => {
+      for (const piece of box.querySelectorAll('.sg')) {
+        const label = piece.firstChild;
+        label.style.visibility = label.scrollWidth + 8 <= piece.clientWidth ? '' : 'hidden';
+      }
+    });
+  }
+
+  /** A legend entry: a colour swatch and its text. */
+  function legendItem(color, text) {
+    const item = el('span');
+    const swatch = el('span', 'swatch');
+    swatch.style.background = color;
+    item.appendChild(swatch);
+    item.appendChild(document.createTextNode(text));
+    return item;
+  }
+
+  const last = (list) => list[list.length - 1];
+
+  return {
+    $,
+    el,
+    clear,
+    isDark,
+    headerRow,
+    tableHead,
+    tableRow,
+    wholeNumber,
+    euros,
+    thousands,
+    thousandsDiff,
+    shortEuros,
+    shortThousands,
+    WEEKDAYS,
+    WEEKDAYS_LONG,
+    MONTHS,
+    DAY_MS,
+    addDays,
+    plusDays,
+    mondayOf,
+    dateLabel,
+    clampWeek,
+    nextMonday,
+    holidayWeeks,
+    hoverable,
+    svgCanvas,
+    barPath,
+    niceStep,
+    stackedBars,
+    legendItem,
+    last,
+  };
+})(LimitEngine);
+
+/* Direct+ pages: the links between the limit calculator and the wallet estimate. Values travel in the link after the #:
+   browsers don't send that part to the server, and nothing is stored. */
+const Handoff = (() => {
+  'use strict';
+
+  // Where each page is: its route on the hosted site (scripts/serve.js), and its file in dist/.
+  const PAGES = {
+    limits: { route: '/limits', file: 'standalone/direct-plus-limit-calculator.html' },
+    estimate: { route: '/estimate', file: 'wallet/standalone/direct-plus-wallet-prospect.html' },
+  };
+
+  /** A value as URL-safe base64 of its JSON. */
+  function encode(value) {
+    const bytes = new TextEncoder().encode(JSON.stringify(value));
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  /** The value encode() wrote, or null for anything else. */
+  function decode(text) {
+    try {
+      const binary = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0))));
+    } catch {
+      return null;
+    }
+  }
+
+  /** The parts of the address after the #, as a Map of key → value (in order). */
+  function readHash() {
+    const parts = new Map();
+    for (const part of location.hash.replace(/^#/, '').split('&')) {
+      const split = part.indexOf('=');
+      if (split > 0) parts.set(part.slice(0, split), part.slice(split + 1));
+    }
+    return parts;
+  }
+
+  /** The text after the # for [key, value] pairs. */
+  const hashOf = (pairs) => pairs.map(([key, value]) => `${key}=${value}`).join('&');
+
+  /**
+   * The link to page `target` ('limits' or 'estimate'): its route on the hosted site, or its file next to this one when
+   * the page is opened from dist/ on disk. Anywhere else, such as the claude.ai copy, there is no link (null).
+   */
+  function linkTo(target) {
+    const { pathname, protocol } = location;
+    for (const page of Object.values(PAGES)) {
+      if (new RegExp(`${page.route}/?$`).test(pathname)) return PAGES[target].route;
+      if (protocol === 'file:' && pathname.endsWith(`/${page.file}`)) {
+        const up = '../'.repeat(page.file.split('/').length - 1);
+        return up + PAGES[target].file;
+      }
+    }
+    return null;
+  }
+
+  return { encode, decode, readHash, hashOf, linkTo };
+})();
+
+/* Direct+ wallet estimate for prospects: a short questionnaire, then how much money the Direct+ wallet needs, what for
+   and when. The answers map onto the calculator's settings (src/wallet/answers.js), and WalletCalc does the rest.
+   Amounts are rounded to the nearest €1,000: this is an estimate (a Direct+ decision); prices typed in are shown as
+   entered. */
+(() => {
+  'use strict';
+
+  const E = LimitEngine;
+  const C = WalletCalc;
+  const {
+    $,
+    el,
+    clear,
+    euros,
+    thousands,
+    thousandsDiff,
+    shortThousands,
+    wholeNumber,
+    dateLabel,
+    addDays,
+    tableHead,
+    stackedBars,
+    legendItem,
+  } = PageUI;
+
+  const STEPS = 7;
+  const ASSETS = ['production', 'consumption'];
+  const TYPE = { trader: 'Trader', aggregator: 'Aggregator', asset: 'Asset owner' };
+  const TYPE_WITH_ARTICLE = { trader: 'a trader', aggregator: 'an aggregator', asset: 'an asset owner' };
+  const LEAN_TEXT = { neither: 'either way', short: 'usually short', long: 'usually long' };
+  const TOPUP_TEXT = { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' };
+  const SEGMENTS = [
+    { id: 'trading', label: 'Trading collateral at ECC', color: 'var(--s-trading)' },
+    { id: 'available', label: 'Available balance', color: 'var(--s-available)' },
+    { id: 'brp', label: 'BRP collateral', color: 'var(--s-brp)' },
+  ];
+  const capitalise = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+
+  // The weeks to show: next week, and the weeks with an ECC holiday.
+  const NEXT_WEEK = PageUI.nextMonday();
+  const WEEKS = [
+    { monday: NEXT_WEEK, label: `Next week (${dateLabel(NEXT_WEEK, true)})` },
+    { monday: '2026-12-21', label: 'Christmas 2026 (from Mon 21 Dec)' },
+    { monday: '2027-03-22', label: 'Easter 2027 (from Mon 22 Mar)' },
+  ];
+
+  // ---------- page state ----------
+
+  const form = $('q');
+  let answers = { ...C.defaultAnswers('trader'), week: NEXT_WEEK };
+  let step = 1;
+  let example = false; // typical answers, shown for show only, not the prospect's own
+  let eccSetup = null; // carried over from the limit calculator: { C, key, cbd, cnbd, abd, anbd, week }
 
   // ---------- links to and from the limit calculator ----------
-  // Values travel in the link after the # (browsers don't send it to the server; nothing is stored). The answers ride
-  // along too, so Back, or coming back from the limit calculator, reopens the same estimate.
-  function enc(o) { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
-  function dec(t) { try { return JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return null; } }
-  function hashParams() {
-    var o = {};
-    location.hash.replace(/^#/, '').split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) o[kv.slice(0, i)] = kv.slice(i + 1); });
-    return o;
-  }
-  // The limit calculator: on the hosted site, or next to this file when opened from disk; elsewhere no link.
-  function limitsPage() {
-    if (/\/estimate\/?$/.test(location.pathname)) return '/limits';
-    if (location.protocol === 'file:' && /\/wallet\/standalone\/direct-plus-wallet-prospect\.html$/.test(location.pathname)) return '../../standalone/direct-plus-limit-calculator.html';
-    return null;
-  }
+  // The answers ride along in the link too, so Back, or coming back from the limit calculator, reopens the same
+  // estimate.
+
+  /** Adds a week to the list when it is missing; false when `iso` is not a Monday. */
   function ensureWeek(iso) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '') || E.parse(iso).getUTCDay() !== 1) return false;
-    if (!$('week').querySelector('option[value="' + iso + '"]')) { var o = el('option', null, 'Week of ' + dLabel(iso, true)); o.value = iso; $('week').appendChild(o); }
+    if (!$('week').querySelector(`option[value="${iso}"]`)) {
+      const option = el('option', null, `Week of ${dateLabel(iso, true)}`);
+      option.value = iso;
+      $('week').appendChild(option);
+    }
     return true;
   }
-  var eccSetup = null;   // carried over from the limit calculator: { C, key, cbd, cnbd, abd, anbd, week }
-  function stateHash() { return 'a=' + enc(ans) + (example ? '&ex=1' : '') + (eccSetup ? '&ecc=' + enc(eccSetup) : ''); }
-  function applySetup(st) {
-    if (!eccSetup) return st;
-    st.eccCollateral = eccSetup.C; st.splitMode = 'mine'; st.key = eccSetup.key;
-    st.blContBD = eccSetup.cbd; st.blContNBD = eccSetup.cnbd; st.blAucBD = eccSetup.abd; st.blAucNBD = eccSetup.anbd;
-    return st;
+
+  function stateHash() {
+    const pairs = [['a', Handoff.encode(answers)]];
+    if (example) pairs.push(['ex', '1']);
+    if (eccSetup) pairs.push(['ecc', Handoff.encode(eccSetup)]);
+    return Handoff.hashOf(pairs);
   }
-  // The limit calculator prefilled with this estimate's ECC part: the collateral, split, base limits and open risk of the
-  // calculation day that sets the amount (the highest day when collateral changes daily), and what the wallet needs that day.
-  function limitsHref(x) {
-    var page = limitsPage(); if (!page) return null;
-    var e = x.ecc, day = e.binding && e.binding.date, key = e.key;
-    if (e.mode === 'daily') { var pk = e.perDay.reduce(function (m, d) { return d.C > m.C ? d : m; }); day = pk.date; key = pk.key; }
+
+  /** The settings with the limit calculator's collateral, split and base limits, when they were carried over. */
+  function applySetup(settings) {
+    if (!eccSetup) return settings;
+    return Object.assign(settings, {
+      eccCollateral: eccSetup.C,
+      splitMode: 'mine',
+      key: eccSetup.key,
+      blContBD: eccSetup.cbd,
+      blContNBD: eccSetup.cnbd,
+      blAucBD: eccSetup.abd,
+      blAucNBD: eccSetup.anbd,
+    });
+  }
+
+  /* The limit calculator, prefilled with this estimate's ECC part: the collateral, split, base limits and open risk of
+     the calculation day that sets the amount (the highest day when collateral changes daily), and what the wallet
+     needs that day. */
+  function limitsLink(x) {
+    const page = Handoff.linkTo('limits');
+    if (!page) return null;
+    const { ecc } = x;
+    let day = ecc.binding && ecc.binding.date;
+    let key = ecc.key;
+    if (ecc.mode === 'daily') {
+      const peak = ecc.perDay.reduce((top, one) => (one.C > top.C ? one : top));
+      day = peak.date;
+      key = peak.key;
+    }
     if (!day) return null;
-    var OR = 0; x.settlement.windows.forEach(function (w) { if (w.close === day) OR = w.OR; });
-    var nb = E.iso(E.nextBD(E.parse(day))), ta = 0;
-    for (var d = E.parse(day); E.iso(d) < nb; ) { d = new Date(d.getTime() + 864e5); ta = Math.max(ta, e.targets.auc[E.iso(d)] || 0); }
-    var w = { week: ans.week, C: Math.ceil(e.C), key: key, or: Math.floor(OR), cbd: Math.round(e.baseLimits.cont.bd), cnbd: Math.round(e.baseLimits.cont.nbd),
-              abd: Math.round(e.baseLimits.da.bd), anbd: Math.round(e.baseLimits.da.nbd), day: day, tc: Math.round(e.targets.cont[day] || 0), ta: Math.round(ta),
-              daily: e.mode === 'daily', carried: !!e.fixed };
-    return page + '#w=' + enc(w) + '&' + stateHash();
+    const window = x.settlement.windows.find((one) => one.close === day);
+    const next = E.iso(E.nextBD(E.parse(day)));
+    let aucTarget = 0;
+    for (let date = addDays(E.parse(day), 1); E.iso(date) <= next; date = addDays(date, 1)) {
+      aucTarget = Math.max(aucTarget, ecc.targets.auc[E.iso(date)] || 0);
+    }
+    const handover = {
+      week: answers.week,
+      C: Math.ceil(ecc.C),
+      key,
+      or: Math.floor(window ? window.OR : 0),
+      cbd: Math.round(ecc.baseLimits.cont.bd),
+      cnbd: Math.round(ecc.baseLimits.cont.nbd),
+      abd: Math.round(ecc.baseLimits.da.bd),
+      anbd: Math.round(ecc.baseLimits.da.nbd),
+      day,
+      tc: Math.round(ecc.targets.cont[day] || 0),
+      ta: Math.round(aucTarget),
+      daily: ecc.mode === 'daily',
+      carried: Boolean(ecc.fixed),
+    };
+    return `${page}#w=${Handoff.encode(handover)}&${stateHash()}`;
   }
+
   function setupNote() {
-    var n = clear($('setup-note'));
-    n.hidden = !eccSetup;
+    const note = clear($('setup-note'));
+    note.hidden = !eccSetup;
     if (!eccSetup) return;
-    n.appendChild(el('b', null, 'Your limit calculator setup is carried over'));
-    n.appendChild(el('p', null, eur(eccSetup.C) + ' trading collateral at ECC, split ' + eccSetup.key + '% continuous / ' + (100 - eccSetup.key) + '% auctions, with its base limits, for the week of ' + dLabel(eccSetup.week, true) +
-      '. The estimate uses it for the trading collateral at ECC and tells you if your trading needs more. Answer the questions for the rest of your wallet, or skip to an example.'));
-    var b = el('button', 'linkbtn', 'Don\'t use it: let the estimate work out the collateral');
-    b.type = 'button'; b.addEventListener('click', dropSetup); n.appendChild(b);
+    note.appendChild(el('b', null, 'Your limit calculator setup is carried over'));
+    note.appendChild(
+      el(
+        'p',
+        null,
+        `${thousands(eccSetup.C)} trading collateral at ECC, split ${eccSetup.key}% continuous / ${100 - eccSetup.key}% ` +
+          `auctions, with its base limits, for the week of ${dateLabel(eccSetup.week, true)}. The estimate uses it for ` +
+          'the trading collateral at ECC and tells you if your trading needs more. Answer the questions for the rest of ' +
+          'your wallet, or skip to an example.',
+      ),
+    );
+    const button = el('button', 'linkbtn', "Don't use it: let the estimate work out the collateral");
+    button.type = 'button';
+    button.addEventListener('click', dropSetup);
+    note.appendChild(button);
   }
-  function dropSetup() { eccSetup = null; setupNote(); if (!$('results').hidden) results(); }
 
-  // ---------- answers ----------
-  var ans = C.defaultAnswers('trader'), step = 1, STEPS = 7, last = null, example = false;
-  ans.week = WEEKS[0][0];
-  var form = $('q');
-  function setRadio(name, v) { var r = form.querySelector('input[name="' + name + '"][value="' + v + '"]'); if (r) r.checked = true; }
-  function fill() {
-    setRadio('type', ans.type); setRadio('weekend', ans.weekend); setRadio('tough', ans.tough ? 'yes' : 'no'); setRadio('strategy', ans.strategy);
-    setRadio('carry', ans.carry); setRadio('netting', ans.netting); setRadio('balance', ans.balance); setRadio('lean', ans.lean); setRadio('replenish', ans.replenish);
-    Array.prototype.forEach.call(form.querySelectorAll('[data-a]'), function (i) { var v = ans[i.getAttribute('data-a')]; i.value = v == null ? '' : (i.hasAttribute('data-pct') ? Math.round(v * 1000) / 10 : v); });
-    ASSET_KEYS.forEach(function (k) { $('a-' + k).checked = !!ans.portfolio[k]; });
-    $('a-none').checked = !anyAsset();
-    $('topup').value = ans.replenish; $('cmode').value = ans.collateral; setRadio('collateral', ans.collateral);
-    visibility();
+  function dropSetup() {
+    eccSetup = null;
+    setupNote();
+    if (!$('results').hidden) showResults();
   }
-  function visibility() {
-    $('bid-q').style.display = ans.aucBuy > 0 ? '' : 'none';
-    Array.prototype.forEach.call(form.querySelectorAll('[data-type]'), function (n) { n.style.display = ans.type === n.getAttribute('data-type') ? '' : 'none'; });
-    $('size-q').style.display = anyAsset() ? '' : 'none';
-    $('tough-price').style.display = ans.tough ? '' : 'none';
+
+  // ---------- the questions ----------
+
+  const hasAssets = () => ASSETS.some((kind) => answers.portfolio[kind]);
+
+  function setRadio(name, value) {
+    const radio = form.querySelector(`input[name="${name}"][value="${value}"]`);
+    if (radio) radio.checked = true;
   }
-  var ASSET_KEYS = ['production', 'consumption'];
-  function anyAsset() { return ASSET_KEYS.some(function (k) { return ans.portfolio[k]; }); }
-  form.addEventListener('change', function (e) {
-    var t = e.target, name = t.name;
-    if (name === 'asset') {
-      if (t.value === 'none') { if (t.checked) ASSET_KEYS.forEach(function (k) { ans.portfolio[k] = false; }); }
-      else ans.portfolio[t.value] = t.checked;
-      if (anyAsset() && !(ans.capacityMW > 0)) { ans.capacityMW = 10; ans.sites = 1; }
-      var sug = C.suggestBalance(ans.type, ans.portfolio);
-      if (sug !== ans.balance) { ans.balance = sug; var pn = $('pf-note'); pn.textContent = 'We set the next question, how closely you match your positions, to fit this portfolio. Change it there if needed.'; pn.hidden = false; }
-      fill(); return;
+
+  /** Shows the answers in the questions. */
+  function fillForm() {
+    setRadio('type', answers.type);
+    setRadio('weekend', answers.weekend);
+    setRadio('tough', answers.tough ? 'yes' : 'no');
+    setRadio('strategy', answers.strategy);
+    setRadio('netting', answers.netting);
+    setRadio('balance', answers.balance);
+    setRadio('lean', answers.lean);
+    setRadio('replenish', answers.replenish);
+    setRadio('collateral', answers.collateral);
+    for (const input of form.querySelectorAll('[data-a]')) {
+      const value = answers[input.dataset.a];
+      if (value == null) input.value = '';
+      else input.value = input.hasAttribute('data-pct') ? Math.round(value * 1000) / 10 : value;
     }
-    if (t.type === 'radio') {
-      if (name === 'type') {
-        var week = ans.week; ans = C.defaultAnswers(t.value); ans.week = week; fill();
-        note('We filled in typical answers for ' + t.parentNode.querySelector('b').textContent.toLowerCase() + 's. Change any of them.');
-        return;
+    for (const kind of ASSETS) $(`a-${kind}`).checked = Boolean(answers.portfolio[kind]);
+    $('a-none').checked = !hasAssets();
+    $('topup').value = answers.replenish;
+    $('cmode').value = answers.collateral;
+    updateVisibility();
+  }
+
+  /** Shows only the questions that apply to these answers. */
+  function updateVisibility() {
+    $('bid-q').hidden = !(answers.aucBuy > 0);
+    for (const question of form.querySelectorAll('[data-type]'))
+      question.hidden = answers.type !== question.dataset.type;
+    $('size-q').hidden = !hasAssets();
+    $('tough-price').hidden = !answers.tough;
+  }
+
+  function showNote(text) {
+    const note = $('vol-note');
+    note.textContent = text;
+    note.hidden = false;
+  }
+
+  function changePortfolio(input) {
+    if (input.value !== 'none') answers.portfolio[input.value] = input.checked;
+    else if (input.checked) for (const kind of ASSETS) answers.portfolio[kind] = false;
+    if (hasAssets() && !(answers.capacityMW > 0)) {
+      answers.capacityMW = 10;
+      answers.sites = 1;
+    }
+    const suggested = C.suggestBalance(answers.type, answers.portfolio);
+    if (suggested !== answers.balance) {
+      answers.balance = suggested;
+      const note = $('pf-note');
+      note.textContent =
+        'We set the next question, how closely you match your positions, to fit this portfolio. Change it there if needed.';
+      note.hidden = false;
+    }
+    fillForm();
+  }
+
+  function changeChoice(input) {
+    const { name, value } = input;
+    if (name === 'type') {
+      answers = { ...C.defaultAnswers(value), week: answers.week };
+      fillForm();
+      const type = input.parentNode.querySelector('b').textContent.toLowerCase();
+      showNote(`We filled in typical answers for ${type}s. Change any of them.`);
+      return;
+    }
+    if (name === 'tough') answers.tough = value === 'yes';
+    else answers[name] = value;
+    if (name === 'strategy') {
+      const volumes = C.strategyVolumes(answers.type, answers.strategy);
+      answers.contBuy = volumes.cont.buy;
+      answers.contSell = volumes.cont.sell;
+      answers.aucBuy = volumes.auc.buy;
+      answers.aucSell = volumes.auc.sell;
+      fillForm();
+      showNote("We adjusted your volumes to match. Change them if they don't fit.");
+    }
+    updateVisibility();
+  }
+
+  function changeNumber(input) {
+    const key = input.dataset.a;
+    if (!key) return;
+    const value = input.value === '' ? NaN : parseFloat(input.value);
+    if (!Number.isFinite(value)) answers[key] = null;
+    else answers[key] = input.hasAttribute('data-pct') ? value / 100 : value;
+    if (key === 'aucBuy') updateVisibility();
+  }
+
+  /** The problem with the answers to question `number`, or null. */
+  function validate(number) {
+    const missing = (key) => answers[key] == null || !(answers[key] >= 0);
+    const aggregator = answers.type === 'aggregator';
+    if (number === 3) {
+      const keys = ['contBuy', 'contSell', 'aucBuy', 'aucSell', ...(aggregator ? ['nominatedIn', 'nonDelivery'] : [])];
+      if (keys.some(missing)) return 'Please fill in every volume (0 is fine).';
+      if (aggregator && answers.nonDelivery > 1) return "The share not delivered can't be over 100%.";
+    }
+    if (number === 4) {
+      if (!(answers.price > 0)) return 'Please fill in the normal price.';
+      if (answers.tough && !(answers.stressPrice > 0)) return 'Please fill in the tough-week price.';
+      if (answers.tough && answers.stressPrice < answers.price)
+        return 'The tough-week price should be at least the normal price.';
+      if (answers.aucBuy > 0 && !(answers.aucLimitPrice > 0))
+        return "Please fill in the highest price you'd bid in auctions.";
+    }
+    if (number === 5 && hasAssets()) {
+      if (!(answers.capacityMW > 0)) return 'Please fill in the total capacity.';
+      if (!(answers.sites >= 1) || Math.round(answers.sites) !== answers.sites) {
+        return 'Please fill in the number of sites (a whole number, at least 1).';
       }
-      if (name === 'tough') ans.tough = t.value === 'yes';
-      else ans[name] = t.value;
-      if (name === 'strategy') {
-        var v = C.strategyVolumes(ans.type, ans.strategy);
-        ans.contBuy = v.cont.buy; ans.contSell = v.cont.sell; ans.aucBuy = v.auc.buy; ans.aucSell = v.auc.sell;
-        fill(); note('We adjusted your volumes to match. Change them if they don\'t fit.');
-      }
-      visibility();
-    }
-  });
-  form.addEventListener('input', function (e) {
-    var t = e.target, k = t.getAttribute('data-a');
-    if (!k) return;
-    var v = t.value === '' ? null : parseFloat(t.value);
-    ans[k] = v == null || !isFinite(v) ? null : (t.hasAttribute('data-pct') ? v / 100 : v);
-    if (k === 'aucBuy') visibility();
-  });
-  function note(text) { var n = $('vol-note'); n.textContent = text; n.hidden = false; }
-
-
-  // ---------- steps ----------
-  function validate(s) {
-    var bad = function (k) { return ans[k] == null || !(ans[k] >= 0); };
-    if (s === 3) {
-      var ks = ['contBuy', 'contSell', 'aucBuy', 'aucSell'];
-      if (ans.type === 'aggregator') ks.push('nominatedIn', 'nonDelivery');
-      if (ks.some(bad)) return 'Please fill in every volume (0 is fine).';
-      if (ans.type === 'aggregator' && ans.nonDelivery > 1) return 'The share not delivered can\'t be over 100%.';
-    }
-    if (s === 4) {
-      if (!(ans.price > 0)) return 'Please fill in the normal price.';
-      if (ans.tough && !(ans.stressPrice > 0)) return 'Please fill in the tough-week price.';
-      if (ans.tough && ans.stressPrice < ans.price) return 'The tough-week price should be at least the normal price.';
-      if (ans.aucBuy > 0 && !(ans.aucLimitPrice > 0)) return 'Please fill in the highest price you\'d bid in auctions.';
-    }
-    if (s === 5 && anyAsset()) {
-      if (!(ans.capacityMW > 0)) return 'Please fill in the total capacity.';
-      if (!(ans.sites >= 1) || Math.round(ans.sites) !== ans.sites) return 'Please fill in the number of sites (a whole number, at least 1).';
     }
     return null;
   }
-  function show(s) {
-    step = s;
-    Array.prototype.forEach.call(form.querySelectorAll('.step'), function (f) { f.hidden = +f.getAttribute('data-step') !== s; });
-    $('step-label').textContent = 'Question ' + s + ' of ' + STEPS;
-    $('progress').style.width = (s / STEPS * 100) + '%';
-    $('back').style.visibility = s === 1 ? 'hidden' : 'visible';
-    $('next').textContent = s === STEPS ? 'See my estimate' : 'Next';
+
+  function showStep(number) {
+    step = number;
+    for (const fieldset of form.querySelectorAll('.step')) fieldset.hidden = Number(fieldset.dataset.step) !== number;
+    $('step-label').textContent = `Question ${number} of ${STEPS}`;
+    $('progress').style.width = `${(number / STEPS) * 100}%`;
+    $('back').style.visibility = number === 1 ? 'hidden' : 'visible';
+    $('next').textContent = number === STEPS ? 'See my estimate' : 'Next';
     $('step-error').hidden = true;
     setupNote();
   }
-  $('next').addEventListener('click', function () {
-    var err = validate(step);
-    if (err) { $('step-error').textContent = err; $('step-error').hidden = false; return; }
-    if (step < STEPS) { show(step + 1); $('wizard').scrollIntoView({ block: 'start' }); return; }
-    example = false; results();
-  });
-  // Skip: straight to the results with the typical answers for the chosen type, marked as an example throughout.
-  $('skip').addEventListener('click', function () {
-    var t = form.querySelector('input[name="type"]:checked'), week = ans.week;
-    ans = C.defaultAnswers(t ? t.value : 'trader'); ans.week = week; fill();
-    example = true; results(); window.scrollTo(0, 0);
-  });
-  $('back').addEventListener('click', function () { if (step > 1) show(step - 1); });
-  function edit() { $('results').hidden = true; $('wizard').hidden = false; document.querySelector('.page').classList.remove('showing-results'); show(1); window.scrollTo(0, 0); }
-  $('example-own').addEventListener('click', edit);
-  // Switch the example between member types: that type's typical answers, keeping the week, collateral and top-ups shown.
-  Array.prototype.forEach.call(document.querySelectorAll('[data-extype]'), function (b) {
-    b.addEventListener('click', function () {
-      var keep = { week: ans.week, collateral: ans.collateral, replenish: ans.replenish };
-      ans = C.defaultAnswers(b.getAttribute('data-extype'));
-      for (var k in keep) ans[k] = keep[k];
-      fill(); example = true; results();
-    });
-  });
-  $('edit').addEventListener('click', edit); $('edit2').addEventListener('click', edit);
-  $('print').addEventListener('click', function () { window.print(); });
-  $('week').addEventListener('change', function () { ans.week = $('week').value; results(); });
-  $('topup').addEventListener('change', function () { ans.replenish = $('topup').value; setRadio('replenish', ans.replenish); results(); });
-  $('cmode').addEventListener('change', function () { ans.collateral = $('cmode').value; setRadio('collateral', ans.collateral); results(); });
 
-  // ---------- tooltip ----------
-  var tip = $('tip');
-  function hoverable(node, value, label) {
-    node.tabIndex = 0; node.setAttribute('aria-label', label + ': ' + value);
-    var showTip = function (evt) {
-      clear(tip); tip.appendChild(el('div', 'tv', value)); tip.appendChild(el('div', 'tl', label)); tip.hidden = false;
-      var b = evt.clientX != null && evt.type.indexOf('pointer') === 0 ? { x: evt.clientX, y: evt.clientY } : (function () { var r = evt.target.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top }; })();
-      tip.style.left = Math.min(Math.max(8, b.x + 12), window.innerWidth - tip.offsetWidth - 8) + 'px';
-      var top = b.y - tip.offsetHeight - 12; tip.style.top = (top < 8 ? b.y + 16 : top) + 'px';
-    };
-    node.addEventListener('pointermove', showTip); node.addEventListener('focus', showTip);
-    node.addEventListener('pointerleave', function () { tip.hidden = true; }); node.addEventListener('blur', function () { tip.hidden = true; });
+  function nextStep() {
+    const error = validate(step);
+    if (error) {
+      $('step-error').textContent = error;
+      $('step-error').hidden = false;
+      return;
+    }
+    if (step < STEPS) {
+      showStep(step + 1);
+      $('wizard').scrollIntoView({ block: 'start' });
+      return;
+    }
+    example = false;
+    showResults();
   }
 
-  // ---------- results ----------
-  var SEG = [['trading', 'Trading collateral at ECC', 'var(--s-trading)'], ['available', 'Available balance', 'var(--s-available)'], ['brp', 'BRP collateral', 'var(--s-brp)']];
-  var TYPE = { trader: 'Trader', aggregator: 'Aggregator', asset: 'Asset owner' };
-  function copy(o) { var c = {}; for (var k in o) c[k] = o[k]; return c; }
-  function results() {
-    // "Show me both" runs the estimate with and without weekend trading; the last run also gets the sensitivities.
-    var variants = ans.weekend === 'both' ? [['no', 'Business days only'], ['yes', 'Also at weekends']] : [[ans.weekend, '']], runs;
+  /** Skip the questions: the results with the typical answers for the type chosen, marked as an example throughout. */
+  function skipToExample() {
+    const type = form.querySelector('input[name="type"]:checked');
+    answers = { ...C.defaultAnswers(type ? type.value : 'trader'), week: answers.week };
+    fillForm();
+    example = true;
+    showResults();
+    window.scrollTo(0, 0);
+  }
+
+  /** The example for another member type: its typical answers, keeping the week, collateral and top-ups shown. */
+  function switchExample(type) {
+    const { week, collateral, replenish } = answers;
+    answers = { ...C.defaultAnswers(type), week, collateral, replenish };
+    fillForm();
+    example = true;
+    showResults();
+  }
+
+  function editAnswers() {
+    $('results').hidden = true;
+    $('wizard').hidden = false;
+    document.querySelector('.page').classList.remove('showing-results');
+    showStep(1);
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- the estimate ----------
+
+  /** Runs the estimate for the answers; "show me both" runs it without and with weekend trading. The last run, the one
+   *  shown in detail, also gets the sensitivities. */
+  function estimate() {
+    const variants =
+      answers.weekend === 'both'
+        ? [
+            { weekend: 'no', label: 'Business days only' },
+            { weekend: 'yes', label: 'Also at weekends' },
+          ]
+        : [{ weekend: answers.weekend, label: '' }];
+    return variants.map(({ weekend, label }, i) => {
+      const settings = applySetup(C.fromAnswers({ ...answers, weekend }));
+      const full = i === variants.length - 1 ? C.compute(settings) : null;
+      let stress = null;
+      if (answers.tough) stress = full ? full.stress : C.scenario(settings, { stress: true });
+      return { label, settings, full, expected: full ? full.expected : C.scenario(settings), stress };
+    });
+  }
+
+  function showResults() {
+    let runs;
     try {
-      runs = variants.map(function (v, i) {
-        var a = copy(ans); a.weekend = v[0];
-        var st = applySetup(C.fromAnswers(a)), full = i === variants.length - 1 ? C.compute(st) : null;
-        return { label: v[1], s: st, full: full, exp: full ? full.expected : C.scenario(st, {}), str: ans.tough ? (full ? full.stress : C.scenario(st, { stress: true })) : null };
-      });
-    } catch (e) { $('step-error').textContent = 'We can\'t estimate this: ' + e.message; $('step-error').hidden = false; return; }
-    var primary = runs[runs.length - 1], s = primary.s;
-    try { history.replaceState(null, '', location.pathname + location.search + '#' + stateHash()); } catch (e) { /* the link just doesn't update */ }
-    last = primary.full;
-    $('wizard').hidden = true; $('results').hidden = false; document.querySelector('.page').classList.add('showing-results'); $('week').value = ans.week; $('topup').value = ans.replenish; $('cmode').value = ans.collateral;
+      runs = estimate();
+    } catch (error) {
+      $('step-error').textContent = `We can't estimate this: ${error.message}`;
+      $('step-error').hidden = false;
+      return;
+    }
+    const primary = runs[runs.length - 1];
+    const { settings } = primary;
+    try {
+      history.replaceState(null, '', `${location.pathname}${location.search}#${stateHash()}`);
+    } catch {
+      // the link just doesn't update
+    }
+    $('wizard').hidden = true;
+    $('results').hidden = false;
+    document.querySelector('.page').classList.add('showing-results');
+    $('week').value = answers.week;
+    $('topup').value = answers.replenish;
+    $('cmode').value = answers.collateral;
     $('example').hidden = !example;
-    Array.prototype.forEach.call(document.querySelectorAll('[data-extype]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-extype') === ans.type)); });
-    $('example-text').textContent = 'These numbers use typical answers for ' + { trader: 'a trader', aggregator: 'an aggregator', asset: 'an asset owner' }[ans.type] +
-      ', not your plans. They show what the estimate looks like; your own wallet needs can be very different.';
+    for (const button of document.querySelectorAll('[data-extype]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.extype === answers.type));
+    }
+    $('example-text').textContent =
+      `These numbers use typical answers for ${TYPE_WITH_ARTICLE[answers.type]}, not your plans. They show what the ` +
+      'estimate looks like; your own wallet needs can be very different.';
     $('results-title').textContent = example ? 'Example estimate' : 'Your estimate';
     $('answers-title').textContent = example ? 'Example answers' : 'Your answers';
     $('answers-hint').textContent = example ? 'Typical answers for the example' : 'What you told us';
     $('edit').textContent = example ? 'Answer the questions' : 'Change my answers';
     $('edit2').textContent = example ? 'Answer the questions' : 'Change my answers';
-    var cols = runs.map(function (r) { return { label: r.label || 'Normal week', res: r.exp }; });
-    if (ans.tough) runs.forEach(function (r) { cols.push({ label: r.label ? r.label + ', tough week' : 'Tough week', res: r.str }); });
-    $('hero-label').textContent = (example ? 'Example: money a typical ' + TYPE[ans.type].toLowerCase() + '\'s Direct+ wallet needs' : 'Money your Direct+ wallet needs') + ', for the week of ' + dLabel(s.week, true);
-    var hv = clear($('hero-value')), normals = runs.map(function (r) { return r.exp.total; });
-    var lo = Math.min.apply(null, normals), hi = Math.max.apply(null, normals);
-    if (ans.collateral === 'daily') {
-      var wk = Math.min.apply(null, runs.map(function (r) { return r.exp.weekdayTotal; }));
-      hv.appendChild(document.createTextNode('About ' + eur(wk) + ' during the week, ' + eur(hi) + ' around the weekend '));
-    } else hv.appendChild(document.createTextNode('About ' + eur(lo) + (eur(hi) !== eur(lo) ? ' to ' + eur(hi) : '') + ' '));
-    if (ans.tough) hv.appendChild(el('span', 'to', 'up to ' + eur(Math.max.apply(null, runs.map(function (r) { return r.str.total; }))) + ' in a tough week'));
-    var sub = [];
-    if (runs.length > 1) sub.push(eur(runs[0].exp.total) + ' if you trade on business days only, ' + eur(runs[1].exp.total) + ' if you also trade at weekends and on holidays.');
-    if (ans.collateral === 'daily') sub.push('With your trading collateral adjusted every business day, it is lower Monday to Thursday and raised for the evening calculation before a weekend or holiday.');
-    sub.push('All in cash: Direct+ does not accept bank guarantees.');
-    if (ans.tough) sub.push('A tough week here means prices at ' + eurP(s.stressPrice) + '/MWh' + (s.badDaysStress > 0 ? ', room for ' + s.badDaysStress + ' bad trading days instead of ' + s.badDays : '') + ' and more imbalance.');
-    $('hero-sub').textContent = sub.join(' ');
-    renderPurposes(cols, primary); renderBars(cols); renderWhen(primary, s, runs.length > 1); renderTopups(primary);
-    renderSens(primary.full, s); renderAnswers(s); renderAssumed(primary.full, s); renderCore(primary.full, s);
+    const columns = runs.map((run) => ({ label: run.label || 'Normal week', result: run.expected }));
+    if (answers.tough) {
+      for (const run of runs)
+        columns.push({ label: run.label ? `${run.label}, tough week` : 'Tough week', result: run.stress });
+    }
+    renderHero(runs, settings);
+    renderPurposes(columns, primary);
+    renderBars(columns);
+    renderWhen(primary, runs.length > 1);
+    renderTopups(primary);
+    renderSensitivities(primary.full, settings);
+    renderAnswers(settings);
+    renderAssumed(primary.full, settings);
+    renderCore(primary.full, settings);
     window.scrollTo(0, 0);
   }
-  function describe(p, primary) {
-    var se = primary.exp.settlement;
-    switch (p.id) {
-      case 'ecc': return 'Lets you trade: ECC turns it into your trading limits for continuous trading and the auctions. It stays at ECC while you trade.' + (primary.exp.ecc.mode === 'daily' ? ' Adjusted every business day: about ' + eur(primary.exp.ecc.weekday) + ' on normal weekdays, the amount shown for the weekend.' : '');
-      case 'settlement': return 'ECC settles each business day\'s trades from your wallet as one net payment.' + (se.float > 0.5 ? ' Purchases you sell only after the 16:00 cut are paid before their sale comes back, so part of this stays in the wallet all the time.' : se.flows < 0.5 ? ' Your days net to about zero or to money coming in.' : '') +
-        (se.badDay > 0.5 ? ' It also keeps room for ' + (se.badDays === 1 ? 'a bad day' : se.badDays + ' bad days') + ': €' + fmt.format(Math.round(primary.s.badMove)) + ' lost on each MWh of your open position (about ' + fmt.format(Math.round(se.openMWh)) + ' MWh), ' + eur(se.badDay) + '.' : '');
-      case 'brp': return 'Your share of the Direct+ BRP\'s security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.';
-      case 'invoices': return 'TenneT invoices imbalance every week, about four weeks after delivery.';
+
+  function renderHero(runs, settings) {
+    const who = example
+      ? `Example: money a typical ${TYPE[answers.type].toLowerCase()}'s Direct+ wallet needs`
+      : 'Money your Direct+ wallet needs';
+    $('hero-label').textContent = `${who}, for the week of ${dateLabel(settings.week, true)}`;
+    const hero = clear($('hero-value'));
+    const normal = runs.map((run) => run.expected.total);
+    const low = thousands(Math.min(...normal));
+    const high = thousands(Math.max(...normal));
+    if (answers.collateral === 'daily') {
+      const weekday = thousands(Math.min(...runs.map((run) => run.expected.weekdayTotal)));
+      hero.appendChild(document.createTextNode(`About ${weekday} during the week, ${high} around the weekend `));
+    } else {
+      hero.appendChild(document.createTextNode(`About ${low}${high !== low ? ` to ${high}` : ''} `));
     }
+    if (answers.tough) {
+      const tough = Math.max(...runs.map((run) => run.stress.total));
+      hero.appendChild(el('span', 'to', `up to ${thousands(tough)} in a tough week`));
+    }
+    const sub = [];
+    if (runs.length > 1) {
+      sub.push(
+        `${thousands(runs[0].expected.total)} if you trade on business days only, ` +
+          `${thousands(runs[1].expected.total)} if you also trade at weekends and on holidays.`,
+      );
+    }
+    if (answers.collateral === 'daily') {
+      sub.push(
+        'With your trading collateral adjusted every business day, it is lower Monday to Thursday and raised for the ' +
+          'evening calculation before a weekend or holiday.',
+      );
+    }
+    sub.push('All in cash: Direct+ does not accept bank guarantees.');
+    if (answers.tough) {
+      const badDays =
+        settings.badDaysStress > 0
+          ? `, room for ${settings.badDaysStress} bad trading days instead of ${settings.badDays}`
+          : '';
+      sub.push(`A tough week here means prices at ${euros(settings.stressPrice)}/MWh${badDays} and more imbalance.`);
+    }
+    $('hero-sub').textContent = sub.join(' ');
+  }
+
+  // ---------- what the money is for ----------
+
+  const PURPOSE_LABEL = {
+    ecc: 'Trading collateral at ECC',
+    settlement: 'Daily settlement',
+    brp: 'BRP collateral',
+    invoices: 'Imbalance invoices',
+  };
+
+  function describe(part, { expected, settings }) {
+    const { ecc, settlement } = expected;
+    if (part.id === 'ecc') {
+      let text =
+        'Lets you trade: ECC turns it into your trading limits for continuous trading and the auctions. It stays at ECC while you trade.';
+      if (ecc.mode === 'daily') {
+        text += ` Adjusted every business day: about ${thousands(ecc.weekday)} on normal weekdays, the amount shown for the weekend.`;
+      }
+      return text;
+    }
+    if (part.id === 'settlement') {
+      let text = "ECC settles each business day's trades from your wallet as one net payment.";
+      if (settlement.float > 0.5) {
+        text +=
+          ' Purchases you sell only after the 16:00 cut are paid before their sale comes back, so part of this stays in the wallet all the time.';
+      } else if (settlement.flows < 0.5) {
+        text += ' Your days net to about zero or to money coming in.';
+      }
+      if (settlement.badDay > 0.5) {
+        const days = settlement.badDays === 1 ? 'a bad day' : `${settlement.badDays} bad days`;
+        text +=
+          ` It also keeps room for ${days}: €${wholeNumber.format(Math.round(settings.badMove))} lost on each MWh of ` +
+          `your open position (about ${wholeNumber.format(Math.round(settlement.openMWh))} MWh), ${thousands(settlement.badDay)}.`;
+      }
+      return text;
+    }
+    if (part.id === 'brp') {
+      return "Your share of the Direct+ BRP's security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.";
+    }
+    if (part.id === 'invoices') return 'TenneT invoices imbalance every week, about four weeks after delivery.';
     return '';
   }
-  function eccLinks(td, x) {
-    var fx = x.ecc.fixed;
-    if (fx) {
-      td.appendChild(el('span', 'carried' + (fx.short ? ' short' : ''), 'From your limit calculator: ' + eur(fx.C) + ', split ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ', with its base limits. ' +
-        (fx.need === null ? 'At this split your trading can\'t be covered: one market gets too small a share.'
-         : fx.short ? 'Your trading as answered needs about ' + eur(fx.need) + ' at this split, so your limits may run out.'
-         : 'Enough for your trading as answered (it needs about ' + eur(fx.need) + ' at this split).')));
+
+  /** The ECC part's links: the limit calculator, and the setup carried over from it. */
+  function eccDetails(cell, x) {
+    const { fixed } = x.ecc;
+    if (fixed) {
+      let text = `From your limit calculator: ${thousands(fixed.C)}, split ${x.ecc.key} / ${100 - x.ecc.key}, with its base limits. `;
+      if (fixed.need === null)
+        text += "At this split your trading can't be covered: one market gets too small a share.";
+      else if (fixed.short)
+        text += `Your trading as answered needs about ${thousands(fixed.need)} at this split, so your limits may run out.`;
+      else text += `Enough for your trading as answered (it needs about ${thousands(fixed.need)} at this split).`;
+      cell.appendChild(el('span', fixed.short ? 'carried short' : 'carried', text));
     }
-    var row = el('div', 'detail-links no-print'), href = limitsHref(x);
-    if (href) { var a = el('a', 'linkbtn detail', 'Detailed calculation'); a.href = href; row.appendChild(a); }
-    if (fx) { var b = el('button', 'linkbtn', 'Use the estimate\'s own amount'); b.type = 'button'; b.addEventListener('click', dropSetup); row.appendChild(b); }
-    if (row.childNodes.length) td.appendChild(row);
+    const links = el('div', 'detail-links no-print');
+    const href = limitsLink(x);
+    if (href) {
+      const link = el('a', 'linkbtn detail', 'Detailed calculation');
+      link.href = href;
+      links.appendChild(link);
+    }
+    if (fixed) {
+      const button = el('button', 'linkbtn', "Use the estimate's own amount");
+      button.type = 'button';
+      button.addEventListener('click', dropSetup);
+      links.appendChild(button);
+    }
+    if (links.childNodes.length) cell.appendChild(links);
   }
-  // The BRP collateral step by step, with the figures used: TenneT's rule in force and ACM's draft from 2027, with a switch
-  // between them that starts on the rule the estimate uses for the week shown. A table: one step per line, its number on the
-  // right, the result at the bottom. Exact euros, not rounded to €1,000.
-  function brpCalc(td, x, st) {
-    var b = x.brp, cur = b.current, dr = b.draft, marginal = b.basis === 'marginal', d = el('details', 'calc');
-    d.appendChild(el('summary', null, 'Detailed calculation'));
-    var box = el('div', 'calc-body');
-    var mwh = function (v) { return fmt.format(Math.round(v)) + ' MWh'; }, ex = function (v) { return (v < 0 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); };
-    var countedMW = cur.price > 0 ? cur.B / (24 * cur.price) : 0;
+
+  /* The BRP collateral step by step, with the figures used: TenneT's rule in force and ACM's draft from 2027, with a
+     switch between them that starts on the rule the estimate uses for the week shown. A table: one step per line, its
+     amount on the right, the result at the bottom. Exact euros, not rounded to €1,000. */
+  function brpDetails(cell, x, settings) {
+    const { brp } = x;
+    const { current, draft } = brp;
+    const marginal = brp.basis === 'marginal';
+    const mwh = (value) => `${wholeNumber.format(Math.round(value))} MWh`;
+    const countedMW = current.price > 0 ? current.B / (24 * current.price) : 0;
     // The draft's lines are worked from the rounded components shown, so the table adds up (±€1 against the estimate).
-    var dA = Math.round(dr.A), dB = Math.round(dr.B), dC = Math.round(dr.C), dD = Math.round(dr.D), dSum = 3 * dA + 4 * dB + 6 * dC + 6 * dD;
-    var dSec = marginal ? Math.max(dSum, 0) : Math.max(dSum, 96000);
-    var cA = Math.round(cur.A), cB = Math.round(cur.B), cSec = cur.twoA ? 2 * cA : cA + cB;   // the same for the rule in force
-    if (marginal) cSec = Math.max(cSec, 0); else cSec = Math.max(cSec, Math.round(cur.security));
-    var nomVol = st.nominatedIn > 0 && Math.abs(b.volume - st.nominatedIn) < 0.5;
-    var volRow = ['Daily volume at the TenneT boundary', nomVol ? 'the volume nominated from other BRPs' : 'what you sell minus what you buy', mwh(b.volume)];
-    // rows: [label, how it is worked out (optional), value, 'sum' for the result line]
-    var views = {
-      current: { label: 'Rule in force (2026)', title: 'TenneT\'s rule in force: Systeemcode elektriciteit 2026, article 10.8', result: cSec, rows: [
-        volRow,
-        ['Price', st.brpPrice != null && st.brpPrice !== '' ? 'TenneT\'s price floor, used for now' : 'average of the last three months, at least €40', eurP(cur.price) + '/MWh'],
-        ['A', 'volume × price', ex(cA)],
-        ['Connection capacity counted', countedMW > 0 ? 'the size class your ' + fmt.format(ans.capacityMW || 0) + ' MW falls in' : 'no connections join the Direct+ BRP', fmt.format(Math.round(countedMW)) + ' MW'],
-        ['B', 'capacity × 24 hours × price', ex(cB)],
-        ['2A', '2 × A', ex(2 * cA)],
-        [cur.twoA ? 'Security = 2A' : 'Security = A + B', cur.twoA ? '2A is at least B' : '2A is below B', ex(cur.twoA ? 2 * cA : cA + cB)],
-        ['BRP collateral', marginal ? 'your marginal part, never below €0' : 'as your own BRP', ex(cSec), 'sum']],
-        note: marginal ? 'As a Direct+ member you have no 50 MW volume floor: it applies once to the Direct+ BRP.' : 'As your own BRP, with the 50 MW volume floor.' },
-      draft: { label: 'ACM draft (from 2027)', title: 'ACM\'s draft rule from 1 January 2027 (ACM/25/196985, not yet final)', result: dSec, rows: [
-        volRow,
-        ['Price', st.brpPrice != null && st.brpPrice !== '' ? '€40 used for now' : 'average of the last two months', eurP(b.price) + '/MWh'],
-        ['A', 'volume × price', ex(dA)],
-        ['B', 'weekly imbalance invoices, last 10 weeks: average + 2σ', ex(dB)],
-        ['C', 'profile-metered reconciliation, 12 months: average + 0.5σ', ex(dC)],
-        ['D', 'telemetry and smart-meter reconciliation, 12 months: average + 0.5σ', ex(dD)],
-        ['3 × A', '', ex(3 * dA)],
-        ['4 × B', '', ex(4 * dB)],
-        ['6 × C', '', ex(6 * dC)],
-        ['6 × D', '', ex(6 * dD)],
-        ['BRP collateral', '3A + 4B + 6C + 6D' + (marginal ? ', never below €0' : ', at least €96,000'), ex(dSec), 'sum']],
-        note: marginal ? 'As a Direct+ member you have no €96,000 minimum: it applies once to the Direct+ BRP.' : 'As your own BRP, with the €96,000 minimum.' }
+    const [dA, dB, dC, dD] = [draft.A, draft.B, draft.C, draft.D].map((value) => Math.round(value));
+    const draftSum = 3 * dA + 4 * dB + 6 * dC + 6 * dD;
+    const draftResult = Math.max(draftSum, marginal ? 0 : 96000);
+    const [cA, cB] = [Math.round(current.A), Math.round(current.B)];
+    const currentSecurity = current.twoA ? 2 * cA : cA + cB;
+    const currentResult = Math.max(currentSecurity, marginal ? 0 : Math.round(current.security));
+    const nominated = settings.nominatedIn > 0 && Math.abs(brp.volume - settings.nominatedIn) < 0.5;
+    const volume = {
+      label: 'Daily volume at the TenneT boundary',
+      how: nominated ? 'the volume nominated from other BRPs' : 'what you sell minus what you buy',
+      value: mwh(brp.volume),
     };
-    var sw = el('div', 'rule-switch'), body = el('div', 'rule-body');
-    sw.setAttribute('role', 'group'); sw.setAttribute('aria-label', 'Which rule to show');
-    function showRule(id) {
-      var v = views[id], t = el('table', 'calc-table'), tb = el('tbody');
+    const fixedPrice = settings.brpPrice != null && settings.brpPrice !== '';
+    const RULES = {
+      current: {
+        label: 'Rule in force (2026)',
+        title: "TenneT's rule in force: Systeemcode elektriciteit 2026, article 10.8",
+        rows: [
+          volume,
+          {
+            label: 'Price',
+            how: fixedPrice ? "TenneT's price floor, used for now" : 'average of the last three months, at least €40',
+            value: `${euros(current.price)}/MWh`,
+          },
+          { label: 'A', how: 'volume × price', value: euros(cA) },
+          {
+            label: 'Connection capacity counted',
+            how:
+              countedMW > 0
+                ? `the size class your ${wholeNumber.format(answers.capacityMW || 0)} MW falls in`
+                : 'no connections join the Direct+ BRP',
+            value: `${wholeNumber.format(Math.round(countedMW))} MW`,
+          },
+          { label: 'B', how: 'capacity × 24 hours × price', value: euros(cB) },
+          { label: '2A', how: '2 × A', value: euros(2 * cA) },
+          {
+            label: current.twoA ? 'Security = 2A' : 'Security = A + B',
+            how: current.twoA ? '2A is at least B' : '2A is below B',
+            value: euros(currentSecurity),
+          },
+          {
+            label: 'BRP collateral',
+            how: marginal ? 'your marginal part, never below €0' : 'as your own BRP',
+            value: euros(currentResult),
+            sum: true,
+          },
+        ],
+        note: marginal
+          ? 'As a Direct+ member you have no 50 MW volume floor: it applies once to the Direct+ BRP.'
+          : 'As your own BRP, with the 50 MW volume floor.',
+      },
+      draft: {
+        label: 'ACM draft (from 2027)',
+        title: "ACM's draft rule from 1 January 2027 (ACM/25/196985, not yet final)",
+        rows: [
+          volume,
+          {
+            label: 'Price',
+            how: fixedPrice ? '€40 used for now' : 'average of the last two months',
+            value: `${euros(brp.price)}/MWh`,
+          },
+          { label: 'A', how: 'volume × price', value: euros(dA) },
+          { label: 'B', how: 'weekly imbalance invoices, last 10 weeks: average + 2σ', value: euros(dB) },
+          { label: 'C', how: 'profile-metered reconciliation, 12 months: average + 0.5σ', value: euros(dC) },
+          { label: 'D', how: 'telemetry and smart-meter reconciliation, 12 months: average + 0.5σ', value: euros(dD) },
+          { label: '3 × A', value: euros(3 * dA) },
+          { label: '4 × B', value: euros(4 * dB) },
+          { label: '6 × C', value: euros(6 * dC) },
+          { label: '6 × D', value: euros(6 * dD) },
+          {
+            label: 'BRP collateral',
+            how: `3A + 4B + 6C + 6D${marginal ? ', never below €0' : ', at least €96,000'}`,
+            value: euros(draftResult),
+            sum: true,
+          },
+        ],
+        note: marginal
+          ? 'As a Direct+ member you have no €96,000 minimum: it applies once to the Direct+ BRP.'
+          : 'As your own BRP, with the €96,000 minimum.',
+      },
+    };
+
+    const details = el('details', 'calc');
+    details.appendChild(el('summary', null, 'Detailed calculation'));
+    const box = el('div', 'calc-body');
+    const switcher = el('div', 'rule-switch');
+    switcher.setAttribute('role', 'group');
+    switcher.setAttribute('aria-label', 'Which rule to show');
+    const body = el('div', 'rule-body');
+    const showRule = (id) => {
+      const rule = RULES[id];
       clear(body);
-      Array.prototype.forEach.call(sw.children, function (btn) { btn.setAttribute('aria-pressed', String(btn.getAttribute('data-rule') === id)); });
-      body.appendChild(el('b', null, v.title));
-      v.rows.forEach(function (r) {
-        var tr = el('tr', r[3] || null), th = el('th', null); th.scope = 'row';
-        th.appendChild(el('span', 'cl', r[0])); if (r[1]) th.appendChild(el('span', 'ch', r[1]));
-        tr.appendChild(th); tr.appendChild(el('td', null, r[2])); tb.appendChild(tr);
-      });
-      t.appendChild(tb); body.appendChild(t);
-      body.appendChild(el('p', null, v.note + ' ' + (id === b.rule ? 'This is the rule the estimate uses for the week of ' + dLabel(ans.week, true) + '.' : 'The estimate uses the other rule for the week of ' + dLabel(ans.week, true) + '.')));
+      for (const button of switcher.children) button.setAttribute('aria-pressed', String(button.dataset.rule === id));
+      body.appendChild(el('b', null, rule.title));
+      const table = el('table', 'calc-table');
+      const rows = el('tbody');
+      for (const row of rule.rows) {
+        const line = el('tr', row.sum ? 'sum' : null);
+        const head = el('th', null);
+        head.scope = 'row';
+        head.appendChild(el('span', 'cl', row.label));
+        if (row.how) head.appendChild(el('span', 'ch', row.how));
+        line.appendChild(head);
+        line.appendChild(el('td', null, row.value));
+        rows.appendChild(line);
+      }
+      table.appendChild(rows);
+      body.appendChild(table);
+      const week = dateLabel(answers.week, true);
+      const which =
+        id === brp.rule
+          ? `This is the rule the estimate uses for the week of ${week}.`
+          : `The estimate uses the other rule for the week of ${week}.`;
+      body.appendChild(el('p', null, `${rule.note} ${which}`));
+    };
+    for (const id of ['current', 'draft']) {
+      const button = el('button', null, RULES[id].label);
+      button.type = 'button';
+      button.dataset.rule = id;
+      button.addEventListener('click', () => showRule(id));
+      switcher.appendChild(button);
     }
-    ['current', 'draft'].forEach(function (id) {
-      var btn = el('button', null, views[id].label); btn.type = 'button'; btn.setAttribute('data-rule', id);
-      btn.addEventListener('click', function () { showRule(id); });
-      sw.appendChild(btn);
-    });
-    box.appendChild(sw); box.appendChild(body); showRule(b.rule);
-    d.appendChild(box); td.appendChild(d);
+    box.appendChild(switcher);
+    box.appendChild(body);
+    showRule(brp.rule);
+    details.appendChild(box);
+    cell.appendChild(details);
   }
-  var LABEL = { ecc: 'Trading collateral at ECC', settlement: 'Daily settlement', brp: 'BRP collateral', invoices: 'Imbalance invoices' };
-  function head(t, cols) { var th = el('thead'), hr = el('tr'); cols.forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); }); th.appendChild(hr); t.appendChild(th); }
-  function renderPurposes(cols, primary) {
-    var t = clear($('purposes'));
-    head(t, [['What for', '']].concat(cols.map(function (c) { return [c.label, 'r']; })));
-    var tb = el('tbody');
-    cols[0].res.parts.forEach(function (p, i) {
-      var tr = el('tr'), td = el('td');
-      td.appendChild(el('b', null, LABEL[p.id]));
-      var why = el('details', 'why'); why.appendChild(el('summary', null, 'What is it?')); why.appendChild(el('span', 'what', describe(p, primary))); td.appendChild(why);
-      if (p.id === 'ecc') eccLinks(td, primary.exp);
-      if (p.id === 'brp') brpCalc(td, primary.exp, primary.s);
-      tr.appendChild(td);
-      cols.forEach(function (c) { tr.appendChild(el('td', 'r', eur(c.res.parts[i].value))); });
-      tb.appendChild(tr);
+
+  function renderPurposes(columns, primary) {
+    const table = clear($('purposes'));
+    tableHead(table, [{ text: 'What for' }, ...columns.map((column) => ({ text: column.label, className: 'r' }))]);
+    const body = el('tbody');
+    columns[0].result.parts.forEach((part, i) => {
+      const row = el('tr');
+      const cell = el('td');
+      cell.appendChild(el('b', null, PURPOSE_LABEL[part.id]));
+      const why = el('details', 'why');
+      why.appendChild(el('summary', null, 'What is it?'));
+      why.appendChild(el('span', 'what', describe(part, primary)));
+      cell.appendChild(why);
+      if (part.id === 'ecc') eccDetails(cell, primary.expected);
+      if (part.id === 'brp') brpDetails(cell, primary.expected, primary.settings);
+      row.appendChild(cell);
+      for (const column of columns) row.appendChild(el('td', 'r', thousands(column.result.parts[i].value)));
+      body.appendChild(row);
     });
-    var tot = el('tr', 'total'); tot.appendChild(el('td', null, 'Total'));
-    cols.forEach(function (c) { tot.appendChild(el('td', 'r', eur(c.res.total))); });
-    tb.appendChild(tot); t.appendChild(tb);
+    const total = el('tr', 'total');
+    total.appendChild(el('td', null, 'Total'));
+    for (const column of columns) total.appendChild(el('td', 'r', thousands(column.result.total)));
+    body.appendChild(total);
+    table.appendChild(body);
   }
-  function isDark() { return getComputedStyle(document.documentElement).colorScheme === 'dark'; }
-  function renderBars(cols) {
-    var box = clear($('bars')), max = Math.max.apply(null, cols.map(function (c) { return c.res.total; }).concat([1]));
-    cols.forEach(function (c) {
-      var rw = el('div', 'bar-row'); rw.appendChild(el('div', 'rl', c.label));
-      var track = el('div', 'bar-track'), bar = el('div', 'bar');
-      bar.style.width = 'calc((100% - 100px) * ' + (c.res.total / max) + ')';
-      SEG.forEach(function (sg) {
-        var v = c.res.segments[sg[0]] || 0; if (v <= 0.5) return;
-        var n = el('div', 'sg' + (!isDark() && sg[0] !== 'trading' ? ' light-ink' : '')); n.style.flex = v + ' 0 0'; n.style.background = sg[2];
-        n.appendChild(el('span', null, eurShort(v))); hoverable(n, eur(v), c.label + ' · ' + sg[1]); bar.appendChild(n);
-      });
-      track.appendChild(bar); track.appendChild(el('div', 'bar-total', eur(c.res.total))); rw.appendChild(track); box.appendChild(rw);
-    });
-    requestAnimationFrame(function () { Array.prototype.forEach.call(box.querySelectorAll('.sg'), function (sg) { var sp = sg.firstChild; sp.style.visibility = sp.scrollWidth + 8 <= sg.clientWidth ? '' : 'hidden'; }); });
-    var lg = clear($('legend')), first = cols[0];
-    SEG.forEach(function (sg) { var s = el('span'), w = el('span', 'swatch'); w.style.background = sg[2]; s.appendChild(w); s.appendChild(document.createTextNode(sg[1] + ': ' + eur(first.res.segments[sg[0]] || 0) + (cols.length > 1 ? ' (' + first.label.toLowerCase() + ')' : ''))); lg.appendChild(s); });
+
+  function renderBars(columns) {
+    const rows = columns.map(({ label, result }) => ({
+      label,
+      total: result.total,
+      totalText: thousands(result.total),
+      segments: SEGMENTS.map((segment) => {
+        const value = result.segments[segment.id] || 0;
+        return {
+          value,
+          color: segment.color,
+          lightInk: segment.id !== 'trading',
+          text: shortThousands(value),
+          tip: { value: thousands(value), label: `${label} · ${segment.label}` },
+        };
+      }),
+    }));
+    stackedBars($('bars'), rows, 100);
+    const legend = clear($('legend'));
+    const [first] = columns;
+    const which = columns.length > 1 ? ` (${first.label.toLowerCase()})` : '';
+    for (const segment of SEGMENTS) {
+      legend.appendChild(
+        legendItem(segment.color, `${segment.label}: ${thousands(first.result.segments[segment.id] || 0)}${which}`),
+      );
+    }
   }
-  var TOPUPS = [['none', 'Not during the week'], ['weekly', 'Every Monday'], ['daily', 'Every business day']];
+
+  // ---------- when you need it, and how often you top up ----------
+
+  function whenItem(list, when, text) {
+    const item = el('li');
+    item.appendChild(el('b', null, when));
+    item.appendChild(el('span', null, text));
+    list.appendChild(item);
+  }
+
+  function renderWhen(primary, both) {
+    const list = clear($('when'));
+    const { expected: x, stress: y, settings } = primary;
+    const se = x.settlement;
+    $('when-sub').hidden = !both;
+    $('when-sub').textContent = 'Shown for trading at weekends and on holidays too.';
+    const parts = Object.fromEntries(x.parts.map((part) => [part.id, part.value]));
+    let start =
+      x.ecc.mode === 'daily'
+        ? `Trading collateral at ECC: ${thousands(x.ecc.weekday)}. Raise it to ${thousands(x.ecc.C)} for the evening ` +
+          'calculation before each weekend or holiday, and lower it again after.'
+        : `Trading collateral at ECC: ${thousands(parts.ecc)}.`;
+    if (parts.brp > 0.5) start += ` BRP collateral: ${thousands(parts.brp)}.`;
+    if (se.float > 0.5) start += ` Float for positions held over 16:00: ${thousands(se.float)}.`;
+    if (se.badDay > 0.5) {
+      start += ` Room for ${se.badDays === 1 ? 'a bad trading day' : `${se.badDays} bad trading days`}: ${thousands(se.badDay)}.`;
+    }
+    whenItem(list, 'Before your first trade', start);
+    const toughFlows = y ? y.settlement.flows : 0;
+    const TOPUPS = {
+      none: 'no top-up during the week.',
+      daily: 'a top-up every business day.',
+      weekly: 'a top-up every Monday.',
+    };
+    whenItem(
+      list,
+      'Every business day, by 18:00',
+      se.flows > 0.5 || toughFlows > 0.5
+        ? "ECC collects the day's net purchases from your wallet, with value the next business day. In the week shown " +
+            `that comes to ${thousands(se.flows)}` +
+            (toughFlows > se.flows + 0.5 ? `, up to ${thousands(toughFlows)} in a tough week` : '') +
+            `, with ${TOPUPS[settings.replenish]}`
+        : "ECC settles each day's trades as one net payment. Yours come to about zero or to money coming in, apart from fees.",
+    );
+    whenItem(
+      list,
+      'Around 18:00 each business day',
+      'ECC updates your trading limits (best effort). Until then, the base limit you set in the Direct+ platform covers trading from 16:00.',
+    );
+    whenItem(
+      list,
+      'About four weeks after each week',
+      `TenneT's imbalance invoice: ${thousands(x.tennet.invoice)} a week` +
+        (y ? `, up to ${thousands(y.tennet.invoice)} in a tough week.` : '.'),
+    );
+    if (settings.connectionsMW) {
+      whenItem(
+        list,
+        'Months later',
+        'Metered volumes are reconciled: smart-meter and telemetry about six months after each month.',
+      );
+    }
+  }
+
   function renderTopups(primary) {
-    var t = clear($('topups')), tb = el('tbody'), rows = [];
-    TOPUPS.forEach(function (o) {
-      var st = copy(primary.s); st.replenish = o[0];
-      rows.push({ id: o[0], label: o[1], exp: C.scenario(st, {}), str: ans.tough ? C.scenario(st, { stress: true }) : null });
-    });
-    var cols = [['Top-ups', ''], ['Daily settlement', 'r'], ['Total', 'r']];
-    if (ans.tough) cols.push(['Daily settlement, tough week', 'r'], ['Total, tough week', 'r']);
-    head(t, cols);
-    var sett = function (r) { return r.parts.filter(function (p) { return p.id === 'settlement'; })[0].value; };
-    rows.forEach(function (r) {
-      var mine = r.id === primary.s.replenish, tr = el('tr', mine ? 'total' : null);
-      tr.appendChild(el('td', null, r.label + (mine ? ' (your answer)' : '')));
-      tr.appendChild(el('td', 'r', eur(sett(r.exp)))); tr.appendChild(el('td', 'r', eur(r.exp.total)));
-      if (r.str) { tr.appendChild(el('td', 'r', eur(sett(r.str)))); tr.appendChild(el('td', 'r', eur(r.str.total))); }
-      tb.appendChild(tr);
-    });
-    t.appendChild(tb);
+    const table = clear($('topups'));
+    const columns = [
+      { text: 'Top-ups' },
+      { text: 'Daily settlement', className: 'r' },
+      { text: 'Total', className: 'r' },
+    ];
+    if (answers.tough)
+      columns.push(
+        { text: 'Daily settlement, tough week', className: 'r' },
+        { text: 'Total, tough week', className: 'r' },
+      );
+    tableHead(table, columns);
+    const settlementOf = (scenario) => scenario.parts.find((part) => part.id === 'settlement').value;
+    const body = el('tbody');
+    for (const id of ['none', 'weekly', 'daily']) {
+      const settings = { ...primary.settings, replenish: id };
+      const expected = C.scenario(settings);
+      const stress = answers.tough ? C.scenario(settings, { stress: true }) : null;
+      const mine = id === primary.settings.replenish;
+      const row = el('tr', mine ? 'total' : null);
+      row.appendChild(el('td', null, TOPUP_TEXT[id] + (mine ? ' (your answer)' : '')));
+      row.appendChild(el('td', 'r', thousands(settlementOf(expected))));
+      row.appendChild(el('td', 'r', thousands(expected.total)));
+      if (stress) {
+        row.appendChild(el('td', 'r', thousands(settlementOf(stress))));
+        row.appendChild(el('td', 'r', thousands(stress.total)));
+      }
+      body.appendChild(row);
+    }
+    table.appendChild(body);
   }
-  function li(box, when, text) { var l = el('li'); l.appendChild(el('b', null, when)); l.appendChild(el('span', null, text)); box.appendChild(l); }
-  function renderWhen(primary, s, both) {
-    var box = clear($('when')), x = primary.exp, y = primary.str, se = x.settlement, parts = {};
-    $('when-sub').hidden = !both; $('when-sub').textContent = 'Shown for trading at weekends and on holidays too.';
-    x.parts.forEach(function (p) { parts[p.id] = p.value; });
-    var start = x.ecc.mode === 'daily' ? 'Trading collateral at ECC: ' + eur(x.ecc.weekday) + '. Raise it to ' + eur(x.ecc.C) + ' for the evening calculation before each weekend or holiday, and lower it again after.' : 'Trading collateral at ECC: ' + eur(parts.ecc) + '.';
-    if (parts.brp > 0.5) start += ' BRP collateral: ' + eur(parts.brp) + '.';
-    if (se.float > 0.5) start += ' Float for positions held over 16:00: ' + eur(se.float) + '.';
-    if (se.badDay > 0.5) start += ' Room for ' + (se.badDays === 1 ? 'a bad trading day' : se.badDays + ' bad trading days') + ': ' + eur(se.badDay) + '.';
-    li(box, 'Before your first trade', start);
-    var toughFlows = y ? y.settlement.flows : 0;
-    li(box, 'Every business day, by 18:00', se.flows > 0.5 || toughFlows > 0.5
-      ? 'ECC collects the day\'s net purchases from your wallet, with value the next business day. In the week shown that comes to ' + eur(se.flows) + (toughFlows > se.flows + 0.5 ? ', up to ' + eur(toughFlows) + ' in a tough week' : '') + ', with ' + (s.replenish === 'none' ? 'no top-up during the week.' : s.replenish === 'daily' ? 'a top-up every business day.' : 'a top-up every Monday.')
-      : 'ECC settles each day\'s trades as one net payment. Yours come to about zero or to money coming in, apart from fees.');
-    li(box, 'Around 18:00 each business day', 'ECC updates your trading limits (best effort). Until then, the base limit you set in the Direct+ platform covers trading from 16:00.');
-    li(box, 'About four weeks after each week', 'TenneT\'s imbalance invoice: ' + eur(x.tennet.invoice) + ' a week' + (y ? ', up to ' + eur(y.tennet.invoice) + ' in a tough week.' : '.'));
-    if (s.connectionsMW) li(box, 'Months later', 'Metered volumes are reconciled: smart-meter and telemetry about six months after each month.');
+
+  // ---------- what moves the estimate, the answers and the assumptions ----------
+
+  function renderSensitivities(result, settings) {
+    const table = clear($('sens'));
+    const LABELS = {
+      'vol+': 'Volumes 50% higher',
+      'vol-': 'Volumes 50% lower',
+      price: `All prices at ${euros(settings.stressPrice)}/MWh`,
+      imb: 'Twice as much imbalance',
+    };
+    tableHead(table, [
+      { text: 'Change' },
+      { text: 'Normal week', className: 'r' },
+      { text: 'Difference', className: 'r' },
+    ]);
+    const body = el('tbody');
+    const line = (label, total, difference) => {
+      const row = el('tr');
+      row.appendChild(el('td', null, label));
+      row.appendChild(el('td', 'r', total));
+      row.appendChild(el('td', 'r', difference));
+      body.appendChild(row);
+    };
+    line('Your answers', thousands(result.expected.total), '');
+    for (const one of result.sensitivity) {
+      if (one.id === 'price' && !answers.tough) continue;
+      line(LABELS[one.id], thousands(one.total), thousandsDiff(one.total - result.expected.total));
+    }
+    table.appendChild(body);
   }
-  function renderSens(r, s) {
-    var t = clear($('sens')), tb = el('tbody'), LBL = { 'vol+': 'Volumes 50% higher', 'vol-': 'Volumes 50% lower', price: 'All prices at ' + eurP(s.stressPrice) + '/MWh', imb: 'Twice as much imbalance' };
-    var th = el('thead'), hr = el('tr'); [['Change', ''], ['Normal week', 'r'], ['Difference', 'r']].forEach(function (h) { var c = el('th', h[1] || null, h[0]); c.scope = 'col'; hr.appendChild(c); }); th.appendChild(hr); t.appendChild(th);
-    var base = el('tr'); base.appendChild(el('td', null, 'Your answers')); base.appendChild(el('td', 'r', eur(r.expected.total))); base.appendChild(el('td', 'r', '')); tb.appendChild(base);
-    r.sensitivity.forEach(function (x) { if (x.id === 'price' && !ans.tough) return; var d = x.total - r.expected.total, tr = el('tr'); tr.appendChild(el('td', null, LBL[x.id])); tr.appendChild(el('td', 'r', eur(x.total))); tr.appendChild(el('td', 'r', eurDiff(d))); tb.appendChild(tr); });
-    t.appendChild(tb);
+
+  const portfolioText = (kinds, joiner) =>
+    `${kinds.join(joiner)}, ${wholeNumber.format(answers.capacityMW)} MW at ${answers.sites} site${answers.sites > 1 ? 's' : ''}`;
+
+  function renderAnswers(settings) {
+    const list = clear($('answers'));
+    const add = (term, value) => {
+      list.appendChild(el('dt', null, term));
+      list.appendChild(el('dd', null, value));
+    };
+    const NETTING = {
+      block: "Build a position, then close it (largest open position: all of a day's buys)",
+      mixed: "Buys and sells mixed (largest open position: 66% of a day's buys)",
+      flat: "Many small trades, close to flat (largest open position: 33% of a day's buys)",
+    };
+    const BALANCE = { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' };
+    const volumes = (buy, sell) => `${wholeNumber.format(buy)} / ${wholeNumber.format(sell)} MWh a day`;
+    add('You are', TYPE[answers.type]);
+    add('Weekends and holidays', { yes: 'Yes', no: 'No', both: 'Show me both' }[answers.weekend]);
+    add('Continuous intraday, buy / sell', volumes(settings.contBuy, settings.contSell));
+    add('Auctions (day-ahead + intraday), buy / sell', volumes(settings.aucBuy, settings.aucSell));
+    if (answers.type === 'trader') add('Continuous trades through the day', NETTING[answers.netting]);
+    if (answers.type === 'aggregator') {
+      const notDelivered = Math.round(settings.nonDelivery * 100);
+      add(
+        'Nominated from other BRPs',
+        `${wholeNumber.format(settings.nominatedIn)} MWh a day, ${notDelivered}% may not be delivered`,
+      );
+    }
+    if (answers.tough)
+      add('Normal / tough-week price', `${euros(settings.price)} / ${euros(settings.stressPrice)} per MWh`);
+    else add('Normal price', `${euros(settings.price)} per MWh`);
+    add('Tough week', answers.tough ? 'Shown' : 'Not shown');
+    if (settings.aucBuy > 0) add('Highest auction bid', `${euros(settings.aucLimitPrice)}/MWh`);
+    const kinds = ASSETS.filter((kind) => answers.portfolio[kind]);
+    add('Portfolio', kinds.length ? capitalise(portfolioText(kinds, ', ')) : 'None');
+    add('Imbalance', `${BALANCE[answers.balance]}, ${LEAN_TEXT[answers.lean]}`);
+    add('Trading collateral', answers.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
+    add('Top-ups', TOPUP_TEXT[settings.replenish]);
   }
-  function renderAnswers(s) {
-    var dl = clear($('answers')), add = function (k, v) { dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', null, v)); };
-    add('You are', TYPE[ans.type]);
-    add('Weekends and holidays', { yes: 'Yes', no: 'No', both: 'Show me both' }[ans.weekend]);
-    add('Continuous intraday, buy / sell', fmt.format(s.contBuy) + ' / ' + fmt.format(s.contSell) + ' MWh a day');
-    add('Auctions (day-ahead + intraday), buy / sell', fmt.format(s.aucBuy) + ' / ' + fmt.format(s.aucSell) + ' MWh a day');
-    if (ans.type === 'trader') add('Continuous trades through the day', { block: 'Build a position, then close it (largest open position: all of a day\'s buys)', mixed: 'Buys and sells mixed (largest open position: 66% of a day\'s buys)', flat: 'Many small trades, close to flat (largest open position: 33% of a day\'s buys)' }[ans.netting]);
-    if (ans.type === 'aggregator') add('Nominated from other BRPs', fmt.format(s.nominatedIn) + ' MWh a day, ' + Math.round(s.nonDelivery * 100) + '% may not be delivered');
-    if (ans.tough) add('Normal / tough-week price', eurP(s.price) + ' / ' + eurP(s.stressPrice) + ' per MWh'); else add('Normal price', eurP(s.price) + ' per MWh');
-    add('Tough week', ans.tough ? 'Shown' : 'Not shown');
-    if (s.aucBuy > 0) add('Highest auction bid', eurP(s.aucLimitPrice) + '/MWh');
-    var names = { production: 'production', consumption: 'consumption' }, have = ASSET_KEYS.filter(function (k) { return ans.portfolio[k]; }).map(function (k) { return names[k]; });
-    add('Portfolio', have.length ? have.join(', ').replace(/^./, function (c) { return c.toUpperCase(); }) + ', ' + fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : '') : 'None');
-    add('Imbalance', { tight: 'Very close', normal: 'Normal', forecast: 'Forecast-driven' }[ans.balance] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
-    add('Trading collateral', ans.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
-    add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
+
+  /* The few assumptions that move the estimate most, next to what the money is for; the full list is further down. */
+  function renderCore(result, settings) {
+    const list = clear($('core'));
+    const x = result.expected;
+    const add = (term, value) => {
+      const item = el('div');
+      item.appendChild(el('dt', null, term));
+      item.appendChild(el('dd', null, value));
+      list.appendChild(item);
+    };
+    const mwh = (value) => `${wholeNumber.format(Math.round(value))} MWh`;
+    const buySell = (buy, sell) => `${wholeNumber.format(buy)} buy / ${wholeNumber.format(sell)} sell MWh a day`;
+    const daysAYear = settings.weekend ? 365 : 255; // 255: about the business days in a year
+    const perYear = ((settings.contBuy + settings.contSell + settings.aucBuy + settings.aucSell) * daysAYear) / 1000;
+    const BASE_TEXT = { traded: 'traded volume', nominated: 'nominations', production: 'net production' };
+    add(
+      'Volume a year',
+      `about ${perYear >= 10 ? wholeNumber.format(Math.round(perYear)) : perYear.toFixed(1)} GWh traded`,
+    );
+    add('M7 continuous', buySell(settings.contBuy, settings.contSell));
+    add('MATS auctions', buySell(settings.aucBuy, settings.aucSell));
+    if (answers.type === 'aggregator') {
+      add('Nominated from other BRPs', `${mwh(settings.nominatedIn)} a day`);
+      add('Not delivered', `${Math.round(settings.nonDelivery * 100)}% of nominations`);
+    }
+    if (hasAssets()) {
+      const kinds = ASSETS.filter((kind) => answers.portfolio[kind]).map((kind, i) => (i ? kind : capitalise(kind)));
+      add('Portfolio', portfolioText(kinds, ' and '));
+    }
+    if (answers.type !== 'trader') {
+      add(
+        'Imbalance',
+        `${Math.round(settings.imbShare * 100)}% of ${BASE_TEXT[settings.imbBase]}, ${LEAN_TEXT[answers.lean]}`,
+      );
+    }
+    add('Price', `${euros(settings.price)}/MWh${answers.tough ? `, tough week ${euros(settings.stressPrice)}` : ''}`);
+    add('Weekends and holidays', { yes: 'Traded', no: 'Not traded', both: 'Shown both ways' }[answers.weekend]);
+    if (x.settlement.badDay > 0.5) {
+      add(
+        'Bad day',
+        `€${wholeNumber.format(Math.round(settings.badMove))}/MWh lost on about ${mwh(x.settlement.openMWh)} open` +
+          (answers.tough ? ', 2 days in a tough week' : ''),
+      );
+    }
+    add(
+      'Held over the 16:00 cut',
+      `${Math.round(settings.carryShare * 100)}% of a day's buys, about ${mwh(settings.carryShare * (settings.contBuy + settings.aucBuy))}`,
+    );
+    if (answers.type === 'trader') {
+      add(
+        'Largest open M7 position',
+        `${Math.round((1 - settings.s) * 100)}% of a day's buys, about ${mwh((1 - settings.s) * settings.contBuy)}`,
+      );
+    }
+    if (x.ecc.fixed) add('Trading collateral at ECC', `From your limit calculator, ${thousands(x.ecc.fixed.C)}`);
+    add('Split continuous / auctions', `${x.ecc.key}% / ${100 - x.ecc.key}%`);
+    add(
+      'BRP collateral',
+      `${x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027'} at ${euros(x.brp.price)}/MWh, no minimum`,
+    );
+    add('Collateral at ECC', answers.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
+    add('Top-ups', TOPUP_TEXT[settings.replenish]);
   }
-  // The few assumptions that move the estimate most, next to what the money is for; the full list is further down.
-  function renderCore(r, s) {
-    var dl = clear($('core')), x = r.expected, add = function (k, v) { var d = el('div'); d.appendChild(el('dt', null, k)); d.appendChild(el('dd', null, v)); dl.appendChild(d); };
-    var mwh = function (v) { return fmt.format(Math.round(v)) + ' MWh'; }, bs = function (b, x) { return fmt.format(b) + ' buy / ' + fmt.format(x) + ' sell MWh a day'; };
-    var perYear = (s.contBuy + s.contSell + s.aucBuy + s.aucSell) * (s.weekend ? 365 : 255) / 1000;   // 255: about the business days in a year
-    add('Volume a year', 'about ' + (perYear >= 10 ? fmt.format(Math.round(perYear)) : perYear.toFixed(1)) + ' GWh traded');
-    add('M7 continuous', bs(s.contBuy, s.contSell));
-    add('MATS auctions', bs(s.aucBuy, s.aucSell));
-    if (ans.type === 'aggregator') add('Nominated from other BRPs', mwh(s.nominatedIn) + ' a day');
-    if (ans.type === 'aggregator') add('Not delivered', Math.round(s.nonDelivery * 100) + '% of nominations');
-    if (anyAsset()) add('Portfolio', ASSET_KEYS.filter(function (k) { return ans.portfolio[k]; }).map(function (k, i) { return i ? k : k.charAt(0).toUpperCase() + k.slice(1); }).join(' and ') + ', ' + fmt.format(ans.capacityMW) + ' MW at ' + ans.sites + ' site' + (ans.sites > 1 ? 's' : ''));
-    if (ans.type !== 'trader') add('Imbalance', Math.round(s.imbShare * 100) + '% of ' + { traded: 'traded volume', nominated: 'nominations', production: 'net production' }[s.imbBase] + ', ' + { neither: 'either way', short: 'usually short', long: 'usually long' }[ans.lean]);
-    add('Price', eurP(s.price) + '/MWh' + (ans.tough ? ', tough week ' + eurP(s.stressPrice) : ''));
-    add('Weekends and holidays', { yes: 'Traded', no: 'Not traded', both: 'Shown both ways' }[ans.weekend]);
-    if (x.settlement.badDay > 0.5) add('Bad day', '€' + fmt.format(Math.round(s.badMove)) + '/MWh lost on about ' + mwh(x.settlement.openMWh) + ' open' + (ans.tough ? ', 2 days in a tough week' : ''));
-    add('Held over the 16:00 cut', Math.round(s.carryShare * 100) + '% of a day\'s buys, about ' + mwh(s.carryShare * (s.contBuy + s.aucBuy)));
-    if (ans.type === 'trader') add('Largest open M7 position', Math.round((1 - s.s) * 100) + '% of a day\'s buys, about ' + mwh((1 - s.s) * s.contBuy));
-    if (x.ecc.fixed) add('Trading collateral at ECC', 'From your limit calculator, ' + eur(x.ecc.fixed.C));
-    add('Split continuous / auctions', x.ecc.key + '% / ' + (100 - x.ecc.key) + '%');
-    add('BRP collateral', (x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027') + ' at ' + eurP(x.brp.price) + '/MWh, no minimum');
-    add('Collateral at ECC', ans.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
-    add('Top-ups', { none: 'Not during the week', daily: 'Every business day', weekly: 'Every Monday' }[s.replenish]);
-  }
-  function renderAssumed(r, s) {
-    var ul = clear($('assumed')), x = r.expected, add = function (t) { ul.appendChild(el('li', null, t)); };
-    var rule = x.brp.rule === 'current' ? 'TenneT\'s rule in force (Systeemcode elektriciteit 2026, article 10.8)' : 'ACM\'s draft rule for 2027 (not yet final)';
-    if (x.ecc.fixed) add('Your trading collateral at ECC, its split (' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions) and base limits come from your limit calculator setup.');
-    else add('Your split between continuous and auctions is the one that needs the least collateral: ' + x.ecc.key + '% continuous, ' + (100 - x.ecc.key) + '% auctions. You set it in the Direct+ platform.');
-    add('ECC updates limits around 18:00 on a best-effort basis' + (ans.tough ? '; a tough week assumes around 19:00' : '') + '. Open orders over 16:00 and trading until the update, ' + eur(s.restingCont) + ' and ' + eur(s.eveningCont) + ', are covered by your base limit.');
-    add('You hold some positions over ECC\'s 16:00 booking cut, about a third of a day\'s buys (for example bought day-ahead, sold intraday the next day). ECC collects those purchases a business day before the sale comes back, so that money waits in your wallet.');
-    if (x.settlement.badDay > 0.5) add('A bad trading day loses €' + fmt.format(Math.round(s.badMove)) + ' on each MWh of your largest open position (continuous buys not yet sold again, plus auction buys until sold or used). Your wallet keeps room for ' + s.badDays + (s.badDays === 1 ? ' bad day' : ' bad days') + (ans.tough ? ', ' + s.badDaysStress + ' in a tough week' : '') + ', not for a whole bad week.');
-    add(Math.round(s.negShare * 100) + '% of hours have negative prices, averaging ' + eurP(s.negPrice) + '/MWh.');
-    add('BRP collateral follows ' + rule + ', applied to your own figures, with no minimum, at ' + eurP(x.brp.price) + '/MWh' + (s.brpPrice != null && s.brpPrice !== '' ? ' (TenneT\'s price floor, used for now instead of the market average)' : '') + '.');
-    add('Imbalance is settled at TenneT\'s imbalance prices; a small share of periods has separate prices for short and long positions.' + (ans.tough ? ' A tough week takes a high but not extreme imbalance week.' : ''));
-    if (s.connectionsMW) add('Your capacity is spread evenly over your sites, all metered by telemetry or smart meter; reconciliation of metered volumes varies by about €10 per MW a month.');
+
+  function renderAssumed(result, settings) {
+    const list = clear($('assumed'));
+    const x = result.expected;
+    const add = (text) => list.appendChild(el('li', null, text));
+    const rule =
+      x.brp.rule === 'current'
+        ? "TenneT's rule in force (Systeemcode elektriciteit 2026, article 10.8)"
+        : "ACM's draft rule for 2027 (not yet final)";
+    const split = `${x.ecc.key}% continuous, ${100 - x.ecc.key}% auctions`;
+    if (x.ecc.fixed)
+      add(
+        `Your trading collateral at ECC, its split (${split}) and base limits come from your limit calculator setup.`,
+      );
+    else
+      add(
+        `Your split between continuous and auctions is the one that needs the least collateral: ${split}. You set it in the Direct+ platform.`,
+      );
+    add(
+      `ECC updates limits around 18:00 on a best-effort basis${answers.tough ? '; a tough week assumes around 19:00' : ''}. ` +
+        `Open orders over 16:00 and trading until the update, ${thousands(settings.restingCont)} and ` +
+        `${thousands(settings.eveningCont)}, are covered by your base limit.`,
+    );
+    add(
+      "You hold some positions over ECC's 16:00 booking cut, about a third of a day's buys (for example bought " +
+        'day-ahead, sold intraday the next day). ECC collects those purchases a business day before the sale comes back, ' +
+        'so that money waits in your wallet.',
+    );
+    if (x.settlement.badDay > 0.5) {
+      add(
+        `A bad trading day loses €${wholeNumber.format(Math.round(settings.badMove))} on each MWh of your largest open ` +
+          'position (continuous buys not yet sold again, plus auction buys until sold or used). Your wallet keeps room ' +
+          `for ${settings.badDays}${settings.badDays === 1 ? ' bad day' : ' bad days'}` +
+          `${answers.tough ? `, ${settings.badDaysStress} in a tough week` : ''}, not for a whole bad week.`,
+      );
+    }
+    add(
+      `${Math.round(settings.negShare * 100)}% of hours have negative prices, averaging ${euros(settings.negPrice)}/MWh.`,
+    );
+    const floor =
+      settings.brpPrice != null && settings.brpPrice !== ''
+        ? " (TenneT's price floor, used for now instead of the market average)"
+        : '';
+    add(
+      `BRP collateral follows ${rule}, applied to your own figures, with no minimum, at ${euros(x.brp.price)}/MWh${floor}.`,
+    );
+    add(
+      "Imbalance is settled at TenneT's imbalance prices; a small share of periods has separate prices for short and " +
+        `long positions.${answers.tough ? ' A tough week takes a high but not extreme imbalance week.' : ''}`,
+    );
+    if (settings.connectionsMW) {
+      add(
+        'Your capacity is spread evenly over your sites, all metered by telemetry or smart meter; reconciliation of ' +
+          'metered volumes varies by about €10 per MW a month.',
+      );
+    }
     add('Nothing nets between Direct+ members: the estimate is for you alone. Fees and VAT are not included.');
   }
 
-  // Arriving from a link: answers (Back, or back from the limit calculator) and/or a limit calculator setup.
-  (function arrive() {
-    var h = hashParams(), a = h.a ? dec(h.a) : null, e = h.ecc ? dec(h.ecc) : null;
-    if (e && e.C > 0 && e.key >= 0 && e.key <= 100 && ensureWeek(e.week)) eccSetup = e;
-    if (a && a.type && C.PRESETS[a.type]) {
-      ans = C.defaultAnswers(a.type); for (var k in a) ans[k] = a[k];
-      if (eccSetup) ans.week = eccSetup.week;
-      if (!ensureWeek(ans.week)) ans.week = WEEKS[0][0];
-      example = h.ex === '1'; fill(); results(); return;
+  // ---------- arriving from a link ----------
+
+  /** Answers (Back, or back from the limit calculator) and/or a limit calculator setup, from the link. */
+  function arrive() {
+    const hash = Handoff.readHash();
+    const linked = hash.has('a') ? Handoff.decode(hash.get('a')) : null;
+    const setup = hash.has('ecc') ? Handoff.decode(hash.get('ecc')) : null;
+    if (setup && setup.C > 0 && setup.key >= 0 && setup.key <= 100 && ensureWeek(setup.week)) eccSetup = setup;
+    if (linked && linked.type && C.PRESETS[linked.type]) {
+      answers = { ...C.defaultAnswers(linked.type), ...linked };
+      if (eccSetup) answers.week = eccSetup.week;
+      if (!ensureWeek(answers.week)) answers.week = WEEKS[0].monday;
+      example = hash.get('ex') === '1';
+      fillForm();
+      showResults();
+      return;
     }
-    if (eccSetup) ans.week = eccSetup.week;
-    fill(); show(1);
-  })();
+    if (eccSetup) answers.week = eccSetup.week;
+    fillForm();
+    showStep(1);
+  }
+
+  // ---------- start ----------
+
+  for (const week of WEEKS) {
+    const option = el('option', null, week.label);
+    option.value = week.monday;
+    $('week').appendChild(option);
+  }
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest && event.target.closest('a[href="#assumed-card"]');
+    if (!link) return;
+    event.preventDefault();
+    $('assumed-card').open = true;
+    $('assumed-card').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+  // Printing opens the folded sections, and closes them again afterwards.
+  let openedForPrint = [];
+  window.addEventListener('beforeprint', () => {
+    openedForPrint = [...document.querySelectorAll('#results details')].filter((details) => !details.open);
+    for (const details of openedForPrint) details.open = true;
+  });
+  window.addEventListener('afterprint', () => {
+    for (const details of openedForPrint) details.open = false;
+    openedForPrint = [];
+  });
+  form.addEventListener('change', (event) => {
+    if (event.target.name === 'asset') changePortfolio(event.target);
+    else if (event.target.type === 'radio') changeChoice(event.target);
+  });
+  form.addEventListener('input', (event) => changeNumber(event.target));
+  $('next').addEventListener('click', nextStep);
+  $('skip').addEventListener('click', skipToExample);
+  $('back').addEventListener('click', () => {
+    if (step > 1) showStep(step - 1);
+  });
+  $('example-own').addEventListener('click', editAnswers);
+  for (const button of document.querySelectorAll('[data-extype]')) {
+    button.addEventListener('click', () => switchExample(button.dataset.extype));
+  }
+  $('edit').addEventListener('click', editAnswers);
+  $('edit2').addEventListener('click', editAnswers);
+  $('print').addEventListener('click', () => window.print());
+  $('week').addEventListener('change', () => {
+    answers.week = $('week').value;
+    showResults();
+  });
+  $('topup').addEventListener('change', () => {
+    answers.replenish = $('topup').value;
+    setRadio('replenish', answers.replenish);
+    showResults();
+  });
+  $('cmode').addEventListener('change', () => {
+    answers.collateral = $('cmode').value;
+    setRadio('collateral', answers.collateral);
+    showResults();
+  });
+  arrive();
 })();
+
 </script>

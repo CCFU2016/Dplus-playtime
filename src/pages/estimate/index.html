@@ -1,0 +1,268 @@
+<title>Direct+ Wallet Estimate</title>
+<meta name="description" content="Answer a few questions about how you plan to trade, and see how much money your Direct+ wallet needs, what it is for and when.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/*__STYLES__*/
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">Direct+ · Netherlands · EUR</p>
+    <h1>Your Direct+ wallet estimate</h1>
+    <p class="lede">Answer a few questions about how you plan to trade. You'll see roughly how much money your Direct+ wallet needs, what it is for, and when you need it. It takes about two minutes. Direct+ works with cash only.</p>
+    <p class="fine">Indicative only: not an offer and not advice. The estimate applies ECC's published rules and TenneT's rules to your answers and to the assumptions listed with the result. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
+  </header>
+
+  <section id="wizard" class="panel wizard" aria-label="Questions">
+    <div class="handoff" id="setup-note" role="note" hidden></div>
+    <div class="progress"><span class="pl" id="step-label"></span><div class="track"><div id="progress"></div></div></div>
+    <form id="q" novalidate>
+
+      <fieldset class="step" data-step="1">
+        <legend><h2>Which describes you best?</h2></legend>
+        <p class="why">We'll fill in typical answers for your type. You can change every one of them on the next pages.</p>
+        <div class="choices">
+          <div class="choice"><input type="radio" name="type" id="t-trader" value="trader"><label for="t-trader"><b>Trader</b><span>You trade for your own account and close your positions. You have no assets of your own.</span></label></div>
+          <div class="choice"><input type="radio" name="type" id="t-aggregator" value="aggregator"><label for="t-aggregator"><b>Aggregator</b><span>You sell flexibility from customers' assets that stay with their own balance responsible party.</span></label></div>
+          <div class="choice"><input type="radio" name="type" id="t-asset" value="asset"><label for="t-asset"><b>Asset owner</b><span>You own or control production, storage or consumption that joins the Direct+ balance responsible party.</span></label></div>
+        </div>
+        <div class="skip"><button type="button" class="btn ghost" id="skip">Skip the questions, show an example</button><span>Typical answers, for show only. You can switch between trader, aggregator and asset owner there.</span></div>
+      </fieldset>
+
+      <fieldset class="step" data-step="2" hidden>
+        <legend><h2>When will you trade?</h2></legend>
+        <div class="q"><span class="ql">Will you also trade at weekends and on public holidays?</span>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="weekend" id="w-yes" value="yes"><label for="w-yes"><b>Yes</b></label></div>
+            <div class="choice"><input type="radio" name="weekend" id="w-no" value="no"><label for="w-no"><b>No, business days only</b></label></div>
+            <div class="choice"><input type="radio" name="weekend" id="w-both" value="both"><label for="w-both"><b>Show me both</b><span>Compare the two in the estimate.</span></label></div>
+          </div>
+          <p class="hint">ECC doesn't process payments at weekends, so a Friday limit has to last until Monday.</p>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-step="3" hidden>
+        <legend><h2>How do you trade, and how much?</h2></legend>
+        <div class="q"><span class="ql">Your trading strategy</span>
+          <div class="choices">
+            <div class="choice"><input type="radio" name="strategy" id="s-flat" value="flat"><label for="s-flat"><b>I close my positions</b><span>I buy and sell about the same volume.</span></label></div>
+            <div class="choice"><input type="radio" name="strategy" id="s-seller" value="seller"><label for="s-seller"><b>I mainly sell</b><span>Production or flexibility.</span></label></div>
+            <div class="choice"><input type="radio" name="strategy" id="s-buyer" value="buyer"><label for="s-buyer"><b>I mainly buy</b><span>For consumption.</span></label></div>
+          </div>
+          <p class="note" id="vol-note" hidden></p>
+        </div>
+        <div class="q"><span class="ql">Your volumes on a normal day</span>
+          <p class="hint">Enter 0 for a market you don't trade. Day-ahead and intraday auctions share one ECC limit, so enter them together.</p>
+          <div class="nums">
+            <div class="num"><label for="contBuy">Continuous intraday (M7): buy</label><div class="in"><input type="number" id="contBuy" min="0" step="10" data-a="contBuy"><span class="unit">MWh a day</span></div></div>
+            <div class="num"><label for="contSell">Continuous intraday (M7): sell</label><div class="in"><input type="number" id="contSell" min="0" step="10" data-a="contSell"><span class="unit">MWh a day</span></div></div>
+            <div class="num"><label for="aucBuy">Auctions, day-ahead + intraday (MATS): buy</label><div class="in"><input type="number" id="aucBuy" min="0" step="10" data-a="aucBuy"><span class="unit">MWh a day</span></div></div>
+            <div class="num"><label for="aucSell">Auctions, day-ahead + intraday (MATS): sell</label><div class="in"><input type="number" id="aucSell" min="0" step="10" data-a="aucSell"><span class="unit">MWh a day</span></div></div>
+          </div>
+        </div>
+        <div class="q" data-type="trader"><span class="ql">How do your continuous (M7) trades run through the day?</span>
+          <p class="hint">ECC's trading limit is used by your largest open position during the day, not by every trade. The more your buys and sells alternate, the smaller that position and the less limit you need.</p>
+          <div class="choices">
+            <div class="choice"><input type="radio" name="netting" id="n-block" value="block"><label for="n-block"><b>I build a position, then close it</b><span>Most buying comes before the selling: your largest open position is all of the day's buys.</span></label></div>
+            <div class="choice"><input type="radio" name="netting" id="n-mixed" value="mixed"><label for="n-mixed"><b>Buys and sells are mixed</b><span>Your largest open position is about two thirds (66%) of the day's buys.</span></label></div>
+            <div class="choice"><input type="radio" name="netting" id="n-flat" value="flat"><label for="n-flat"><b>Many small trades, close to flat all day</b><span>Your largest open position is about a third (33%) of the day's buys.</span></label></div>
+          </div>
+        </div>
+        <div class="q" data-type="aggregator"><span class="ql">Flexibility from your customers</span>
+          <div class="nums">
+            <div class="num"><label for="nominatedIn">Nominated in from other BRPs</label><div class="in"><input type="number" id="nominatedIn" min="0" step="10" data-a="nominatedIn"><span class="unit">MWh a day</span></div></div>
+            <div class="num"><label for="nonDelivery">Share that may not be delivered</label><div class="in"><input type="number" id="nonDelivery" min="0" max="100" step="1" data-a="nonDelivery" data-pct="1"><span class="unit">%</span></div></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-step="4" hidden>
+        <legend><h2>Which prices do you plan with?</h2></legend>
+        <div class="nums">
+          <div class="num"><label for="price">A normal price</label><div class="in"><input type="number" id="price" min="1" step="5" data-a="price"><span class="unit">€/MWh</span></div></div>
+          <div class="num" id="bid-q"><label for="aucLimitPrice">The highest price you'd bid in auctions</label><div class="in"><input type="number" id="aucLimitPrice" min="1" step="10" data-a="aucLimitPrice"><span class="unit">€/MWh</span></div></div>
+        </div>
+        <p class="hint">Your trading limits grow with prices. In auctions, ECC counts each buy order at its highest price × quantity.</p>
+        <div class="q"><span class="ql">Do you also want to see a tough week?</span>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="tough" id="h-no" value="no"><label for="h-no"><b>No, a normal week is enough</b></label></div>
+            <div class="choice"><input type="radio" name="tough" id="h-yes" value="yes"><label for="h-yes"><b>Yes, show a tough week too</b><span>Higher prices and more imbalance; for traders also two bad trading days.</span></label></div>
+          </div>
+        </div>
+        <div class="nums" id="tough-price">
+          <div class="num"><label for="stressPrice">A price in a tough week</label><div class="in"><input type="number" id="stressPrice" min="1" step="10" data-a="stressPrice"><span class="unit">€/MWh</span></div></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-step="5" hidden>
+        <legend><h2>What's in your portfolio?</h2></legend>
+        <p class="why">Assets that join the Direct+ BRP add to the BRP collateral, and how well you can forecast them drives imbalance. Tick everything that applies.</p>
+        <div class="q"><span class="ql">Assets that join the Direct+ BRP</span>
+          <div class="choices cols">
+            <div class="choice"><input type="checkbox" name="asset" id="a-production" value="production"><label for="a-production"><b>Production</b><span>Solar, wind, CHP or other generation.</span></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-consumption" value="consumption"><label for="a-consumption"><b>Consumption</b><span>Industrial load, heat pumps, charging, or a battery when it charges.</span></label></div>
+            <div class="choice"><input type="checkbox" name="asset" id="a-none" value="none"><label for="a-none"><b>None</b><span>I only trade.</span></label></div>
+          </div>
+        </div>
+        <div class="q" id="size-q"><span class="ql">How big is it?</span>
+          <div class="nums">
+            <div class="num"><label for="capacityMW">Total capacity</label><div class="in"><input type="number" id="capacityMW" min="0" step="1" data-a="capacityMW"><span class="unit">MW</span></div></div>
+            <div class="num"><label for="sites">Number of sites</label><div class="in"><input type="number" id="sites" min="1" step="1" data-a="sites"><span class="unit">sites</span></div></div>
+          </div>
+          <p class="hint">Under TenneT's rule in force, sites of 2 MW or more count towards the BRP collateral.</p>
+        </div>
+        <p class="note" id="pf-note" hidden></p>
+      </fieldset>
+
+      <fieldset class="step" data-step="6" hidden>
+        <legend><h2>How closely do you match your positions?</h2></legend>
+        <p class="why">Whatever you don't match, TenneT settles as imbalance: invoiced weekly, about four weeks later.</p>
+        <div class="q"><span class="ql">How far off you usually end up</span>
+          <div class="choices">
+            <div class="choice"><input type="radio" name="balance" id="b-tight" value="tight"><label for="b-tight"><b>Very close</b><span>About 0.5% of volume.</span></label></div>
+            <div class="choice"><input type="radio" name="balance" id="b-normal" value="normal"><label for="b-normal"><b>Normal</b><span>About 3% of volume.</span></label></div>
+            <div class="choice"><input type="radio" name="balance" id="b-forecast" value="forecast"><label for="b-forecast"><b>Depends on a forecast</b><span>About 5% of volume, for example solar or wind output.</span></label></div>
+          </div>
+        </div>
+        <div class="q"><span class="ql">When you're off, which way?</span>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="lean" id="l-neither" value="neither"><label for="l-neither"><b>Either way</b></label></div>
+            <div class="choice"><input type="radio" name="lean" id="l-short" value="short"><label for="l-short"><b>Usually short</b><span>Less delivered or more used than planned.</span></label></div>
+            <div class="choice"><input type="radio" name="lean" id="l-long" value="long"><label for="l-long"><b>Usually long</b><span>More produced than sold.</span></label></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="step" data-step="7" hidden>
+        <legend><h2>How will you manage your wallet?</h2></legend>
+        <p class="why">Direct+ works with cash only: collateral, settlement and invoices all come from your wallet balance. No bank guarantees.</p>
+        <div class="q"><span class="ql">Will your trading collateral at ECC stay the same all week?</span>
+          <div class="choices cols">
+            <div class="choice"><input type="radio" name="collateral" id="k-static" value="static"><label for="k-static"><b>Yes, the same all week</b><span>Simplest: sized for the weekend, which needs the most.</span></label></div>
+            <div class="choice"><input type="radio" name="collateral" id="k-daily" value="daily"><label for="k-daily"><b>No, I'll adjust it every business day</b><span>Less during the week, more before weekends and holidays.</span></label></div>
+          </div>
+        </div>
+        <div class="q"><span class="ql">How often will you top up your wallet?</span>
+          <div class="choices">
+            <div class="choice"><input type="radio" name="replenish" id="r-none" value="none"><label for="r-none"><b>Not during the week</b><span>The wallet holds enough for the whole week.</span></label></div>
+            <div class="choice"><input type="radio" name="replenish" id="r-daily" value="daily"><label for="r-daily"><b>Every business day</b><span>You replace each day's collection.</span></label></div>
+            <div class="choice"><input type="radio" name="replenish" id="r-weekly" value="weekly"><label for="r-weekly"><b>Every Monday</b></label></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <p class="error" id="step-error" role="alert" hidden></p>
+    </form>
+    <div class="nav">
+      <button type="button" class="btn ghost" id="back">Back</button>
+      <button type="button" class="btn" id="next">Next</button>
+    </div>
+  </section>
+
+  <section id="results" class="results" aria-live="polite" hidden>
+    <div class="example" id="example" role="note" hidden>
+      <b>Example figures, for show only</b>
+      <p id="example-text"></p>
+      <div class="ex-types no-print" role="group" aria-label="Show the example for">
+        <span>Show the example for</span>
+        <button type="button" data-extype="trader">Trader</button>
+        <button type="button" data-extype="aggregator">Aggregator</button>
+        <button type="button" data-extype="asset">Asset owner</button>
+      </div>
+      <button type="button" class="btn no-print" id="example-own">Answer the questions for your own estimate</button>
+    </div>
+
+    <div class="bar-head">
+      <h2 id="results-title">Your estimate</h2>
+      <div class="controls no-print">
+        <label>Week shown<select id="week"></select></label>
+        <label>Collateral<select id="cmode"><option value="static">The same all week</option><option value="daily">Adjusted every business day</option></select></label>
+        <label>Top-ups<select id="topup"><option value="none">Not during the week</option><option value="weekly">Every Monday</option><option value="daily">Every business day</option></select></label>
+        <button type="button" class="btn ghost" id="edit">Change my answers</button>
+        <button type="button" class="btn ghost" id="print">Print or save as PDF</button>
+      </div>
+    </div>
+
+    <div class="panel hero">
+      <div class="h-label" id="hero-label"></div>
+      <div class="h-value" id="hero-value"></div>
+      <div class="h-sub" id="hero-sub"></div>
+    </div>
+
+    <div class="panel card">
+      <h3>Where it sits in your wallet</h3>
+      <div class="bars" id="bars"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="beside">
+      <div class="panel card">
+        <h3>What the money is for</h3>
+        <div class="table-wrap"><table id="purposes"></table></div>
+      </div>
+      <div class="panel card core">
+        <h3>Core assumptions</h3>
+        <dl id="core"></dl>
+        <a class="linkbtn no-print" href="#assumed-card">All assumptions and sources</a>
+      </div>
+    </div>
+
+    <details class="panel fold">
+      <summary><span class="ft"><h3>When you need it</h3><span class="fh">Day by day: when money goes out and comes back</span></span></summary>
+      <div class="fold-body">
+        <p class="sub" id="when-sub" hidden></p>
+        <ul class="when" id="when"></ul>
+      </div>
+    </details>
+
+    <details class="panel fold">
+      <summary><span class="ft"><h3>How often you top up</h3><span class="fh">Never, every Monday or every business day, compared</span></span></summary>
+      <div class="fold-body">
+        <p class="sub">ECC collects each business day's net purchases from your wallet. The more often you top up, the less money has to wait in it. The estimate covers one week, so a Monday top-up only starts to help from the second week.</p>
+        <div class="table-wrap"><table id="topups"></table></div>
+      </div>
+    </details>
+
+    <details class="panel fold">
+      <summary><span class="ft"><h3>What moves the estimate</h3><span class="fh">The normal week with one thing changed</span></span></summary>
+      <div class="fold-body">
+        <div class="table-wrap"><table id="sens"></table></div>
+      </div>
+    </details>
+
+    <div class="two">
+    <details class="panel fold">
+      <summary><span class="ft"><h3><span id="answers-title">Your answers</span></h3><span class="fh" id="answers-hint">What you told us</span></span></summary>
+      <div class="fold-body">
+        <dl id="answers"></dl><div class="no-print"><button type="button" class="linkbtn" id="edit2">Change my answers</button></div>
+      </div>
+    </details>
+    <details class="panel fold" id="assumed-card">
+      <summary><span class="ft"><h3>What we assumed</h3><span class="fh">Everything else the estimate assumes</span></span></summary>
+      <div class="fold-body">
+        <ul class="plain" id="assumed"></ul>
+      </div>
+    </details>
+    </div>
+
+    <details class="panel fold">
+      <summary><span class="ft"><h3>Sources</h3><span class="fh">ECC, TenneT and ACM documents</span></span></summary>
+      <div class="fold-body">
+        <ul class="plain">
+          <li>ECC: DCP Risk Management and DCP Payments pages; Risk Management Services Manual, release 056 (§3.10 auctions, §3.11 continuous); DCP client presentation (July 2025); Linking a Connected Bank Settlement Account with ECC (2025/2026).</li>
+          <li>TenneT BRP rules: Systeemcode elektriciteit 2026, articles 10.8, 10.26, 10.27 and 10.29 (wetten.overheid.nl).</li>
+          <li>From 1 January 2027: ACM draft decision ACM/25/196985 of 25 August 2026 on BRP security (not yet final).</li>
+        </ul>
+      </div>
+    </details>
+
+    <p class="disclaimer">Amounts are rounded to the nearest €1,000: this is an estimate, not an exact figure. Indicative only: not an offer and not advice. Fees (ECC, EPEX SPOT, Direct+) and VAT are not included. ECC's and TenneT's own calculations and the Direct+ terms always prevail.</p>
+  </section>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+
+<script>
+/*__SCRIPTS__*/
+</script>

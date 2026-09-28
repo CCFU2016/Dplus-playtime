@@ -1,0 +1,105 @@
+<title>Direct+ Wallet Calculator</title>
+<meta name="description" content="How much money a Direct+ member needs, in which part of the wallet, in what form and by when: ECC collateral and settlement, TenneT BRP security and invoices.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/*__STYLES__*/
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">Direct+ · ECC direct clearing · TenneT BRP · Netherlands, EUR</p>
+    <h1>Direct+ Wallet Calculator</h1>
+    <p class="lede">How much money you need in your Direct+ wallet, in which part of it, and by when, to trade the way you plan to. Direct+ works with cash only.</p>
+    <p class="fine">Indicative only, not advice. It applies ECC's published rules and the TenneT rules in the Systeemcode elektriciteit 2026 (and ACM's draft for 2027) to assumptions you can change. ECC's and TenneT's own figures always prevail.</p>
+  </header>
+
+  <div class="views" role="tablist" aria-label="View">
+    <button type="button" class="view-tab" role="tab" id="tab-wallet" aria-selected="true" aria-controls="view-wallet">Your wallet</button>
+    <button type="button" class="view-tab" role="tab" id="tab-settings" aria-selected="false" aria-controls="view-settings">Settings</button>
+  </div>
+
+  <div class="controls" aria-label="What to calculate">
+    <div class="control"><label for="member">Member type</label><select id="member"></select></div>
+    <div class="control"><label for="week">Week</label><input type="date" id="week"></div>
+    <div class="control"><label for="rule-quick">BRP security rule</label><select id="rule-quick"><option value="auto">By date (the draft from 2027)</option><option value="current">Rule in force now</option><option value="draft">ACM draft</option></select></div>
+    <p class="small muted" id="preset-note"></p>
+  </div>
+
+  <main id="view-wallet" role="tabpanel" aria-labelledby="tab-wallet">
+    <div class="alert" id="error" hidden></div>
+
+    <section class="panel hero" aria-live="polite">
+      <div class="h-label" id="hero-label">Money needed</div>
+      <div class="h-value" id="hero-value"></div>
+      <div class="h-sub" id="hero-sub"></div>
+    </section>
+
+    <section class="panel card">
+      <div class="card-head">
+        <h2 id="split-title">By purpose</h2>
+        <div class="seg-toggle" role="group" aria-label="Show by">
+          <button type="button" id="by-purpose" aria-pressed="true">By purpose</button>
+          <button type="button" id="by-account" aria-pressed="false">By wallet segment</button>
+        </div>
+      </div>
+      <div class="bars" id="bars"></div>
+      <div class="legend" id="legend"></div>
+      <div class="table-wrap"><table id="purpose-table"></table></div>
+      <p class="small muted">Amounts are rounded to the nearest €1,000: they are estimates, not exact figures. All members sit in one wallet at one connected bank, and each member's need is worked out on its own: nothing nets between members (Direct+ contract).</p>
+    </section>
+
+    <section class="parts" id="parts"></section>
+
+    <section class="panel card">
+      <div class="card-head">
+        <h2 id="tl-title">The week, step by step</h2>
+        <div class="seg-toggle" role="group" aria-label="Scenario">
+          <button type="button" id="tl-exp" aria-pressed="true">Expected</button>
+          <button type="button" id="tl-str" aria-pressed="false">Stress</button>
+        </div>
+      </div>
+      <p class="sub">ECC collects each business day's trades once, by a transfer sent at 18:00 with value date the next business day; the money reaches ECC before 08:00. "Wallet needs" is what has to be in the available balance at that point, with your top-up setting.</p>
+      <div class="table-wrap"><table id="timeline"></table></div>
+    </section>
+
+    <section class="panel card">
+      <h2>BRP security</h2>
+      <p class="sub" id="brp-sub"></p>
+      <div class="grid2">
+        <div class="table-wrap"><table id="brp-table"></table></div>
+        <div>
+          <h3 class="label" id="ramp-title">As a new member under the ACM draft, months 1-18</h3>
+          <div class="chart" id="ramp" role="img" aria-label="BRP security per month for a new member"></div>
+          <details><summary>Show as a table</summary><div class="table-wrap"><table id="ramp-table"></table></div></details>
+        </div>
+      </div>
+      <p class="sub" id="exit-text"></p>
+    </section>
+
+    <section class="panel card">
+      <h2>What moves the total</h2>
+      <p class="sub">The expected total with one thing changed at a time.</p>
+      <div class="table-wrap"><table id="sens"></table></div>
+    </section>
+
+    <section class="panel card">
+      <div class="card-head"><h2>Assumptions and sources</h2><button type="button" class="linkbtn" data-goto="settings">Change them in Settings</button></div>
+      <div class="table-wrap"><table id="assumptions"></table></div>
+    </section>
+  </main>
+
+  <section id="view-settings" class="settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <div class="settings-head">
+      <p class="sub">Every assumption behind the wallet, with its source. Values start from the member type above; change any of them and the wallet follows. Nothing is saved: reloading the page starts from the preset again.</p>
+      <div class="settings-actions"><button type="button" class="btn ghost" id="reset">Reset to the preset</button><button type="button" class="btn" data-goto="wallet">See the wallet</button></div>
+    </div>
+    <div id="groups" class="settings"></div>
+  </section>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+
+<script>
+/*__SCRIPTS__*/
+</script>

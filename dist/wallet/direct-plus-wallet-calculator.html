@@ -4,155 +4,723 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  :root {
-    --bg: #f3f5f8; --surface: #ffffff; --surface-2: #eef1f5; --ink: #121a24; --ink-2: #445061; --muted: #6b7686;
-    --rule: #dbe0e7; --rule-strong: #b7c0cc; --critical: #c3362c; --critical-bg: #fbeceb; --notice-ink: #7a5200; --notice-bg: #fff5da;
-    --focus: #2a78d6; --select-bg: #121a24; --select-ink: #ffffff;
-    /* purposes and wallet segments: validated categorical slots 1-5 (light, on #ffffff) */
-    --p-ecc: #2a78d6; --p-settlement: #1baf7a; --p-brp: #eda100; --p-invoices: #e87ba4;
-    --s-trading: #2a78d6; --s-available: #1baf7a; --s-brp: #eda100; --series: #2a78d6;
-    --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
-    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
-      --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --notice-ink: #f4c35a; --notice-bg: #30260b;
-      --focus: #6fa8f0; --select-bg: #eef2f6; --select-ink: #0d1116;
-      --p-ecc: #3987e5; --p-settlement: #199e70; --p-brp: #c98500; --p-invoices: #d55181;
-      --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500; --series: #3987e5;
-    }
-  }
-  :root[data-theme="dark"] {
+/* Direct+ pages: the design tokens (light, and dark by system setting or data-theme) and the rules every page shares. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --ink: #121a24;
+  --ink-2: #445061;
+  --muted: #6b7686;
+  --rule: #dbe0e7;
+  --rule-strong: #b7c0cc;
+  --critical: #c3362c;
+  --critical-bg: #fbeceb;
+  --notice-ink: #7a5200;
+  --notice-bg: #fff5da;
+  --banner-bg: #fff5da;
+  --banner-ink: #5c3d00;
+  --banner-rule: #eda100;
+  --focus: #2a78d6;
+  --select-bg: #121a24;
+  --select-ink: #ffffff;
+  --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-cond: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
-    --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4; --muted: #8f9aa7;
-    --rule: #27313c; --rule-strong: #3b4755; --critical: #ef6b61; --critical-bg: #3a1614; --notice-ink: #f4c35a; --notice-bg: #30260b;
-    --focus: #6fa8f0; --select-bg: #eef2f6; --select-ink: #0d1116;
-    --p-ecc: #3987e5; --p-settlement: #199e70; --p-brp: #c98500; --p-invoices: #d55181;
-    --s-trading: #3987e5; --s-available: #199e70; --s-brp: #c98500; --series: #3987e5;
+    --bg: #0d1116;
+    --surface: #141a21;
+    --surface-2: #1b232c;
+    --ink: #eef2f6;
+    --ink-2: #c1cad4;
+    --muted: #8f9aa7;
+    --rule: #27313c;
+    --rule-strong: #3b4755;
+    --critical: #ef6b61;
+    --critical-bg: #3a1614;
+    --notice-ink: #f4c35a;
+    --notice-bg: #30260b;
+    --banner-bg: #2b2208;
+    --banner-ink: #ffe4a3;
+    --banner-rule: #c98500;
+    --focus: #6fa8f0;
+    --select-bg: #eef2f6;
+    --select-ink: #0d1116;
   }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0d1116;
+  --surface: #141a21;
+  --surface-2: #1b232c;
+  --ink: #eef2f6;
+  --ink-2: #c1cad4;
+  --muted: #8f9aa7;
+  --rule: #27313c;
+  --rule-strong: #3b4755;
+  --critical: #ef6b61;
+  --critical-bg: #3a1614;
+  --notice-ink: #f4c35a;
+  --notice-bg: #30260b;
+  --banner-bg: #2b2208;
+  --banner-ink: #ffe4a3;
+  --banner-rule: #c98500;
+  --focus: #6fa8f0;
+  --select-bg: #eef2f6;
+  --select-ink: #0d1116;
+}
 
-  body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
-  .page { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 22px; }
-  .page > *, #view-wallet > *, .card > * { min-width: 0; }
-  h1, h2, h3 { text-wrap: balance; margin: 0; }
-  p { margin: 0; }
-  button, input, select { font: inherit; color: inherit; }
-  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-  .num { font-variant-numeric: tabular-nums; }
-  a { color: inherit; }
+/* The hidden attribute always hides, whatever display a class sets. */
+[hidden] {
+  display: none !important;
+}
 
-  .masthead { display: grid; gap: 8px; max-width: 800px; }
-  .eyebrow { font-family: var(--font-cond); font-weight: 600; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  h1 { font-size: clamp(28px, 3.6vw, 38px); line-height: 1.12; font-weight: 600; letter-spacing: -0.01em; }
-  .lede { font-size: 16.5px; color: var(--ink-2); max-width: 66ch; }
-  .fine { font-size: 12.5px; color: var(--muted); max-width: 92ch; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+  margin: 0;
+}
+p {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
 
-  /* view switch + controls row (one row, above everything it scopes) */
-  .views { display: flex; gap: 6px; border-bottom: 1px solid var(--rule); }
-  .view-tab { border: 0; background: none; padding: 9px 4px; margin-right: 18px; font-weight: 600; font-size: 14.5px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-  .view-tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
-  .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
-  .control { display: grid; gap: 5px; }
-  .control > label, .label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
-  select, input[type="date"], input[type="number"], input[type="text"] { border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--surface); padding: 7px 10px; min-width: 0; }
-  input[type="number"] { font-variant-numeric: tabular-nums; }
-  .linkbtn { border: 0; background: none; padding: 0; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13.5px; text-align: left; }
-  .btn { border: 1px solid var(--ink); background: var(--ink); color: var(--surface); border-radius: 6px; padding: 7px 14px; font-size: 13.5px; font-weight: 500; cursor: pointer; }
-  .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--rule-strong); }
+.eyebrow {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  flex: none;
+}
 
-  .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; }
-  .card { padding: 18px 20px 20px; display: grid; gap: 14px; min-width: 0; }
-  .card h2 { font-size: 17px; font-weight: 600; }
-  .card .sub { font-size: 13.5px; color: var(--ink-2); max-width: 78ch; }
-  .card-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: baseline; justify-content: space-between; }
-  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
-  @media (max-width: 860px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+/* Buttons */
+.btn {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn.ghost {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+.linkbtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  font-size: 13.5px;
+  text-align: left;
+}
 
-  /* hero: the total as a range */
-  .hero { padding: 20px 22px; display: grid; gap: 6px; }
-  .hero .h-label { font-size: 13.5px; color: var(--ink-2); }
-  .hero .h-value { font-size: clamp(30px, 5vw, 50px); font-weight: 600; line-height: 1.1; letter-spacing: -0.015em; }
-  .hero .h-value .to { color: var(--muted); font-weight: 500; }
-  .hero .h-sub { font-size: 13px; color: var(--muted); }
-  .alert { border-radius: 8px; padding: 12px 16px; font-size: 14px; background: var(--critical-bg); border: 1px solid var(--critical); }
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+}
+thead th {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  vertical-align: bottom;
+}
+tbody td {
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+}
 
-  /* stacked bars (expected, stress) */
-  .seg-toggle { display: inline-grid; grid-auto-flow: column; border: 1px solid var(--rule-strong); border-radius: 7px; padding: 3px; gap: 3px; background: var(--surface-2); }
-  .seg-toggle button { border: 0; background: none; padding: 5px 11px; border-radius: 5px; font-size: 13px; cursor: pointer; }
-  .seg-toggle button[aria-pressed="true"] { background: var(--select-bg); color: var(--select-ink); }
-  .bars { display: grid; gap: 12px; }
-  .bar-row { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; align-items: center; }
-  .bar-row .rl { font-size: 13px; color: var(--ink-2); }
-  .bar-track { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .bar { display: flex; gap: 2px; height: 26px; min-width: 2px; }
-  .bar .sg { height: 100%; min-width: 2px; position: relative; display: flex; align-items: center; justify-content: center; cursor: default; }
-  .bar .sg:last-child { border-radius: 0 4px 4px 0; }
-  .bar .sg span { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; padding: 0 4px; }
-  .bar .sg.light-ink span { color: #121a24; }
-  .bar .sg:hover, .bar .sg:focus-visible { filter: brightness(1.08); }
-  .bar-total { font-size: 13.5px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
-  .legend span { display: inline-flex; align-items: center; gap: 7px; }
-  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+/* Tooltip (PageUI.hoverable) */
+#tip {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  max-width: 260px;
+}
+#tip .tv {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+#tip .tl {
+  color: var(--ink-2);
+}
 
-  /* tables */
-  .table-wrap { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; min-width: 620px; font-variant-numeric: tabular-nums; }
-  th, td { padding: 8px 8px; text-align: left; vertical-align: top; }
-  td.r, th.r { text-align: right; }
-  thead th { font-family: var(--font-cond); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--rule-strong); vertical-align: bottom; }
-  tbody td { border-bottom: 1px solid var(--rule); font-size: 14px; }
-  tbody tr.total td { font-weight: 600; border-bottom: 0; }
-  .tag { display: inline-block; font-size: 11.5px; font-weight: 500; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--rule-strong); white-space: nowrap; }
-  .tag.assume { background: var(--notice-bg); color: var(--notice-ink); border-color: transparent; }
-  .muted { color: var(--muted); }
-  .small { font-size: 12.5px; }
+/* Direct+ wallet pages (the calculator and the estimate): table rules and the stacked bars (PageUI.stackedBars). */
+thead th {
+  border-bottom: 1px solid var(--rule-strong);
+}
+tbody tr.total td {
+  font-weight: 600;
+  border-bottom: 0;
+}
 
-  /* part cards */
-  .parts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-  @media (max-width: 860px) { .parts { grid-template-columns: minmax(0, 1fr); } }
-  .part h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-  .part .pv { font-size: 22px; font-weight: 600; }
-  .part .pv .to { color: var(--muted); font-weight: 500; }
-  .part p { font-size: 13.5px; color: var(--ink-2); }
-  .levers { font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.bars {
+  display: grid;
+  gap: 12px;
+}
+.bar-row .rl {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.bar-track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  min-width: 2px;
+}
+.bar .sg {
+  height: 100%;
+  min-width: 2px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+.bar .sg:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.bar .sg span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+.bar .sg.light-ink span {
+  color: #121a24;
+}
+.bar .sg:hover,
+.bar .sg:focus-visible {
+  filter: brightness(1.08);
+}
+.bar-total {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
 
-  /* ramp-up chart */
-  .chart { width: 100%; }
-  .chart svg { display: block; overflow: visible; }
-  .chart text { font-family: var(--font); fill: var(--ink-2); }
-  .chart .tick { fill: var(--muted); font-size: 11.5px; }
-  .chart .dl { fill: var(--ink); font-size: 12.5px; font-weight: 600; }
-  .chart .ref { fill: var(--muted); font-size: 11.5px; }
-  .chart .hit { fill: transparent; }
-  .chart .hit:focus-visible { outline: none; stroke: var(--focus); stroke-width: 2px; }
-  details summary { cursor: pointer; font-size: 13px; color: var(--ink-2); }
+/* Direct+ wallet calculator (internal). Shared tokens and rules: shared/base.css and shared/wallet.css. */
+:root {
+  /* purposes and wallet segments: validated categorical slots 1-5 (light, on #ffffff) */
+  --p-ecc: #2a78d6;
+  --p-settlement: #1baf7a;
+  --p-brp: #eda100;
+  --p-invoices: #e87ba4;
+  --s-trading: #2a78d6;
+  --s-available: #1baf7a;
+  --s-brp: #eda100;
+  --series: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --p-ecc: #3987e5;
+    --p-settlement: #199e70;
+    --p-brp: #c98500;
+    --p-invoices: #d55181;
+    --s-trading: #3987e5;
+    --s-available: #199e70;
+    --s-brp: #c98500;
+    --series: #3987e5;
+  }
+}
+:root[data-theme='dark'] {
+  --p-ecc: #3987e5;
+  --p-settlement: #199e70;
+  --p-brp: #c98500;
+  --p-invoices: #d55181;
+  --s-trading: #3987e5;
+  --s-available: #199e70;
+  --s-brp: #c98500;
+  --series: #3987e5;
+}
 
-  /* settings view */
-  .settings { display: grid; gap: 18px; }
-  .settings-head { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; justify-content: space-between; }
-  .sgroup { padding: 16px 18px; display: grid; gap: 12px; }
-  .sgroup h2 { font-size: 16px; font-weight: 600; }
-  .sgroup .note { font-size: 13px; color: var(--ink-2); }
-  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px 22px; }
-  @media (max-width: 420px) { .fields { grid-template-columns: minmax(0, 1fr); } }
-  .fld { display: grid; gap: 4px; align-content: start; min-width: 0; }
-  .fld > * { min-width: 0; }
-  .fld .fl { font-size: 13px; font-weight: 600; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-  .fld .fi { display: flex; gap: 8px; align-items: center; }
-  .fld .fi input[type="number"], .fld .fi input[type="text"] { width: 150px; }
-  .fld .fi select { max-width: 100%; min-width: 0; flex: 0 1 auto; text-overflow: ellipsis; }
-  .fld .unit { font-size: 12.5px; color: var(--muted); }
-  .fld .src { font-size: 12px; color: var(--muted); line-height: 1.4; }
-  .fld.changed .fl::after { content: "changed"; font-size: 11px; font-weight: 500; color: var(--ink-2); border: 1px solid var(--rule-strong); border-radius: 999px; padding: 0 6px; }
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 28px 56px;
+  display: grid;
+  gap: 22px;
+}
+.page > *,
+#view-wallet > *,
+.card > * {
+  min-width: 0;
+}
+a {
+  color: inherit;
+}
 
-  #tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12); max-width: 280px; }
-  #tip .tv { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
-  #tip .tl { color: var(--ink-2); }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.masthead {
+  display: grid;
+  gap: 8px;
+  max-width: 800px;
+}
+h1 {
+  font-size: clamp(28px, 3.6vw, 38px);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.lede {
+  font-size: 16.5px;
+  color: var(--ink-2);
+  max-width: 66ch;
+}
+.fine {
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 92ch;
+}
+
+/* view switch + controls row (one row, above everything it scopes) */
+.views {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.view-tab {
+  border: 0;
+  background: none;
+  padding: 9px 4px;
+  margin-right: 18px;
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.view-tab[aria-selected='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  align-items: end;
+}
+.control {
+  display: grid;
+  gap: 5px;
+}
+.control > label,
+.label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+select,
+input[type='date'],
+input[type='number'],
+input[type='text'] {
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 7px 10px;
+  min-width: 0;
+}
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
+}
+
+#view-wallet {
+  display: grid;
+  gap: 20px;
+}
+.card {
+  padding: 18px 20px 20px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.card h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.card .sub {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  max-width: 78ch;
+}
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+@media (max-width: 860px) {
+  .grid2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* hero: the total as a range */
+.hero {
+  padding: 20px 22px;
+  display: grid;
+  gap: 6px;
+}
+.hero .h-label {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.hero .h-value {
+  font-size: clamp(30px, 5vw, 50px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+.hero .h-value .to {
+  color: var(--muted);
+  font-weight: 500;
+}
+.hero .h-sub {
+  font-size: 13px;
+  color: var(--muted);
+}
+.alert {
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  background: var(--critical-bg);
+  border: 1px solid var(--critical);
+}
+
+/* stacked bars (expected, stress): shared/wallet.css */
+.seg-toggle {
+  display: inline-grid;
+  grid-auto-flow: column;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  padding: 3px;
+  gap: 3px;
+  background: var(--surface-2);
+}
+.seg-toggle button {
+  border: 0;
+  background: none;
+  padding: 5px 11px;
+  border-radius: 5px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.seg-toggle button[aria-pressed='true'] {
+  background: var(--select-bg);
+  color: var(--select-ink);
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+/* tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 620px;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  padding: 8px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+td.r,
+th.r {
+  text-align: right;
+}
+#purpose-table .swatch {
+  margin-right: 8px;
+}
+#brp-table,
+#ramp-table {
+  min-width: 0;
+}
+#sens {
+  min-width: 420px;
+}
+.tag {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+.tag.assume {
+  background: var(--notice-bg);
+  color: var(--notice-ink);
+  border-color: transparent;
+}
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12.5px;
+}
+
+/* part cards */
+.parts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+@media (max-width: 860px) {
+  .parts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.part h3 {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.part .pv {
+  font-size: 22px;
+  font-weight: 600;
+}
+.part .pv .to {
+  color: var(--muted);
+  font-weight: 500;
+}
+.part p {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.levers {
+  font-size: 13px;
+  color: var(--ink-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+/* ramp-up chart */
+#ramp-title {
+  margin-bottom: 6px;
+}
+.chart {
+  width: 100%;
+}
+.chart svg {
+  display: block;
+  overflow: visible;
+}
+.chart text {
+  font-family: var(--font);
+  fill: var(--ink-2);
+}
+.chart .tick {
+  fill: var(--muted);
+  font-size: 11.5px;
+}
+.chart .dl {
+  fill: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.chart .hit {
+  fill: transparent;
+}
+.chart .hit:focus-visible {
+  outline: none;
+  stroke: var(--focus);
+  stroke-width: 2px;
+}
+details summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* settings view */
+.settings {
+  display: grid;
+  gap: 18px;
+}
+.settings-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: end;
+  justify-content: space-between;
+}
+.settings-head .sub {
+  max-width: 70ch;
+}
+.settings-actions {
+  display: flex;
+  gap: 10px;
+}
+.sgroup {
+  padding: 16px 18px;
+  display: grid;
+  gap: 12px;
+}
+.sgroup h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.sgroup .note {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px 22px;
+}
+@media (max-width: 420px) {
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.fld {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+}
+.fld > * {
+  min-width: 0;
+}
+.fld .fl {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.fld .fi {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.fld .fi input[type='number'],
+.fld .fi input[type='text'] {
+  width: 150px;
+}
+.fld .fi select {
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 auto;
+  text-overflow: ellipsis;
+}
+.fld .unit {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.fld .src {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.fld.changed .fl::after {
+  content: 'changed';
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+#tip {
+  max-width: 280px;
+}
+
 </style>
 
 <div class="page">
@@ -175,7 +743,7 @@
     <p class="small muted" id="preset-note"></p>
   </div>
 
-  <main id="view-wallet" role="tabpanel" aria-labelledby="tab-wallet" style="display:grid;gap:20px">
+  <main id="view-wallet" role="tabpanel" aria-labelledby="tab-wallet">
     <div class="alert" id="error" hidden></div>
 
     <section class="panel hero" aria-live="polite">
@@ -216,11 +784,11 @@
       <h2>BRP security</h2>
       <p class="sub" id="brp-sub"></p>
       <div class="grid2">
-        <div class="table-wrap"><table id="brp-table" style="min-width:0"></table></div>
+        <div class="table-wrap"><table id="brp-table"></table></div>
         <div>
-          <h3 class="label" style="margin-bottom:6px" id="ramp-title">As a new member under the ACM draft, months 1-18</h3>
+          <h3 class="label" id="ramp-title">As a new member under the ACM draft, months 1-18</h3>
           <div class="chart" id="ramp" role="img" aria-label="BRP security per month for a new member"></div>
-          <details><summary>Show as a table</summary><div class="table-wrap"><table id="ramp-table" style="min-width:0"></table></div></details>
+          <details><summary>Show as a table</summary><div class="table-wrap"><table id="ramp-table"></table></div></details>
         </div>
       </div>
       <p class="sub" id="exit-text"></p>
@@ -229,7 +797,7 @@
     <section class="panel card">
       <h2>What moves the total</h2>
       <p class="sub">The expected total with one thing changed at a time.</p>
-      <div class="table-wrap"><table id="sens" style="min-width:420px"></table></div>
+      <div class="table-wrap"><table id="sens"></table></div>
     </section>
 
     <section class="panel card">
@@ -240,8 +808,8 @@
 
   <section id="view-settings" class="settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
     <div class="settings-head">
-      <p class="sub" style="max-width:70ch">Every assumption behind the wallet, with its source. Values start from the member type above; change any of them and the wallet follows. Nothing is saved: reloading the page starts from the preset again.</p>
-      <div style="display:flex;gap:10px"><button type="button" class="btn ghost" id="reset">Reset to the preset</button><button type="button" class="btn" data-goto="wallet">See the wallet</button></div>
+      <p class="sub">Every assumption behind the wallet, with its source. Values start from the member type above; change any of them and the wallet follows. Nothing is saved: reloading the page starts from the preset again.</p>
+      <div class="settings-actions"><button type="button" class="btn ghost" id="reset">Reset to the preset</button><button type="button" class="btn" data-goto="wallet">See the wallet</button></div>
     </div>
     <div id="groups" class="settings"></div>
   </section>
@@ -697,6 +1265,7 @@ const LimitEngine = (() => {
     MAX_DATE,
   };
 })();
+
 /* Direct+ wallet: date helpers shared by the wallet modules. Dates are UTC midnights, as in the engine; its parse()
    and iso() convert them to and from ISO strings. */
 const WalletDates = (() => {
@@ -720,6 +1289,7 @@ const WalletDates = (() => {
 
   return { DAY_MS, addDays, daysBetween, mondayOf, compareIso, eachDay };
 })();
+
 /* Direct+ wallet: from a trading plan to what each trading day costs and how much ECC limit it uses.
    Sources: ECC Risk Management Services Manual v056, §3.10 (auctions) and §3.11 (continuous).
    The formulas are explained in docs/wallet-model.md §2 and §6. */
@@ -804,6 +1374,7 @@ const WalletBehaviour = (() => {
 
   return { orderExposure, dayFlows };
 })();
+
 /* Direct+ wallet: ECC settlement through the connected account (docs/wallet-model.md §3).
    Sources: ECC, "Linking a Connected Bank Settlement Account with ECC" 2025/2026, p.3: "all trades conducted before
    4 PM CET are settled in the next morning", one MT101 "at the end of the business day (6 PM CET) with value date the
@@ -923,6 +1494,7 @@ const WalletSettlement = ((Engine, Dates) => {
   typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
   typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
 );
+
 /* Direct+ wallet: from the trading plan to ECC collateral (docs/wallet-model.md §2).
    Uses only the engine's public API. The engine's own solve() holds open risk and targets constant for all days; this
    solver takes both per calculation day. */
@@ -1062,6 +1634,7 @@ const WalletEccLink = ((Engine, Dates) => {
   typeof LimitEngine !== 'undefined' ? LimitEngine : require('../engine.js'),
   typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
 );
+
 /* Direct+ wallet: BRP security for TenneT under art. 10.8, the rule in force and the ACM draft (docs/wallet-model.md §4).
    Each member is treated as its own BRP (wallet-model §4.4).
    Sources: reference/tennet/systeemcode-elektriciteit_wetten-overheid_art-10.8-10.26-10.27-10.29_2026-09-26.txt
@@ -1250,6 +1823,7 @@ const WalletBrp = (() => {
 
   return { RULES, ruleFor, countedCapacity, current, stats, componentB, draft, rampUp };
 })();
+
 /* Direct+ wallet: the member's TenneT account: the weekly imbalance invoice, the day TenneT debits it, and how long the
    security stays committed after the member stops (docs/wallet-model.md §5 and §6.2). Each member pays its own
    invoices, as if it were its own BRP.
@@ -1418,6 +1992,7 @@ const WalletTennet = ((Engine, Dates, Brp) => {
   typeof WalletDates !== 'undefined' ? WalletDates : require('./dates.js'),
   typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
 );
+
 /* Direct+ wallet: every setting of the calculator (label, unit, kind, tag, source and default), grouped as the
    Settings view shows them, and the three example members. The Settings view and the "Assumptions and sources" list
    are generated from GROUPS.
@@ -2204,7 +2779,8 @@ const WalletSettings = (() => {
 
   return { GROUPS, BASE, LEVELS, PRESETS, preset, assumptions };
 })();
-/* Direct+ wallet: the prospect questionnaire (src/wallet/prospect.html). Its plain answers map onto the settings of
+
+/* Direct+ wallet: the prospect questionnaire (src/pages/estimate/). Its plain answers map onto the settings of
    settings.js, and with each member type's default answers they give exactly its preset (docs/wallet-model.md §12). */
 const WalletAnswers = ((Settings) => {
   'use strict';
@@ -2335,6 +2911,7 @@ const WalletAnswers = ((Settings) => {
 
   return { suggestBalance, strategyVolumes, defaultAnswers, fromAnswers };
 })(typeof WalletSettings !== 'undefined' ? WalletSettings : require('./settings.js'));
+
 /* Direct+ wallet: what one member needs, by purpose and by wallet segment (docs/wallet-model.md). Each member is treated
    as its own BRP, and the wallet pools all members at one connected bank, so nothing nets between members
    (wallet-model §11.1). WalletCalc is the one object the pages use: the calculation, plus the settings (settings.js)
@@ -2722,379 +3299,1092 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
   typeof WalletSettings !== 'undefined' ? WalletSettings : require('./settings.js'),
   typeof WalletAnswers !== 'undefined' ? WalletAnswers : require('./answers.js'),
 );
-(function () {
+
+/* Direct+ pages: the small DOM, formatting, calendar and chart helpers that every page uses. No framework: each page's
+   script builds its own DOM with these. */
+const PageUI = ((Engine) => {
   'use strict';
-  var E = LimitEngine, C = WalletCalc;
-  var $ = function (id) { return document.getElementById(id); };
-  var fmt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
-  // Amounts are rounded to the nearest €1,000: these are estimates, not exact figures (Direct+ decision, 26 Sep 2026). Prices and
-  // amounts typed in are shown as entered (eurP).
-  function eur(v) { var a = Math.abs(v); if (a < 0.5) return '€0'; if (a < 1000) return 'under €1,000'; return (v < 0 ? '−€' : '€') + fmt.format(Math.round(a / 1000) * 1000); }
-  function eurP(v) { return (v < 0 ? '−€' : '€') + fmt.format(Math.abs(Math.round(v))); }
-  function eurDiff(d) { var r = Math.round(d / 1000) * 1000; return r === 0 ? 'about the same' : (r > 0 ? '+€' : '−€') + fmt.format(Math.abs(r)); }
-  function eurShort(v) {
-    var a = Math.abs(v), s = v < 0 ? '−€' : '€';
-    if (a >= 1e6) return s + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'm';
-    if (a >= 1e4) return s + Math.round(a / 1e3) + 'k';
-    if (a >= 500) return s + Math.round(a / 1e3) + 'k';            // whole €1,000s, like every amount on this page
-    return a < 0.5 ? '€0' : '<€1k';
-  }
-  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  function dLabel(iso, year) { var d = E.parse(iso); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (year ? ' ' + d.getUTCFullYear() : ''); }
-  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
-  function clear(n) { n.textContent = ''; return n; }
-  function row(tb, cells) { var tr = el('tr'); cells.forEach(function (c) { var td = el('td', c.cls || null); if (c.node) td.appendChild(c.node); else td.textContent = c.t == null ? '' : c.t; tr.appendChild(td); }); tb.appendChild(tr); return tr; }
-  function head(t, cols) { var th = el('thead'), tr = el('tr'); cols.forEach(function (c) { var x = el('th', c.cls || null, c.t); x.scope = 'col'; tr.appendChild(x); }); th.appendChild(tr); t.appendChild(th); }
 
-  // ---------- state ----------
-  var state = C.preset('trader'), presetValues = C.preset('trader'), view = 'wallet', by = 'purpose', tlScenario = 'expected', last = null;
-  function mondayOf(iso) { var d = E.parse(iso), w = d.getUTCDay(); return E.iso(new Date(d.getTime() - ((w + 6) % 7) * 864e5)); }
-  function clampWeek(iso) { var m = mondayOf(iso); if (m < '2026-01-05') return '2026-01-05'; if (m > '2027-12-20') return '2027-12-20'; return m; }
-  function nextMonday() { var n = new Date(), t = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())); return clampWeek(E.iso(new Date(t.getTime() + (((8 - t.getUTCDay()) % 7) || 7) * 864e5))); }
-  state.week = presetValues.week = nextMonday();
+  const DAY_MS = 86400000;
 
-  // ---------- controls ----------
-  Object.keys(C.PRESETS).forEach(function (id) { var o = el('option', null, C.PRESETS[id].label); o.value = id; $('member').appendChild(o); });
-  $('week').min = E.MIN_DATE; $('week').max = E.MAX_DATE;
-  function loadPreset(id) {
-    var week = state.week;
-    state = C.preset(id); presetValues = C.preset(id);
-    state.week = presetValues.week = week;
-    buildSettings(); schedule();
-  }
-  $('member').addEventListener('change', function () { loadPreset($('member').value); });
-  $('week').addEventListener('change', function () { state.week = clampWeek($('week').value || nextMonday()); schedule(); });
-  $('rule-quick').addEventListener('change', function () { state.rule = $('rule-quick').value; syncField('rule'); schedule(); });
-  $('reset').addEventListener('click', function () { loadPreset(state.member); });
-  function setView(v, focusKey) {
-    view = v;
-    $('view-wallet').style.display = v === 'wallet' ? 'grid' : 'none';
-    $('view-settings').hidden = v !== 'settings';
-    $('tab-wallet').setAttribute('aria-selected', v === 'wallet' ? 'true' : 'false');
-    $('tab-settings').setAttribute('aria-selected', v === 'settings' ? 'true' : 'false');
-    if (focusKey) { var f = document.querySelector('input[data-key="' + focusKey + '"], select[data-key="' + focusKey + '"]'); if (f) { f.scrollIntoView({ block: 'center' }); f.focus(); } }
-    else window.scrollTo(0, 0);
-  }
-  $('tab-wallet').addEventListener('click', function () { setView('wallet'); });
-  $('tab-settings').addEventListener('click', function () { setView('settings'); });
-  document.addEventListener('click', function (e) {
-    var g = e.target.closest && e.target.closest('[data-goto]');
-    if (g) setView(g.getAttribute('data-goto'), g.getAttribute('data-focus'));
-  });
-  $('by-purpose').addEventListener('click', function () { by = 'purpose'; render(); });
-  $('by-account').addEventListener('click', function () { by = 'account'; render(); });
-  $('tl-exp').addEventListener('click', function () { tlScenario = 'expected'; render(); });
-  $('tl-str').addEventListener('click', function () { tlScenario = 'stress'; render(); });
+  // ---------- DOM ----------
 
-  // ---------- settings view, generated from WalletCalc.GROUPS ----------
-  var TAGS = { input: 'Your plan', ASSUMPTION: 'Assumed', INTERPRETATION: 'Interpretation', 'ECC setting': 'ECC setting' };
-  function toInput(fl, v) { if (fl.kind === 'share') return v == null ? '' : Math.round(v * 10000) / 100; return v == null ? '' : v; }
-  function fromInput(fl, node) {
-    if (fl.kind === 'bool') return node.checked;
-    if (fl.kind === 'list') return node.value;
-    if (fl.kind === 'select') { var o = fl.options.filter(function (x) { return String(x[0]) === node.value; })[0]; return o ? o[0] : node.value; }
-    if (node.value === '') return fl.kind === 'optional' ? null : 0;
-    var n = parseFloat(node.value);
-    if (!isFinite(n)) return fl.kind === 'optional' ? null : 0;
-    return fl.kind === 'share' ? n / 100 : n;
+  const $ = (id) => document.getElementById(id);
+
+  /** A new element, with an optional class and text. */
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
   }
-  function buildSettings() {
-    var box = clear($('groups'));
-    C.GROUPS.forEach(function (g) {
-      var sec = el('section', 'panel sgroup'); sec.appendChild(el('h2', null, g.title));
-      if (g.note) sec.appendChild(el('p', 'note', g.note));
-      var fields = el('div', 'fields');
-      g.fields.forEach(function (fl) {
-        var wrap = el('div', 'fld'), id = 'f-' + fl.key;
-        wrap.setAttribute('data-field', fl.key);
-        var lab = el('label', 'fl'); lab.htmlFor = id; lab.appendChild(document.createTextNode(fl.label));
-        lab.appendChild(el('span', 'tag' + (fl.tag === 'ASSUMPTION' || fl.tag === 'INTERPRETATION' ? ' assume' : ''), TAGS[fl.tag] || fl.tag));
-        wrap.appendChild(lab);
-        var fi = el('div', 'fi'), input;
-        if (fl.kind === 'select') {
-          input = el('select'); fl.options.forEach(function (o) { var op = el('option', null, o[1]); op.value = String(o[0]); input.appendChild(op); });
-        } else if (fl.kind === 'bool') {
-          input = el('input'); input.type = 'checkbox';
-        } else {
-          input = el('input'); input.type = fl.kind === 'list' ? 'text' : 'number'; if (fl.kind !== 'list') input.step = 'any';
-          if (fl.kind === 'optional') input.placeholder = 'not set';
-        }
-        input.id = id; input.setAttribute('data-key', fl.key);
-        input.addEventListener(fl.kind === 'select' || fl.kind === 'bool' ? 'change' : 'input', function () {
-          state[fl.key] = fromInput(fl, input);
-          if (fl.key === 'rule') $('rule-quick').value = state.rule;
-          markChanged(fl.key); schedule();
-        });
-        fi.appendChild(input);
-        if (fl.unit) fi.appendChild(el('span', 'unit', fl.unit));
-        wrap.appendChild(fi);
-        wrap.appendChild(el('div', 'src', fl.src));
-        fields.appendChild(wrap);
-      });
-      sec.appendChild(fields); box.appendChild(sec);
+
+  /** Empties `node` and returns it. */
+  function clear(node) {
+    node.textContent = '';
+    return node;
+  }
+
+  const isDark = () => getComputedStyle(document.documentElement).colorScheme === 'dark';
+
+  /** A header row: columns = [{ text, className }]. */
+  function headerRow(columns) {
+    const row = el('tr');
+    for (const { text, className } of columns) {
+      const cell = el('th', className || null, text);
+      cell.scope = 'col';
+      row.appendChild(cell);
+    }
+    return row;
+  }
+
+  /** A table's head, with one header row. */
+  function tableHead(table, columns) {
+    const head = el('thead');
+    head.appendChild(headerRow(columns));
+    table.appendChild(head);
+  }
+
+  /** A body row: cells = [{ text | node, className }]. Returns the row. */
+  function tableRow(body, cells) {
+    const row = el('tr');
+    for (const { text, node, className } of cells) {
+      const cell = el('td', className || null);
+      if (node) cell.appendChild(node);
+      else cell.textContent = text == null ? '' : text;
+      row.appendChild(cell);
+    }
+    body.appendChild(row);
+    return row;
+  }
+
+  // ---------- numbers and euros ----------
+
+  const wholeNumber = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
+  const euroSign = (value) => (value < 0 ? '−€' : '€');
+
+  /** Whole euros: €1,234 or −€1,234. */
+  const euros = (value) => euroSign(value) + wholeNumber.format(Math.abs(Math.round(value)));
+
+  /** To the nearest €1,000, as the wallet pages show every estimate: €12,000, 'under €1,000' or €0. */
+  function thousands(value) {
+    const size = Math.abs(value);
+    if (size < 0.5) return '€0';
+    if (size < 1000) return 'under €1,000';
+    return euroSign(value) + wholeNumber.format(Math.round(size / 1000) * 1000);
+  }
+
+  /** A difference to the nearest €1,000: +€2,000, −€1,000 or 'about the same'. */
+  function thousandsDiff(difference) {
+    const rounded = Math.round(difference / 1000) * 1000;
+    if (rounded === 0) return 'about the same';
+    return (rounded > 0 ? '+€' : '−€') + wholeNumber.format(Math.abs(rounded));
+  }
+
+  const trimZeros = (text) => text.replace(/\.?0+$/, '');
+
+  /** Short euros for chart labels: €950, €1.5k, €12k, €1.25m. */
+  function shortEuros(value) {
+    const size = Math.abs(value);
+    const sign = euroSign(value);
+    if (size >= 1e6) return `${sign}${trimZeros((size / 1e6).toFixed(size >= 1e7 ? 1 : 2))}m`;
+    if (size >= 1e4) return `${sign}${Math.round(size / 1e3)}k`;
+    if (size >= 1e3) return `${sign}${(size / 1e3).toFixed(1).replace(/\.0$/, '')}k`;
+    return `${sign}${Math.round(size)}`;
+  }
+
+  /** Short euros in whole thousands, as the wallet pages round: <€1k, €12k, €1.25m. */
+  function shortThousands(value) {
+    const size = Math.abs(value);
+    const sign = euroSign(value);
+    if (size >= 1e6) return `${sign}${trimZeros((size / 1e6).toFixed(2))}m`;
+    if (size >= 500) return `${sign}${Math.round(size / 1e3)}k`;
+    return size < 0.5 ? '€0' : '<€1k';
+  }
+
+  // ---------- dates (ISO strings, UTC days) ----------
+
+  const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const addDays = (date, days) => new Date(date.getTime() + days * DAY_MS);
+  const plusDays = (iso, days) => Engine.iso(addDays(Engine.parse(iso), days));
+  const mondayOf = (date) => addDays(date, -((date.getUTCDay() + 6) % 7));
+
+  /** 'Mon 5 Oct', or 'Mon 5 Oct 2026' with the year. */
+  function dateLabel(iso, withYear) {
+    const date = Engine.parse(iso);
+    const label = `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+    return withYear ? `${label} ${date.getUTCFullYear()}` : label;
+  }
+
+  // The weeks the pages can show: the full weeks of ECC's calendar in the engine.
+  const FIRST_WEEK = Engine.iso(mondayOf(addDays(Engine.parse(Engine.MIN_DATE), 6)));
+  const LAST_WEEK = Engine.iso(mondayOf(Engine.parse(Engine.MAX_DATE)));
+
+  /** The Monday of the week that holds `iso`, within the calendar's weeks. */
+  function clampWeek(iso) {
+    const monday = Engine.iso(mondayOf(Engine.parse(iso)));
+    if (monday < FIRST_WEEK) return FIRST_WEEK;
+    if (monday > LAST_WEEK) return LAST_WEEK;
+    return monday;
+  }
+
+  /** Next Monday (never today), within the calendar's weeks. */
+  function nextMonday() {
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    return clampWeek(Engine.iso(addDays(today, (8 - today.getUTCDay()) % 7 || 7)));
+  }
+
+  const HOLIDAY_SHORT_NAMES = {
+    "New Year's Day": 'New Year',
+    'Good Friday': 'Easter',
+    'Easter Monday': 'Easter',
+    'Christmas Day': 'Christmas',
+  };
+
+  /**
+   * The weekday ECC holidays of the next 12 months, by week: each goes to the week that holds the last business day
+   * before it, whose calculation has to bridge the holiday. Holidays in the same week share it.
+   * Returns [{ monday, days: [iso], names: [short names, once each] }].
+   */
+  function holidayWeeks() {
+    const today = Engine.iso(new Date());
+    const until = plusDays(today, 365);
+    const weeks = new Map();
+    for (const day of Object.keys(Engine.HOLIDAYS).sort()) {
+      if (day < today || day > until || day > Engine.MAX_DATE) continue;
+      const monday = Engine.iso(mondayOf(Engine.prevBD(Engine.parse(day))));
+      if (monday < Engine.MIN_DATE) continue;
+      if (!weeks.has(monday)) weeks.set(monday, { monday, days: [] });
+      weeks.get(monday).days.push(day);
+    }
+    return [...weeks.values()].map((week) => {
+      const names = week.days.map((day) => HOLIDAY_SHORT_NAMES[Engine.HOLIDAYS[day]] || Engine.HOLIDAYS[day]);
+      return { ...week, names: [...new Set(names)] };
     });
-    C.GROUPS.forEach(function (g) { g.fields.forEach(function (fl) { syncField(fl.key); }); });
-  }
-  function fieldOf(key) { var r = null; C.GROUPS.forEach(function (g) { g.fields.forEach(function (fl) { if (fl.key === key) r = fl; }); }); return r; }
-  function syncField(key) {
-    var fl = fieldOf(key), node = document.querySelector('input[data-key="' + key + '"], select[data-key="' + key + '"]');
-    if (!fl || !node) return;
-    if (fl.kind === 'bool') node.checked = !!state[key];
-    else if (fl.kind === 'select') node.value = String(state[key]);
-    else node.value = toInput(fl, state[key]);
-    markChanged(key);
-  }
-  function markChanged(key) {
-    var w = document.querySelector('[data-field="' + key + '"]');
-    if (w) w.classList.toggle('changed', String(state[key]) !== String(presetValues[key]));
   }
 
-  // ---------- tooltip ----------
-  var tip = $('tip');
-  function showTip(evt, value, label) {
-    clear(tip); tip.appendChild(el('div', 'tv', value)); tip.appendChild(el('div', 'tl', label)); tip.hidden = false;
-    var x, y;
-    if (evt && evt.clientX != null && evt.type.indexOf('pointer') === 0) { x = evt.clientX; y = evt.clientY; }
-    else { var b = evt.target.getBoundingClientRect(); x = b.left + b.width / 2; y = b.top; }
-    var w = tip.offsetWidth, h = tip.offsetHeight;
-    tip.style.left = Math.min(Math.max(8, x + 12), window.innerWidth - w - 8) + 'px';
-    var top = y - h - 12; tip.style.top = (top < 8 ? y + 16 : top) + 'px';
+  // ---------- tooltip (the page's #tip element) ----------
+
+  function showTip(event, value, label) {
+    const tip = clear($('tip'));
+    tip.appendChild(el('div', 'tv', value));
+    tip.appendChild(el('div', 'tl', label));
+    tip.hidden = false;
+    let x;
+    let y;
+    if (event.clientX != null && event.type.startsWith('pointer')) {
+      x = event.clientX;
+      y = event.clientY;
+    } else {
+      const box = event.target.getBoundingClientRect();
+      x = box.left + box.width / 2;
+      y = box.top;
+    }
+    tip.style.left = `${Math.min(Math.max(8, x + 12), window.innerWidth - tip.offsetWidth - 8)}px`;
+    const top = y - tip.offsetHeight - 12;
+    tip.style.top = `${top < 8 ? y + 16 : top}px`;
   }
-  function hideTip() { tip.hidden = true; }
+  const hideTip = () => {
+    $('tip').hidden = true;
+  };
+
+  /** Makes `node` focusable, with a tooltip on hover and focus: the value in bold, then the label. */
   function hoverable(node, value, label) {
-    node.tabIndex = 0; node.setAttribute('aria-label', label + ': ' + value);
-    node.addEventListener('pointermove', function (e) { showTip(e, value, label); });
+    node.tabIndex = 0;
+    node.setAttribute('aria-label', `${label}: ${value}`);
+    node.addEventListener('pointermove', (event) => showTip(event, value, label));
     node.addEventListener('pointerleave', hideTip);
-    node.addEventListener('focus', function (e) { showTip(e, value, label); });
+    node.addEventListener('focus', (event) => showTip(event, value, label));
     node.addEventListener('blur', hideTip);
   }
 
-  // ---------- rendering ----------
-  var PURPOSE_COLOR = { ecc: 'var(--p-ecc)', settlement: 'var(--p-settlement)', brp: 'var(--p-brp)', invoices: 'var(--p-invoices)' };
-  var SEGMENT_ORDER = ['trading', 'available', 'brp'], SEGMENT_COLOR = { trading: 'var(--s-trading)', available: 'var(--s-available)', brp: 'var(--s-brp)' };
-  var LIGHT_FILL = { settlement: 1, brp: 1, invoices: 1, available: 1 };   // light fills take dark label text in light mode
-  function items(res) {
-    if (by === 'purpose') return res.parts.map(function (p) { return { id: p.id, label: p.label, value: p.value, color: PURPOSE_COLOR[p.id] }; });
-    return SEGMENT_ORDER.map(function (s) { return { id: s, label: C.SEGMENTS[s], value: res.segments[s] || 0, color: SEGMENT_COLOR[s] }; });
-  }
-  function isDark() { return getComputedStyle(document.documentElement).colorScheme === 'dark'; }
+  // ---------- charts ----------
 
-  function renderBars(r) {
-    var box = clear($('bars')), max = Math.max(r.expected.total, r.stress.total, 1);
-    [['Expected', r.expected], ['Stress', r.stress]].forEach(function (x) {
-      var rw = el('div', 'bar-row'); rw.appendChild(el('div', 'rl', x[0]));
-      var track = el('div', 'bar-track'), bar = el('div', 'bar');
-      bar.style.width = 'calc((100% - 110px) * ' + (x[1].total / max) + ')';
-      items(x[1]).forEach(function (it) {
-        if (it.value <= 0.5) return;
-        var sg = el('div', 'sg' + (!isDark() && LIGHT_FILL[it.id] ? ' light-ink' : ''));
-        sg.style.flex = it.value + ' 0 0'; sg.style.background = it.color;
-        sg.appendChild(el('span', null, eurShort(it.value)));
-        hoverable(sg, eur(it.value), x[0] + ' · ' + it.label);
-        bar.appendChild(sg);
-      });
-      track.appendChild(bar); track.appendChild(el('div', 'bar-total', eur(x[1].total)));
-      rw.appendChild(track); box.appendChild(rw);
-    });
-    // a label that does not fit its segment goes to the tooltip and the table (measured, never clipped)
-    requestAnimationFrame(function () {
-      Array.prototype.forEach.call(box.querySelectorAll('.sg'), function (sg) { var s = sg.firstChild; s.style.visibility = s.scrollWidth + 8 <= sg.clientWidth ? '' : 'hidden'; });
-    });
-    var lg = clear($('legend'));
-    items(r.expected).forEach(function (it) { var s = el('span'); var w = el('span', 'swatch'); w.style.background = it.color; s.appendChild(w); s.appendChild(document.createTextNode(it.label)); lg.appendChild(s); });
-    $('split-title').textContent = by === 'purpose' ? 'By purpose' : 'By wallet segment';
-    $('by-purpose').setAttribute('aria-pressed', by === 'purpose' ? 'true' : 'false');
-    $('by-account').setAttribute('aria-pressed', by === 'account' ? 'true' : 'false');
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  /** An <svg> of the given size, and add(tag, attributes, text) to draw in it. */
+  function svgCanvas(width, height) {
+    const root = document.createElementNS(SVG_NS, 'svg');
+    root.setAttribute('width', width);
+    root.setAttribute('height', height);
+    root.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    const add = (tag, attributes, text) => {
+      const node = document.createElementNS(SVG_NS, tag);
+      for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
+      if (text != null) node.textContent = text;
+      root.appendChild(node);
+      return node;
+    };
+    return { root, add };
   }
 
-  function renderPurposeTable(r) {
-    var t = clear($('purpose-table'));
-    head(t, [{ t: 'Purpose' }, { t: 'Wallet segment' }, { t: 'Basis' }, { t: 'Expected', cls: 'r' }, { t: 'Stress', cls: 'r' }]);
-    var tb = el('tbody');
-    r.expected.parts.forEach(function (p, i) {
-      var name = el('span'); var w = el('span', 'swatch'); w.style.background = PURPOSE_COLOR[p.id]; w.style.marginRight = '8px'; name.appendChild(w); name.appendChild(document.createTextNode(p.label));
-      row(tb, [{ node: name }, { t: C.SEGMENTS[p.segment] }, { node: el('span', 'tag', p.confidence) },
-               { t: eur(p.value), cls: 'r' }, { t: eur(r.stress.parts[i].value), cls: 'r' }]);
-    });
-    row(tb, [{ t: 'Total' }, { t: '' }, { t: '' }, { t: eur(r.expected.total), cls: 'r' }, { t: eur(r.stress.total), cls: 'r' }]).className = 'total';
-    t.appendChild(tb);
+  /** The outline of a bar from `bottom` up to `top` (SVG y), with rounded top corners. */
+  function barPath(x, width, top, bottom) {
+    const r = Math.min(4, (bottom - top) / 2);
+    return (
+      `M${x},${bottom}V${top + r}Q${x},${top} ${x + r},${top}` +
+      `H${x + width - r}Q${x + width},${top} ${x + width},${top + r}V${bottom}Z`
+    );
   }
 
-  function lever(key, text) { var b = el('button', 'linkbtn', text); b.type = 'button'; b.setAttribute('data-goto', 'settings'); b.setAttribute('data-focus', key); return b; }
-  function renderParts(r) {
-    var box = clear($('parts')), x = r.expected, y = r.stress, st = r.settings;
-    function card(color, title, exp, str, text, levers) {
-      var c = el('section', 'panel card part'), h = el('h3'), sw = el('span', 'swatch'); sw.style.background = color;
-      h.appendChild(sw); h.appendChild(document.createTextNode(title)); c.appendChild(h);
-      var v = el('div', 'pv'); v.appendChild(document.createTextNode(eur(exp))); if (Math.round(str) !== Math.round(exp)) { v.appendChild(el('span', 'to', ' to ')); v.appendChild(document.createTextNode(eur(str))); } c.appendChild(v);
-      c.appendChild(el('p', null, text));
-      var lv = el('div', 'levers'); lv.appendChild(el('span', 'muted', 'Would lower it most:')); levers.forEach(function (l) { lv.appendChild(lever(l[0], l[1])); }); c.appendChild(lv);
-      box.appendChild(c);
+  /** A round step for about `count` gridlines up to `max`: 1, 2, 2.5 or 5 times a power of ten. */
+  function niceStep(max, count) {
+    const raw = max / count;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+    const factor = raw / magnitude;
+    const nice = factor <= 1 ? 1 : factor <= 2 ? 2 : factor <= 2.5 ? 2.5 : factor <= 5 ? 5 : 10;
+    return nice * magnitude;
+  }
+
+  /**
+   * Horizontal stacked bars (the wallet pages): one row per bar, its width relative to the largest total.
+   *   rows    [{ label, total, totalText, segments: [{ value, color, lightInk, text, tip: { value, label } }] }];
+   *           segments of €0.50 or less are left out, and lightInk marks light fills that take dark text in light mode
+   *   reserve the px each row keeps for its total, next to the bar
+   * A segment's label that does not fit is hidden: the tooltip and the table still give it.
+   */
+  function stackedBars(box, rows, reserve) {
+    clear(box);
+    const max = Math.max(...rows.map((row) => row.total), 1);
+    for (const row of rows) {
+      const line = el('div', 'bar-row');
+      line.appendChild(el('div', 'rl', row.label));
+      const track = el('div', 'bar-track');
+      const bar = el('div', 'bar');
+      bar.style.width = `calc((100% - ${reserve}px) * ${row.total / max})`;
+      for (const segment of row.segments) {
+        if (segment.value <= 0.5) continue;
+        const piece = el('div', segment.lightInk && !isDark() ? 'sg light-ink' : 'sg');
+        piece.style.flex = `${segment.value} 0 0`;
+        piece.style.background = segment.color;
+        piece.appendChild(el('span', null, segment.text));
+        hoverable(piece, segment.tip.value, segment.tip.label);
+        bar.appendChild(piece);
+      }
+      track.appendChild(bar);
+      track.appendChild(el('div', 'bar-total', row.totalText));
+      line.appendChild(track);
+      box.appendChild(line);
     }
-    var b = x.ecc.binding;
-    var capNote = x.ecc.overCap || y.ecc.overCap
-      ? ' Your cap limit is ' + eur(+st.cap) + ': collateral above it does not raise limits, so this plan needs ECC to raise the cap' + (x.ecc.overCap ? '.' : ' at the stress end.')
-      : '';
-    card('var(--p-ecc)', 'ECC trading collateral', x.ecc.C, y.ecc.C,
-      (x.ecc.mode === 'daily'
-        ? 'Optimised by day: ' + eur(x.ecc.weekday) + ' on normal weekdays, ' + eur(x.ecc.C) + ' at the highest (the calculation before a weekend or holiday), each day with its own split. Static would be one amount all week.'
-        : 'Set by the calculation on ' + dLabel(b.date) + (b.gap > 1 ? ', whose limit has to last ' + b.gap + ' days until the next business day,' : '') + ' at a ' + x.ecc.key + ' / ' + (100 - x.ecc.key) + ' split between continuous and auctions.') + capNote,
-      b.gap > 1 && st.weekend ? [['collateralMode', 'Collateral optimised by day'], ['weekend', 'Weekend trading']] : [['contBuy', 'Continuous buying'], ['aucLimitPrice', 'Auction bid prices']]);
-    var se = x.settlement, seText = 'ECC settles each business day\'s trades from the wallet as one net payment. ';
-    if (se.float > 0.5) seText += 'Purchases you sell only after the 16:00 cut are paid one collection before the sale comes back, so about ' + eur(se.float) + ' stays in the wallet as a float.' + (se.flows < 0.5 ? ' Otherwise your buys and sells net to about zero.' : ' On top of that come the week\'s net purchases, ' + eur(se.flows) + '.');
-    else if (se.flows < 0.5) seText += 'Yours net to about zero or to money coming in, so apart from fees nothing has to wait in the wallet.';
-    else seText += 'This is the most ECC collects over the week before you top up.';
-    if (se.badDay > 0.5) seText += ' It keeps room for ' + se.badDays + (se.badDays === 1 ? ' bad day' : ' bad days') + ' (' + (y.settlement.badDays) + ' at the stress end): €' + fmt.format(Math.round(st.badMove)) + ' lost on each MWh of the open position, about ' + fmt.format(Math.round(se.openMWh)) + ' MWh, so ' + eur(se.badDay) + '.';
-    seText += ' Fees are not included yet.' + (st.lossShare > 0 ? ' The stress end also assumes a loss of ' + Math.round(st.lossShare * 100) + '% of gross buys in every window.' : '');
-    card('var(--p-settlement)', 'ECC settlement', x.settlement.need, y.settlement.need, seText,
-      [['carryShare', 'Positions held over 16:00'], ['replenish', 'Topping up']]);
-    var br = x.brp, ruleName = br.rule === 'current' ? 'the rule in force (Systeemcode 2026, art. 10.8)' : 'ACM\'s draft for 2027', brpText;
+    requestAnimationFrame(() => {
+      for (const piece of box.querySelectorAll('.sg')) {
+        const label = piece.firstChild;
+        label.style.visibility = label.scrollWidth + 8 <= piece.clientWidth ? '' : 'hidden';
+      }
+    });
+  }
+
+  /** A legend entry: a colour swatch and its text. */
+  function legendItem(color, text) {
+    const item = el('span');
+    const swatch = el('span', 'swatch');
+    swatch.style.background = color;
+    item.appendChild(swatch);
+    item.appendChild(document.createTextNode(text));
+    return item;
+  }
+
+  const last = (list) => list[list.length - 1];
+
+  return {
+    $,
+    el,
+    clear,
+    isDark,
+    headerRow,
+    tableHead,
+    tableRow,
+    wholeNumber,
+    euros,
+    thousands,
+    thousandsDiff,
+    shortEuros,
+    shortThousands,
+    WEEKDAYS,
+    WEEKDAYS_LONG,
+    MONTHS,
+    DAY_MS,
+    addDays,
+    plusDays,
+    mondayOf,
+    dateLabel,
+    clampWeek,
+    nextMonday,
+    holidayWeeks,
+    hoverable,
+    svgCanvas,
+    barPath,
+    niceStep,
+    stackedBars,
+    legendItem,
+    last,
+  };
+})(LimitEngine);
+
+/* Direct+ wallet calculator (internal): what one member needs in the Direct+ wallet, by purpose and by wallet segment,
+   with every assumption in the Settings view. The calculation is WalletCalc (src/wallet/). Amounts are rounded to the
+   nearest €1,000: they are estimates, not exact figures (a Direct+ decision); prices and typed amounts are shown as
+   entered. */
+(() => {
+  'use strict';
+
+  const E = LimitEngine;
+  const C = WalletCalc;
+  const {
+    $,
+    el,
+    clear,
+    euros,
+    thousands,
+    thousandsDiff,
+    shortThousands,
+    wholeNumber,
+    dateLabel,
+    tableHead,
+    tableRow,
+    hoverable,
+    svgCanvas,
+    barPath,
+    niceStep,
+    stackedBars,
+    legendItem,
+  } = PageUI;
+
+  const FIELDS = C.GROUPS.flatMap((group) => group.fields);
+  const fieldOf = (key) => FIELDS.find((field) => field.key === key);
+
+  // ---------- page state ----------
+
+  let settings = C.preset('trader'); // the settings in use
+  let preset = C.preset('trader'); // the member type's preset, to mark the settings changed from it
+  let barsBy = 'purpose'; // the bars: by purpose or by wallet segment ('account')
+  let timelineScenario = 'expected';
+  let lastResult = null;
+  settings.week = PageUI.nextMonday();
+  preset.week = settings.week;
+
+  // ---------- controls ----------
+
+  function loadPreset(id) {
+    const { week } = settings;
+    settings = C.preset(id);
+    preset = C.preset(id);
+    settings.week = week;
+    preset.week = week;
+    buildSettings();
+    schedule();
+  }
+
+  function setView(view, focusKey) {
+    $('view-wallet').hidden = view !== 'wallet';
+    $('view-settings').hidden = view !== 'settings';
+    $('tab-wallet').setAttribute('aria-selected', view === 'wallet' ? 'true' : 'false');
+    $('tab-settings').setAttribute('aria-selected', view === 'settings' ? 'true' : 'false');
+    const field = focusKey && document.querySelector(`input[data-key="${focusKey}"], select[data-key="${focusKey}"]`);
+    if (field) {
+      field.scrollIntoView({ block: 'center' });
+      field.focus();
+    } else if (!focusKey) {
+      window.scrollTo(0, 0);
+    }
+  }
+
+  // ---------- the Settings view, generated from WalletCalc.GROUPS ----------
+
+  const TAGS = {
+    input: 'Your plan',
+    ASSUMPTION: 'Assumed',
+    INTERPRETATION: 'Interpretation',
+    'ECC setting': 'ECC setting',
+  };
+  const tagOf = (tag) =>
+    el('span', tag === 'ASSUMPTION' || tag === 'INTERPRETATION' ? 'tag assume' : 'tag', TAGS[tag] || tag);
+
+  function toInput(field, value) {
+    if (value == null) return '';
+    return field.kind === 'share' ? Math.round(value * 10000) / 100 : value;
+  }
+
+  function fromInput(field, input) {
+    if (field.kind === 'bool') return input.checked;
+    if (field.kind === 'list') return input.value;
+    if (field.kind === 'select') {
+      const option = field.options.find(([value]) => String(value) === input.value);
+      return option ? option[0] : input.value;
+    }
+    const value = parseFloat(input.value);
+    if (input.value === '' || !Number.isFinite(value)) return field.kind === 'optional' ? null : 0;
+    return field.kind === 'share' ? value / 100 : value;
+  }
+
+  function inputFor(field) {
+    if (field.kind === 'select') {
+      const select = el('select');
+      for (const [value, text] of field.options) {
+        const option = el('option', null, text);
+        option.value = String(value);
+        select.appendChild(option);
+      }
+      return select;
+    }
+    const input = el('input');
+    if (field.kind === 'bool') {
+      input.type = 'checkbox';
+      return input;
+    }
+    input.type = field.kind === 'list' ? 'text' : 'number';
+    if (field.kind !== 'list') input.step = 'any';
+    if (field.kind === 'optional') input.placeholder = 'not set';
+    return input;
+  }
+
+  function settingField(field) {
+    const wrap = el('div', 'fld');
+    wrap.dataset.field = field.key;
+    const label = el('label', 'fl');
+    label.htmlFor = `f-${field.key}`;
+    label.appendChild(document.createTextNode(field.label));
+    label.appendChild(tagOf(field.tag));
+    wrap.appendChild(label);
+    const box = el('div', 'fi');
+    const input = inputFor(field);
+    input.id = `f-${field.key}`;
+    input.dataset.key = field.key;
+    input.addEventListener(field.kind === 'select' || field.kind === 'bool' ? 'change' : 'input', () => {
+      settings[field.key] = fromInput(field, input);
+      if (field.key === 'rule') $('rule-quick').value = settings.rule;
+      markChanged(field.key);
+      schedule();
+    });
+    box.appendChild(input);
+    if (field.unit) box.appendChild(el('span', 'unit', field.unit));
+    wrap.appendChild(box);
+    wrap.appendChild(el('div', 'src', field.src));
+    return wrap;
+  }
+
+  function buildSettings() {
+    const box = clear($('groups'));
+    for (const group of C.GROUPS) {
+      const section = el('section', 'panel sgroup');
+      section.appendChild(el('h2', null, group.title));
+      if (group.note) section.appendChild(el('p', 'note', group.note));
+      const fields = el('div', 'fields');
+      for (const field of group.fields) fields.appendChild(settingField(field));
+      section.appendChild(fields);
+      box.appendChild(section);
+    }
+    for (const field of FIELDS) syncField(field.key);
+  }
+
+  /** Shows a setting's current value in its input. */
+  function syncField(key) {
+    const field = fieldOf(key);
+    const input = document.querySelector(`input[data-key="${key}"], select[data-key="${key}"]`);
+    if (!field || !input) return;
+    if (field.kind === 'bool') input.checked = Boolean(settings[key]);
+    else if (field.kind === 'select') input.value = String(settings[key]);
+    else input.value = toInput(field, settings[key]);
+    markChanged(key);
+  }
+
+  function markChanged(key) {
+    const wrap = document.querySelector(`[data-field="${key}"]`);
+    if (wrap) wrap.classList.toggle('changed', String(settings[key]) !== String(preset[key]));
+  }
+
+  // ---------- the bars and the table by purpose ----------
+
+  const PURPOSE_COLOR = {
+    ecc: 'var(--p-ecc)',
+    settlement: 'var(--p-settlement)',
+    brp: 'var(--p-brp)',
+    invoices: 'var(--p-invoices)',
+  };
+  const SEGMENT_ORDER = ['trading', 'available', 'brp'];
+  const SEGMENT_COLOR = { trading: 'var(--s-trading)', available: 'var(--s-available)', brp: 'var(--s-brp)' };
+  const LIGHT_FILL = new Set(['settlement', 'brp', 'invoices', 'available']); // dark label text in light mode
+
+  function barItems(scenario) {
+    if (barsBy === 'purpose') {
+      return scenario.parts.map(({ id, label, value }) => ({ id, label, value, color: PURPOSE_COLOR[id] }));
+    }
+    return SEGMENT_ORDER.map((id) => ({
+      id,
+      label: C.SEGMENTS[id],
+      value: scenario.segments[id] || 0,
+      color: SEGMENT_COLOR[id],
+    }));
+  }
+
+  function renderBars(result) {
+    const rows = [
+      { label: 'Expected', scenario: result.expected },
+      { label: 'Stress', scenario: result.stress },
+    ].map(({ label, scenario }) => ({
+      label,
+      total: scenario.total,
+      totalText: thousands(scenario.total),
+      segments: barItems(scenario).map((item) => ({
+        value: item.value,
+        color: item.color,
+        lightInk: LIGHT_FILL.has(item.id),
+        text: shortThousands(item.value),
+        tip: { value: thousands(item.value), label: `${label} · ${item.label}` },
+      })),
+    }));
+    stackedBars($('bars'), rows, 110);
+    const legend = clear($('legend'));
+    for (const item of barItems(result.expected)) legend.appendChild(legendItem(item.color, item.label));
+    $('split-title').textContent = barsBy === 'purpose' ? 'By purpose' : 'By wallet segment';
+    $('by-purpose').setAttribute('aria-pressed', barsBy === 'purpose' ? 'true' : 'false');
+    $('by-account').setAttribute('aria-pressed', barsBy === 'account' ? 'true' : 'false');
+  }
+
+  function renderPurposeTable(result) {
+    const table = clear($('purpose-table'));
+    tableHead(table, [
+      { text: 'Purpose' },
+      { text: 'Wallet segment' },
+      { text: 'Basis' },
+      { text: 'Expected', className: 'r' },
+      { text: 'Stress', className: 'r' },
+    ]);
+    const body = el('tbody');
+    result.expected.parts.forEach((part, i) => {
+      tableRow(body, [
+        { node: legendItem(PURPOSE_COLOR[part.id], part.label) },
+        { text: C.SEGMENTS[part.segment] },
+        { node: el('span', 'tag', part.confidence) },
+        { text: thousands(part.value), className: 'r' },
+        { text: thousands(result.stress.parts[i].value), className: 'r' },
+      ]);
+    });
+    const total = tableRow(body, [
+      { text: 'Total' },
+      { text: '' },
+      { text: '' },
+      { text: thousands(result.expected.total), className: 'r' },
+      { text: thousands(result.stress.total), className: 'r' },
+    ]);
+    total.className = 'total';
+    table.appendChild(body);
+  }
+
+  // ---------- one card per purpose ----------
+
+  /** A link to a setting in the Settings view. */
+  function lever({ key, label }) {
+    const button = el('button', 'linkbtn', label);
+    button.type = 'button';
+    button.dataset.goto = 'settings';
+    button.dataset.focus = key;
+    return button;
+  }
+
+  function partCard(color, title, expected, stress, text, levers) {
+    const card = el('section', 'panel card part');
+    const heading = el('h3');
+    const swatch = el('span', 'swatch');
+    swatch.style.background = color;
+    heading.appendChild(swatch);
+    heading.appendChild(document.createTextNode(title));
+    card.appendChild(heading);
+    const value = el('div', 'pv');
+    value.appendChild(document.createTextNode(thousands(expected)));
+    if (Math.round(stress) !== Math.round(expected)) {
+      value.appendChild(el('span', 'to', ' to '));
+      value.appendChild(document.createTextNode(thousands(stress)));
+    }
+    card.appendChild(value);
+    card.appendChild(el('p', null, text));
+    const row = el('div', 'levers');
+    row.appendChild(el('span', 'muted', 'Would lower it most:'));
+    for (const one of levers) row.appendChild(lever(one));
+    card.appendChild(row);
+    return card;
+  }
+
+  function eccCard({ expected: x, stress: y, settings: st }) {
+    const { ecc } = x;
+    const binding = ecc.binding;
+    let text =
+      ecc.mode === 'daily'
+        ? `Optimised by day: ${thousands(ecc.weekday)} on normal weekdays, ${thousands(ecc.C)} at the highest (the ` +
+          'calculation before a weekend or holiday), each day with its own split. Static would be one amount all week.'
+        : `Set by the calculation on ${dateLabel(binding.date)}` +
+          (binding.gap > 1 ? `, whose limit has to last ${binding.gap} days until the next business day,` : '') +
+          ` at a ${ecc.key} / ${100 - ecc.key} split between continuous and auctions.`;
+    if (ecc.overCap || y.ecc.overCap) {
+      text +=
+        ` Your cap limit is ${thousands(+st.cap)}: collateral above it does not raise limits, so this plan needs ECC to ` +
+        `raise the cap${ecc.overCap ? '.' : ' at the stress end.'}`;
+    }
+    const levers =
+      binding.gap > 1 && st.weekend
+        ? [
+            { key: 'collateralMode', label: 'Collateral optimised by day' },
+            { key: 'weekend', label: 'Weekend trading' },
+          ]
+        : [
+            { key: 'contBuy', label: 'Continuous buying' },
+            { key: 'aucLimitPrice', label: 'Auction bid prices' },
+          ];
+    return partCard('var(--p-ecc)', 'ECC trading collateral', ecc.C, y.ecc.C, text, levers);
+  }
+
+  function settlementCard({ expected: x, stress: y, settings: st }) {
+    const se = x.settlement;
+    let text = "ECC settles each business day's trades from the wallet as one net payment. ";
+    if (se.float > 0.5) {
+      text +=
+        'Purchases you sell only after the 16:00 cut are paid one collection before the sale comes back, so about ' +
+        `${thousands(se.float)} stays in the wallet as a float.` +
+        (se.flows < 0.5
+          ? ' Otherwise your buys and sells net to about zero.'
+          : ` On top of that come the week's net purchases, ${thousands(se.flows)}.`);
+    } else if (se.flows < 0.5) {
+      text += 'Yours net to about zero or to money coming in, so apart from fees nothing has to wait in the wallet.';
+    } else {
+      text += 'This is the most ECC collects over the week before you top up.';
+    }
+    if (se.badDay > 0.5) {
+      text +=
+        ` It keeps room for ${se.badDays}${se.badDays === 1 ? ' bad day' : ' bad days'} (${y.settlement.badDays} at the ` +
+        `stress end): €${wholeNumber.format(Math.round(st.badMove))} lost on each MWh of the open position, about ` +
+        `${wholeNumber.format(Math.round(se.openMWh))} MWh, so ${thousands(se.badDay)}.`;
+    }
+    text += ' Fees are not included yet.';
+    if (st.lossShare > 0) {
+      text += ` The stress end also assumes a loss of ${Math.round(st.lossShare * 100)}% of gross buys in every window.`;
+    }
+    const levers = [
+      { key: 'carryShare', label: 'Positions held over 16:00' },
+      { key: 'replenish', label: 'Topping up' },
+    ];
+    return partCard('var(--p-settlement)', 'ECC settlement', se.need, y.settlement.need, text, levers);
+  }
+
+  function brpCard({ expected: x, stress: y, settings: st }) {
+    const br = x.brp;
+    const current = br.rule === 'current';
+    const ruleName = current ? 'the rule in force (Systeemcode 2026, art. 10.8)' : "ACM's draft for 2027";
+    const formula = current ? (br.current.twoA ? '2 × A' : 'A + B') : '3A + 4B + 6C + 6D';
+    let text;
     if (br.basis === 'marginal') {
-      brpText = br.security < 0.5 && br.rule === 'current'
-        ? 'Your marginal collateral: you add no net volume with other BRPs and no large connections to the Direct+ BRP, so under ' + ruleName + ' it is €0. There is no minimum for members.'
-        : 'Your marginal collateral under ' + ruleName + ': ' + (br.rule === 'current' ? (br.current.twoA ? '2 × A' : 'A + B') : '3A + 4B + 6C + 6D') + ' on your own figures. There is no minimum for members: the €96,000 and the 50 MW floors apply once to the Direct+ BRP.';
+      text =
+        br.security < 0.5 && current
+          ? 'Your marginal collateral: you add no net volume with other BRPs and no large connections to the Direct+ ' +
+            `BRP, so under ${ruleName} it is €0. There is no minimum for members.`
+          : `Your marginal collateral under ${ruleName}: ${formula} on your own figures. There is no minimum for ` +
+            'members: the €96,000 and the 50 MW floors apply once to the Direct+ BRP.';
+    } else if (current) {
+      text =
+        st.reading === '1200' && br.volume < 1200
+          ? `On your own as a BRP, under ${ruleName} the 50 MW floor sets it: 2 × 1,200 MWh × ${euros(Math.max(br.price, 40))}/MWh.`
+          : `On your own as a BRP, under ${ruleName}: ${formula}.`;
     } else {
-      brpText = br.rule === 'current'
-        ? (st.reading === '1200' && br.volume < 1200 ? 'On your own as a BRP, under ' + ruleName + ' the 50 MW floor sets it: 2 × 1,200 MWh × ' + eurP(Math.max(br.price, 40)) + '/MWh.' : 'On your own as a BRP, under ' + ruleName + ': ' + (br.current.twoA ? '2 × A' : 'A + B') + '.')
-        : (br.draft.sum < 96000 ? 'On your own as a BRP, under ' + ruleName + ' the €96,000 minimum applies: 3A + 4B + 6C + 6D is ' + eur(br.draft.sum) + '.' : 'On your own as a BRP, under ' + ruleName + ': 3A + 4B + 6C + 6D.');
+      text =
+        br.draft.sum < 96000
+          ? `On your own as a BRP, under ${ruleName} the €96,000 minimum applies: 3A + 4B + 6C + 6D is ${thousands(br.draft.sum)}.`
+          : `On your own as a BRP, under ${ruleName}: 3A + 4B + 6C + 6D.`;
     }
-    card('var(--p-brp)', br.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security on your own', x.brp.security, y.brp.security, brpText,
-      br.rule === 'current' ? [['perPeriod', 'How daily net volume is read'], ['connectionsMW', 'Large connections']] : [['imbShare', 'Imbalance'], ['bias', 'Short or long bias']]);
-    card('var(--p-invoices)', 'Imbalance invoices', x.tennet.invoice, y.tennet.invoice,
-      'One week\'s imbalance, invoiced about ' + st.debitLagWeeks + ' weeks after delivery and debited from the available balance (around ' + dLabel(x.tennet.debit, true) + ' for this week).',
-      [['imbShare', 'Imbalance share'], ['bias', 'Short or long bias']]);
+    const levers = current
+      ? [
+          { key: 'perPeriod', label: 'How daily net volume is read' },
+          { key: 'connectionsMW', label: 'Large connections' },
+        ]
+      : [
+          { key: 'imbShare', label: 'Imbalance' },
+          { key: 'bias', label: 'Short or long bias' },
+        ];
+    const title = br.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security on your own';
+    return partCard('var(--p-brp)', title, br.security, y.brp.security, text, levers);
   }
 
-  function renderTimeline(r) {
-    var sc = tlScenario === 'expected' ? r.expected : r.stress, st = r.settings, t = clear($('timeline')), ev = [];
-    $('tl-exp').setAttribute('aria-pressed', tlScenario === 'expected' ? 'true' : 'false');
-    $('tl-str').setAttribute('aria-pressed', tlScenario === 'stress' ? 'true' : 'false');
-    var fp = tlScenario === 'stress' ? st.stressPrice / st.price : 1;
-    sc.settlement.windows.forEach(function (w) {
-      var d = E.parse(w.close);
-      var res = E.day(d, { C: sc.ecc.C, OR: w.OR, cont: { bd: sc.ecc.baseLimits.cont.bd, nbd: sc.ecc.baseLimits.cont.nbd, key: sc.ecc.key }, da: { bd: sc.ecc.baseLimits.da.bd, nbd: sc.ecc.baseLimits.da.nbd, key: 100 - sc.ecc.key } });
-      ev.push({ at: w.close + ' 16:00', what: 'Booking cut: ' + w.days.length + ' day' + (w.days.length > 1 ? 's' : '') + ' of trades close', amount: w.net });
-      ev.push({ at: w.close + ' 18:00', what: 'Fund by 18:00 (transfer to ECC, value ' + dLabel(w.valueDate) + '). Around 18:00, best effort: new limits, continuous ' + eurShort(res.cont.l18) + ', auctions ' + eurShort(res.da.l18) + (res.gap1 > 1 ? ' per auction day' : ''), amount: null });
-    });
-    sc.settlement.path.forEach(function (p) {
-      if (p.kind === 'fund') { for (var k = 0; k < ev.length; k++) if (ev[k].at === p.at) ev[k].level = p.level; }
-      else ev.push({ at: p.at, what: p.kind === 'collect' ? 'ECC receives the collection (before 08:00)' : p.kind === 'credit' ? 'ECC pays out a credit' : 'You top up the wallet', amount: p.kind === 'collect' ? -p.amount : p.amount, level: p.level });
-    });
-    ev.push({ at: sc.tennet.debit + ' 12:00', what: 'TenneT debits the imbalance invoice for this week (about ' + st.debitLagWeeks + ' weeks later; day to be confirmed)', amount: sc.tennet.invoice, tennet: true });
-    var fl = sc.settlement.float;
-    if (fl > 0.5) {                                   // the float stays in the wallet throughout
-      ev.forEach(function (e) { if (e.level != null) e.level += fl; });
-      ev.push({ at: st.week + ' 00:00', what: 'Float for purchases paid before their sale (positions held over the 16:00 cut); it stays in the wallet', amount: fl, level: fl, tennet: true });
-    }
-    ev.sort(function (a, b) { return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
-    head(t, [{ t: 'When' }, { t: 'What happens' }, { t: 'Amount', cls: 'r' }, { t: 'Wallet needs', cls: 'r' }]);
-    var tb = el('tbody');
-    ev.forEach(function (e) {
-      var tm = e.at.slice(11);
-      row(tb, [{ t: dLabel(e.at.slice(0, 10)) + (e.tennet ? '' : ' ' + tm) }, { t: e.what }, { t: e.amount == null ? '' : eur(e.amount), cls: 'r' }, { t: e.level == null ? '' : eur(e.level), cls: 'r' }]);
-    });
-    t.appendChild(tb);
-    $('tl-title').textContent = 'The week of ' + dLabel(st.week, true) + ', step by step';
+  function invoiceCard({ expected: x, stress: y, settings: st }) {
+    const text =
+      `One week's imbalance, invoiced about ${st.debitLagWeeks} weeks after delivery and debited from the available ` +
+      `balance (around ${dateLabel(x.tennet.debit, true)} for this week).`;
+    const levers = [
+      { key: 'imbShare', label: 'Imbalance share' },
+      { key: 'bias', label: 'Short or long bias' },
+    ];
+    return partCard('var(--p-invoices)', 'Imbalance invoices', x.tennet.invoice, y.tennet.invoice, text, levers);
   }
 
-  function renderBrp(r) {
-    var x = r.expected, y = r.stress, br = x.brp, st = r.settings;
-    var other = br.other, otherSec = br[other].security, otherStress = y.brp[other].security;
-    $('brp-sub').textContent = (br.rule === 'current' ? 'Rule in force on ' + dLabel(st.week, true) + ': Systeemcode elektriciteit 2026, art. 10.8 (TenneT rule).' : 'ACM draft decision of 25 August 2026 for dates from 1 January 2027 (draft rule, not yet final).')
-      + ' Under the ' + (other === 'current' ? 'rule in force now' : 'ACM draft') + ' it would be ' + eur(otherSec) + (Math.round(otherStress) !== Math.round(otherSec) ? ' to ' + eur(otherStress) : '') + '. ' + (br.basis === 'marginal' ? 'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum.' : 'Shown on your own as a BRP, with the minimum (for comparison).');
-    var t = clear($('brp-table'));
-    head(t, [{ t: 'Component' }, { t: 'Expected', cls: 'r' }, { t: 'Stress', cls: 'r' }]);
-    var tb = el('tbody'), c = br.current, cs = y.brp.current, d = br.draft, ds = y.brp.draft;
-    row(tb, [{ t: 'Daily net volume used (MWh)' }, { t: fmt.format(br.volume), cls: 'r' }, { t: fmt.format(y.brp.volume), cls: 'r' }]);
+  function renderParts(result) {
+    const box = clear($('parts'));
+    for (const card of [eccCard, settlementCard, brpCard, invoiceCard]) box.appendChild(card(result));
+  }
+
+  // ---------- the week, step by step ----------
+
+  const byTime = (a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0);
+
+  function renderTimeline(result) {
+    const scenario = timelineScenario === 'expected' ? result.expected : result.stress;
+    const st = result.settings;
+    const table = clear($('timeline'));
+    $('tl-exp').setAttribute('aria-pressed', timelineScenario === 'expected' ? 'true' : 'false');
+    $('tl-str').setAttribute('aria-pressed', timelineScenario === 'stress' ? 'true' : 'false');
+    const { ecc, settlement, tennet } = scenario;
+    const events = [];
+    for (const window of settlement.windows) {
+      const params = { C: ecc.C, OR: window.OR, ...WalletEccLink.marketParams(ecc.baseLimits, ecc.key) };
+      const limits = E.day(E.parse(window.close), params);
+      const days = window.days.length;
+      events.push({
+        at: `${window.close} 16:00`,
+        what: `Booking cut: ${days} day${days > 1 ? 's' : ''} of trades close`,
+        amount: window.net,
+      });
+      events.push({
+        at: `${window.close} 18:00`,
+        what:
+          `Fund by 18:00 (transfer to ECC, value ${dateLabel(window.valueDate)}). Around 18:00, best effort: new limits, ` +
+          `continuous ${shortThousands(limits.cont.l18)}, auctions ${shortThousands(limits.da.l18)}` +
+          (limits.gap1 > 1 ? ' per auction day' : ''),
+        amount: null,
+      });
+    }
+    const WHAT = {
+      collect: 'ECC receives the collection (before 08:00)',
+      credit: 'ECC pays out a credit',
+      'top-up': 'You top up the wallet',
+    };
+    for (const step of settlement.path) {
+      if (step.kind === 'fund') {
+        for (const event of events) if (event.at === step.at) event.level = step.level;
+      } else {
+        events.push({
+          at: step.at,
+          what: WHAT[step.kind],
+          amount: step.kind === 'collect' ? -step.amount : step.amount,
+          level: step.level,
+        });
+      }
+    }
+    events.push({
+      at: `${tennet.debit} 12:00`,
+      what: `TenneT debits the imbalance invoice for this week (about ${st.debitLagWeeks} weeks later; day to be confirmed)`,
+      amount: tennet.invoice,
+      dayOnly: true,
+    });
+    const float = settlement.float;
+    if (float > 0.5) {
+      // The float stays in the wallet throughout.
+      for (const event of events) if (event.level != null) event.level += float;
+      events.push({
+        at: `${st.week} 00:00`,
+        what: 'Float for purchases paid before their sale (positions held over the 16:00 cut); it stays in the wallet',
+        amount: float,
+        level: float,
+        dayOnly: true,
+      });
+    }
+    events.sort(byTime);
+    tableHead(table, [
+      { text: 'When' },
+      { text: 'What happens' },
+      { text: 'Amount', className: 'r' },
+      { text: 'Wallet needs', className: 'r' },
+    ]);
+    const body = el('tbody');
+    for (const event of events) {
+      const day = dateLabel(event.at.slice(0, 10));
+      tableRow(body, [
+        { text: event.dayOnly ? day : `${day} ${event.at.slice(11)}` },
+        { text: event.what },
+        { text: event.amount == null ? '' : thousands(event.amount), className: 'r' },
+        { text: event.level == null ? '' : thousands(event.level), className: 'r' },
+      ]);
+    }
+    table.appendChild(body);
+    $('tl-title').textContent = `The week of ${dateLabel(st.week, true)}, step by step`;
+  }
+
+  // ---------- BRP security ----------
+
+  function renderBrp(result) {
+    const { expected: x, stress: y, settings: st } = result;
+    const br = x.brp;
+    const other = br.other;
+    const otherExpected = br[other].security;
+    const otherStress = y.brp[other].security;
+    $('brp-sub').textContent =
+      (br.rule === 'current'
+        ? `Rule in force on ${dateLabel(st.week, true)}: Systeemcode elektriciteit 2026, art. 10.8 (TenneT rule).`
+        : 'ACM draft decision of 25 August 2026 for dates from 1 January 2027 (draft rule, not yet final).') +
+      ` Under the ${other === 'current' ? 'rule in force now' : 'ACM draft'} it would be ${thousands(otherExpected)}` +
+      (Math.round(otherStress) !== Math.round(otherExpected) ? ` to ${thousands(otherStress)}` : '') +
+      '. ' +
+      (br.basis === 'marginal'
+        ? 'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum.'
+        : 'Shown on your own as a BRP, with the minimum (for comparison).');
+    const table = clear($('brp-table'));
+    tableHead(table, [{ text: 'Component' }, { text: 'Expected', className: 'r' }, { text: 'Stress', className: 'r' }]);
+    const body = el('tbody');
+    const line = (label, expected, stress, format = thousands) =>
+      tableRow(body, [
+        { text: label },
+        { text: format(expected), className: 'r' },
+        { text: format(stress), className: 'r' },
+      ]);
+    line('Daily net volume used (MWh)', br.volume, y.brp.volume, (value) => wholeNumber.format(value));
     if (br.rule === 'current') {
-      row(tb, [{ t: 'A (first calculation)' }, { t: eur(c.A), cls: 'r' }, { t: eur(cs.A), cls: 'r' }]);
-      row(tb, [{ t: 'A if TenneT asks for more (para 5)' }, { t: eur(c.Aup), cls: 'r' }, { t: eur(cs.Aup), cls: 'r' }]);
-      row(tb, [{ t: 'A if you ask for less (para 6)' }, { t: eur(c.Adown), cls: 'r' }, { t: eur(cs.Adown), cls: 'r' }]);
-      row(tb, [{ t: 'B (large connections)' }, { t: eur(c.B), cls: 'r' }, { t: eur(cs.B), cls: 'r' }]);
-      row(tb, [{ t: c.twoA ? 'Security: 2 × A' : 'Security: A + B' }, { t: eur(c.security), cls: 'r' }, { t: eur(cs.security), cls: 'r' }]).className = 'total';
+      const [c, cs] = [br.current, y.brp.current];
+      line('A (first calculation)', c.A, cs.A);
+      line('A if TenneT asks for more (para 5)', c.Aup, cs.Aup);
+      line('A if you ask for less (para 6)', c.Adown, cs.Adown);
+      line('B (large connections)', c.B, cs.B);
+      line(c.twoA ? 'Security: 2 × A' : 'Security: A + B', c.security, cs.security).className = 'total';
     } else {
-      [['A (trading, × 3)', 'A'], ['B (imbalance, × 4)', 'B'], ['C (profile reconciliation, × 6)', 'C'], ['D (smart meter and telemetry, × 6)', 'D']].forEach(function (k) { row(tb, [{ t: k[0] }, { t: eur(d[k[1]]), cls: 'r' }, { t: eur(ds[k[1]]), cls: 'r' }]); });
-      row(tb, [{ t: '3A + 4B + 6C + 6D' }, { t: eur(d.sum), cls: 'r' }, { t: eur(ds.sum), cls: 'r' }]);
-      row(tb, [{ t: br.basis === 'marginal' ? 'Your marginal collateral (no minimum, not below €0)' : 'Security (minimum €96,000)' }, { t: eur(d.security), cls: 'r' }, { t: eur(ds.security), cls: 'r' }]).className = 'total';
+      const [d, ds] = [br.draft, y.brp.draft];
+      line('A (trading, × 3)', d.A, ds.A);
+      line('B (imbalance, × 4)', d.B, ds.B);
+      line('C (profile reconciliation, × 6)', d.C, ds.C);
+      line('D (smart meter and telemetry, × 6)', d.D, ds.D);
+      line('3A + 4B + 6C + 6D', d.sum, ds.sum);
+      const label =
+        br.basis === 'marginal' ? 'Your marginal collateral (no minimum, not below €0)' : 'Security (minimum €96,000)';
+      line(label, d.security, ds.security).className = 'total';
     }
-    t.appendChild(tb);
+    table.appendChild(body);
     renderRamp(br.ramp);
-    var ex = br.exit, parts = ['imbalance by about ' + dLabel(ex.imbalance, true)];
-    if (ex.smart) parts.push('smart-meter and telemetry reconciliation by ' + dLabel(ex.smart, true));
-    if (ex.profile) parts.push('profile reconciliation up to ' + dLabel(ex.profile, true));
-    $('exit-text').textContent = 'If you stopped at the end of this week, security and cash stay committed until the last invoices are settled: ' + parts.join('; ') + '. The security would be released after ' + dLabel(ex.released, true) + '.';
+    const exit = br.exit;
+    const tail = [`imbalance by about ${dateLabel(exit.imbalance, true)}`];
+    if (exit.smart) tail.push(`smart-meter and telemetry reconciliation by ${dateLabel(exit.smart, true)}`);
+    if (exit.profile) tail.push(`profile reconciliation up to ${dateLabel(exit.profile, true)}`);
+    $('exit-text').textContent =
+      'If you stopped at the end of this week, security and cash stay committed until the last invoices are settled: ' +
+      `${tail.join('; ')}. The security would be released after ${dateLabel(exit.released, true)}.`;
   }
 
-  function niceStep(max, count) { var raw = max / count, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag; }
   function renderRamp(ramp) {
-    var box = clear($('ramp')), ms = ramp.months, NS = 'http://www.w3.org/2000/svg';
-    var W = Math.max(280, box.clientWidth || 480), H = 220, m = { l: 52, r: 8, t: 22, b: 30 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
-    var vmax = Math.max.apply(null, ms.map(function (x) { return x.security; }).concat([96000])) * 1.08, step = niceStep(vmax, 4), top = Math.ceil(vmax / step) * step;
-    var y = function (v) { return m.t + ph - (v / top) * ph; };
-    var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-    function s(tag, a, text) { var n = document.createElementNS(NS, tag); for (var k in a) n.setAttribute(k, a[k]); if (text != null) n.textContent = text; svg.appendChild(n); return n; }
-    for (var v = 0; v <= top + 1e-9; v += step) {
-      s('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: v === 0 ? 'var(--rule-strong)' : 'var(--rule)', 'stroke-width': 1 });
-      s('text', { x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'tick' }, eurShort(v));
+    const box = clear($('ramp'));
+    const months = ramp.months;
+    const width = Math.max(280, box.clientWidth || 480);
+    const height = 220;
+    const margin = { left: 52, right: 8, top: 22, bottom: 30 };
+    const plotWidth = width - margin.left - margin.right;
+    const plotHeight = height - margin.top - margin.bottom;
+    const highest = Math.max(...months.map((month) => month.security), 96000) * 1.08;
+    const step = niceStep(highest, 4);
+    const top = Math.ceil(highest / step) * step;
+    const y = (value) => margin.top + plotHeight - (value / top) * plotHeight;
+    const { root, add } = svgCanvas(width, height);
+    for (let value = 0; value <= top + 1e-9; value += step) {
+      const stroke = value === 0 ? 'var(--rule-strong)' : 'var(--rule)';
+      add('line', { x1: margin.left, x2: width - margin.right, y1: y(value), y2: y(value), stroke, 'stroke-width': 1 });
+      add('text', { x: margin.left - 8, y: y(value) + 4, 'text-anchor': 'end', class: 'tick' }, shortThousands(value));
     }
-    var slot = pw / ms.length, bw = Math.min(24, slot * 0.6);
-    ms.forEach(function (mo, i) {
-      var cx = m.l + i * slot + slot / 2, x0 = cx - bw / 2, y0 = y(mo.security), yb = y(0), rr = Math.min(4, (yb - y0) / 2);
-      if (yb - y0 > 0.5) s('path', { d: 'M' + x0 + ',' + yb + 'V' + (y0 + rr) + 'Q' + x0 + ',' + y0 + ' ' + (x0 + rr) + ',' + y0 + 'H' + (x0 + bw - rr) + 'Q' + (x0 + bw) + ',' + y0 + ' ' + (x0 + bw) + ',' + (y0 + rr) + 'V' + yb + 'Z', fill: 'var(--series)' });
-      if (i % 3 === 0 || i === ms.length - 1) s('text', { x: cx, y: H - m.b + 16, 'text-anchor': 'middle', class: 'tick' }, 'M' + mo.month);
-      if (mo === ramp.peak) s('text', { x: cx, y: y0 - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(mo.security));
-      var hit = s('rect', { x: m.l + i * slot, y: m.t, width: slot, height: ph, class: 'hit' });
-      hoverable(hit, eur(mo.security), 'Month ' + mo.month + ' · invoices in the window: ' + mo.invoices.B + ' weekly, ' + mo.invoices.C + ' profile, ' + mo.invoices.D + ' smart-meter/telemetry');
+    const slot = plotWidth / months.length;
+    const barWidth = Math.min(24, slot * 0.6);
+    months.forEach((month, i) => {
+      const centre = margin.left + i * slot + slot / 2;
+      const barTop = y(month.security);
+      const bottom = y(0);
+      if (bottom - barTop > 0.5)
+        add('path', { d: barPath(centre - barWidth / 2, barWidth, barTop, bottom), fill: 'var(--series)' });
+      if (i % 3 === 0 || i === months.length - 1) {
+        add(
+          'text',
+          { x: centre, y: height - margin.bottom + 16, 'text-anchor': 'middle', class: 'tick' },
+          `M${month.month}`,
+        );
+      }
+      if (month === ramp.peak)
+        add('text', { x: centre, y: barTop - 7, 'text-anchor': 'middle', class: 'dl' }, shortThousands(month.security));
+      const hit = add('rect', {
+        x: margin.left + i * slot,
+        y: margin.top,
+        width: slot,
+        height: plotHeight,
+        class: 'hit',
+      });
+      const { B, C: profile, D } = month.invoices;
+      hoverable(
+        hit,
+        thousands(month.security),
+        `Month ${month.month} · invoices in the window: ${B} weekly, ${profile} profile, ${D} smart-meter/telemetry`,
+      );
     });
-    box.appendChild(svg);
-    var t = clear($('ramp-table')); head(t, [{ t: 'Month' }, { t: 'Security', cls: 'r' }, { t: '3A + 4B + 6C + 6D', cls: 'r' }]);
-    var tb = el('tbody'); ms.forEach(function (mo) { row(tb, [{ t: String(mo.month) }, { t: eur(mo.security), cls: 'r' }, { t: eur(mo.sum), cls: 'r' }]); }); t.appendChild(tb);
-    $('ramp-title').textContent = (last && last.expected.brp.basis === 'standalone' ? 'On your own as a new BRP' : 'Your marginal collateral as a new member') + ' under the ACM draft, months 1-18 (peak ' + eur(ramp.peak.security) + ' in month ' + ramp.peak.month + ')';
+    box.appendChild(root);
+    const table = clear($('ramp-table'));
+    tableHead(table, [
+      { text: 'Month' },
+      { text: 'Security', className: 'r' },
+      { text: '3A + 4B + 6C + 6D', className: 'r' },
+    ]);
+    const body = el('tbody');
+    for (const month of months) {
+      tableRow(body, [
+        { text: String(month.month) },
+        { text: thousands(month.security), className: 'r' },
+        { text: thousands(month.sum), className: 'r' },
+      ]);
+    }
+    table.appendChild(body);
+    const standalone = lastResult && lastResult.expected.brp.basis === 'standalone';
+    $('ramp-title').textContent =
+      `${standalone ? 'On your own as a new BRP' : 'Your marginal collateral as a new member'} under the ACM draft, months ` +
+      `1-18 (peak ${thousands(ramp.peak.security)} in month ${ramp.peak.month})`;
   }
 
-  function renderSens(r) {
-    var t = clear($('sens')); head(t, [{ t: 'Change' }, { t: 'Expected total', cls: 'r' }, { t: 'Difference', cls: 'r' }]);
-    var tb = el('tbody');
-    row(tb, [{ t: 'As set' }, { t: eur(r.expected.total), cls: 'r' }, { t: '', cls: 'r' }]);
-    r.sensitivity.forEach(function (x) { var dlt = x.total - r.expected.total; row(tb, [{ t: x.label }, { t: eur(x.total), cls: 'r' }, { t: eurDiff(dlt), cls: 'r' }]); });
-    t.appendChild(tb);
+  // ---------- what moves the total, and the assumptions ----------
+
+  function renderSensitivities(result) {
+    const table = clear($('sens'));
+    tableHead(table, [
+      { text: 'Change' },
+      { text: 'Expected total', className: 'r' },
+      { text: 'Difference', className: 'r' },
+    ]);
+    const body = el('tbody');
+    tableRow(body, [
+      { text: 'As set' },
+      { text: thousands(result.expected.total), className: 'r' },
+      { text: '', className: 'r' },
+    ]);
+    for (const one of result.sensitivity) {
+      tableRow(body, [
+        { text: one.label },
+        { text: thousands(one.total), className: 'r' },
+        { text: thousandsDiff(one.total - result.expected.total), className: 'r' },
+      ]);
+    }
+    table.appendChild(body);
   }
 
-  function valueText(a) {
-    if (a.value == null || a.value === '') return 'not set';
-    if (a.kind === 'bool') return a.value ? 'yes' : 'no';
-    if (a.kind === 'share') return (Math.round(a.value * 10000) / 100) + '%';
-    if (a.kind === 'select') { var fl = fieldOf(a.key), o = fl.options.filter(function (x) { return String(x[0]) === String(a.value); })[0]; return o ? o[1] : String(a.value); }
-    if (a.kind === 'list') return a.value + ' MW';
-    return (a.unit && a.unit.indexOf('€') === 0 && a.unit.length === 1 ? eurP(+a.value) : fmt.format(+a.value) + (a.unit && a.unit !== '€' ? ' ' + a.unit : ''));
+  function valueText({ key, value, kind, unit }) {
+    if (value == null || value === '') return 'not set';
+    if (kind === 'bool') return value ? 'yes' : 'no';
+    if (kind === 'share') return `${Math.round(value * 10000) / 100}%`;
+    if (kind === 'select') {
+      const option = fieldOf(key).options.find(([one]) => String(one) === String(value));
+      return option ? option[1] : String(value);
+    }
+    if (kind === 'list') return `${value} MW`;
+    if (unit === '€') return euros(+value);
+    return wholeNumber.format(+value) + (unit ? ` ${unit}` : '');
   }
-  function renderAssumptions(r) {
-    var t = clear($('assumptions')); head(t, [{ t: 'Assumption' }, { t: 'Value' }, { t: 'Kind' }, { t: 'Source' }]);
-    var tb = el('tbody');
-    r.assumptions.forEach(function (a) {
-      var nm = el('span'); nm.appendChild(lever(a.key, a.label));
-      row(tb, [{ node: nm }, { t: valueText(a) }, { node: el('span', 'tag' + (a.tag === 'ASSUMPTION' || a.tag === 'INTERPRETATION' ? ' assume' : ''), TAGS[a.tag] || a.tag) }, { t: a.src, cls: 'small muted' }]);
-    });
-    t.appendChild(tb);
+
+  function renderAssumptions(result) {
+    const table = clear($('assumptions'));
+    tableHead(table, [{ text: 'Assumption' }, { text: 'Value' }, { text: 'Kind' }, { text: 'Source' }]);
+    const body = el('tbody');
+    for (const assumption of result.assumptions) {
+      const name = el('span');
+      name.appendChild(lever({ key: assumption.key, label: assumption.label }));
+      tableRow(body, [
+        { node: name },
+        { text: valueText(assumption) },
+        { node: tagOf(assumption.tag) },
+        { text: assumption.src, className: 'small muted' },
+      ]);
+    }
+    table.appendChild(body);
   }
+
+  // ---------- drawing ----------
 
   function render() {
-    $('member').value = state.member; $('week').value = state.week; $('rule-quick').value = state.rule;
-    $('preset-note').textContent = C.PRESETS[state.member].note + ' Values are assumed; adjust them in Settings.';
-    var r;
-    try { r = C.compute(state); $('error').hidden = true; }
-    catch (e) { $('error').hidden = false; $('error').textContent = 'Can\'t calculate this: ' + e.message + ' Adjust it in Settings.'; return; }
-    last = r;
-    $('hero-label').textContent = 'Money needed in your Direct+ wallet, week of ' + dLabel(state.week, true);
-    var hv = clear($('hero-value')); hv.appendChild(document.createTextNode(eur(r.expected.total) + ' ')); hv.appendChild(el('span', 'to', 'to')); hv.appendChild(document.createTextNode(' ' + eur(r.stress.total)));
-    $('hero-sub').textContent = 'Expected to stress. All of it is cash: Direct+ does not accept bank guarantees.' + (r.expected.ecc.mode === 'daily' ? ' With collateral optimised by day, the wallet needs about ' + eur(r.expected.weekdayTotal) + ' on normal weekdays; the full amount from the evening calculation before a weekend or holiday until after it.' : '');
-    renderBars(r); renderPurposeTable(r); renderParts(r); renderTimeline(r); renderBrp(r); renderSens(r); renderAssumptions(r);
+    $('member').value = settings.member;
+    $('week').value = settings.week;
+    $('rule-quick').value = settings.rule;
+    $('preset-note').textContent = `${C.PRESETS[settings.member].note} Values are assumed; adjust them in Settings.`;
+    let result;
+    try {
+      result = C.compute(settings);
+      $('error').hidden = true;
+    } catch (error) {
+      $('error').hidden = false;
+      $('error').textContent = `Can't calculate this: ${error.message} Adjust it in Settings.`;
+      return;
+    }
+    lastResult = result;
+    $('hero-label').textContent = `Money needed in your Direct+ wallet, week of ${dateLabel(settings.week, true)}`;
+    const hero = clear($('hero-value'));
+    hero.appendChild(document.createTextNode(`${thousands(result.expected.total)} `));
+    hero.appendChild(el('span', 'to', 'to'));
+    hero.appendChild(document.createTextNode(` ${thousands(result.stress.total)}`));
+    let sub = 'Expected to stress. All of it is cash: Direct+ does not accept bank guarantees.';
+    if (result.expected.ecc.mode === 'daily') {
+      sub +=
+        ` With collateral optimised by day, the wallet needs about ${thousands(result.expected.weekdayTotal)} on ` +
+        'normal weekdays; the full amount from the evening calculation before a weekend or holiday until after it.';
+    }
+    $('hero-sub').textContent = sub;
+    renderBars(result);
+    renderPurposeTable(result);
+    renderParts(result);
+    renderTimeline(result);
+    renderBrp(result);
+    renderSensitivities(result);
+    renderAssumptions(result);
   }
-  var timer = null;
-  function schedule() { clearTimeout(timer); timer = setTimeout(render, 120); }
-  if (window.ResizeObserver) new ResizeObserver(function () { if (last) renderRamp(last.expected.brp.ramp); }).observe($('ramp'));
+
+  let renderTimer = null;
+  function schedule() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(render, 120);
+  }
+
+  // ---------- start ----------
+
+  for (const [id, { label }] of Object.entries(C.PRESETS)) {
+    const option = el('option', null, label);
+    option.value = id;
+    $('member').appendChild(option);
+  }
+  $('week').min = E.MIN_DATE;
+  $('week').max = E.MAX_DATE;
+  $('member').addEventListener('change', () => loadPreset($('member').value));
+  $('week').addEventListener('change', () => {
+    settings.week = PageUI.clampWeek($('week').value || PageUI.nextMonday());
+    schedule();
+  });
+  $('rule-quick').addEventListener('change', () => {
+    settings.rule = $('rule-quick').value;
+    syncField('rule');
+    schedule();
+  });
+  $('reset').addEventListener('click', () => loadPreset(settings.member));
+  $('tab-wallet').addEventListener('click', () => setView('wallet'));
+  $('tab-settings').addEventListener('click', () => setView('settings'));
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest && event.target.closest('[data-goto]');
+    if (link) setView(link.dataset.goto, link.dataset.focus);
+  });
+  $('by-purpose').addEventListener('click', () => {
+    barsBy = 'purpose';
+    render();
+  });
+  $('by-account').addEventListener('click', () => {
+    barsBy = 'account';
+    render();
+  });
+  $('tl-exp').addEventListener('click', () => {
+    timelineScenario = 'expected';
+    render();
+  });
+  $('tl-str').addEventListener('click', () => {
+    timelineScenario = 'stress';
+    render();
+  });
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => {
+      if (lastResult) renderRamp(lastResult.expected.brp.ramp);
+    }).observe($('ramp'));
+  }
   buildSettings();
   setView('wallet');
   render();
 })();
+
 </script>

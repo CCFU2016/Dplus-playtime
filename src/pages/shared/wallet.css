@@ -1,0 +1,73 @@
+/* Direct+ wallet pages (the calculator and the estimate): table rules and the stacked bars (PageUI.stackedBars). */
+thead th {
+  border-bottom: 1px solid var(--rule-strong);
+}
+tbody tr.total td {
+  font-weight: 600;
+  border-bottom: 0;
+}
+
+.bars {
+  display: grid;
+  gap: 12px;
+}
+.bar-row .rl {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.bar-track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  min-width: 2px;
+}
+.bar .sg {
+  height: 100%;
+  min-width: 2px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+.bar .sg:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.bar .sg span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+.bar .sg.light-ink span {
+  color: #121a24;
+}
+.bar .sg:hover,
+.bar .sg:focus-visible {
+  filter: brightness(1.08);
+}
+.bar-total {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}

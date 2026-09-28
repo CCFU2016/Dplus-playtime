@@ -1,0 +1,446 @@
+/* Direct+ wallet calculator (internal). Shared tokens and rules: shared/base.css and shared/wallet.css. */
+:root {
+  /* purposes and wallet segments: validated categorical slots 1-5 (light, on #ffffff) */
+  --p-ecc: #2a78d6;
+  --p-settlement: #1baf7a;
+  --p-brp: #eda100;
+  --p-invoices: #e87ba4;
+  --s-trading: #2a78d6;
+  --s-available: #1baf7a;
+  --s-brp: #eda100;
+  --series: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --p-ecc: #3987e5;
+    --p-settlement: #199e70;
+    --p-brp: #c98500;
+    --p-invoices: #d55181;
+    --s-trading: #3987e5;
+    --s-available: #199e70;
+    --s-brp: #c98500;
+    --series: #3987e5;
+  }
+}
+:root[data-theme='dark'] {
+  --p-ecc: #3987e5;
+  --p-settlement: #199e70;
+  --p-brp: #c98500;
+  --p-invoices: #d55181;
+  --s-trading: #3987e5;
+  --s-available: #199e70;
+  --s-brp: #c98500;
+  --series: #3987e5;
+}
+
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 28px 56px;
+  display: grid;
+  gap: 22px;
+}
+.page > *,
+#view-wallet > *,
+.card > * {
+  min-width: 0;
+}
+a {
+  color: inherit;
+}
+
+.masthead {
+  display: grid;
+  gap: 8px;
+  max-width: 800px;
+}
+h1 {
+  font-size: clamp(28px, 3.6vw, 38px);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.lede {
+  font-size: 16.5px;
+  color: var(--ink-2);
+  max-width: 66ch;
+}
+.fine {
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 92ch;
+}
+
+/* view switch + controls row (one row, above everything it scopes) */
+.views {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.view-tab {
+  border: 0;
+  background: none;
+  padding: 9px 4px;
+  margin-right: 18px;
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.view-tab[aria-selected='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  align-items: end;
+}
+.control {
+  display: grid;
+  gap: 5px;
+}
+.control > label,
+.label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+select,
+input[type='date'],
+input[type='number'],
+input[type='text'] {
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 7px 10px;
+  min-width: 0;
+}
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
+}
+
+#view-wallet {
+  display: grid;
+  gap: 20px;
+}
+.card {
+  padding: 18px 20px 20px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.card h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.card .sub {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  max-width: 78ch;
+}
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+@media (max-width: 860px) {
+  .grid2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* hero: the total as a range */
+.hero {
+  padding: 20px 22px;
+  display: grid;
+  gap: 6px;
+}
+.hero .h-label {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.hero .h-value {
+  font-size: clamp(30px, 5vw, 50px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+.hero .h-value .to {
+  color: var(--muted);
+  font-weight: 500;
+}
+.hero .h-sub {
+  font-size: 13px;
+  color: var(--muted);
+}
+.alert {
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  background: var(--critical-bg);
+  border: 1px solid var(--critical);
+}
+
+/* stacked bars (expected, stress): shared/wallet.css */
+.seg-toggle {
+  display: inline-grid;
+  grid-auto-flow: column;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  padding: 3px;
+  gap: 3px;
+  background: var(--surface-2);
+}
+.seg-toggle button {
+  border: 0;
+  background: none;
+  padding: 5px 11px;
+  border-radius: 5px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.seg-toggle button[aria-pressed='true'] {
+  background: var(--select-bg);
+  color: var(--select-ink);
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+/* tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 620px;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  padding: 8px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+td.r,
+th.r {
+  text-align: right;
+}
+#purpose-table .swatch {
+  margin-right: 8px;
+}
+#brp-table,
+#ramp-table {
+  min-width: 0;
+}
+#sens {
+  min-width: 420px;
+}
+.tag {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+.tag.assume {
+  background: var(--notice-bg);
+  color: var(--notice-ink);
+  border-color: transparent;
+}
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12.5px;
+}
+
+/* part cards */
+.parts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+@media (max-width: 860px) {
+  .parts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.part h3 {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.part .pv {
+  font-size: 22px;
+  font-weight: 600;
+}
+.part .pv .to {
+  color: var(--muted);
+  font-weight: 500;
+}
+.part p {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.levers {
+  font-size: 13px;
+  color: var(--ink-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+/* ramp-up chart */
+#ramp-title {
+  margin-bottom: 6px;
+}
+.chart {
+  width: 100%;
+}
+.chart svg {
+  display: block;
+  overflow: visible;
+}
+.chart text {
+  font-family: var(--font);
+  fill: var(--ink-2);
+}
+.chart .tick {
+  fill: var(--muted);
+  font-size: 11.5px;
+}
+.chart .dl {
+  fill: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.chart .hit {
+  fill: transparent;
+}
+.chart .hit:focus-visible {
+  outline: none;
+  stroke: var(--focus);
+  stroke-width: 2px;
+}
+details summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* settings view */
+.settings {
+  display: grid;
+  gap: 18px;
+}
+.settings-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: end;
+  justify-content: space-between;
+}
+.settings-head .sub {
+  max-width: 70ch;
+}
+.settings-actions {
+  display: flex;
+  gap: 10px;
+}
+.sgroup {
+  padding: 16px 18px;
+  display: grid;
+  gap: 12px;
+}
+.sgroup h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.sgroup .note {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px 22px;
+}
+@media (max-width: 420px) {
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.fld {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+}
+.fld > * {
+  min-width: 0;
+}
+.fld .fl {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.fld .fi {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.fld .fi input[type='number'],
+.fld .fi input[type='text'] {
+  width: 150px;
+}
+.fld .fi select {
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 auto;
+  text-overflow: ellipsis;
+}
+.fld .unit {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.fld .src {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.fld.changed .fl::after {
+  content: 'changed';
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+#tip {
+  max-width: 280px;
+}

@@ -41,7 +41,7 @@ function createHandler(dir, env) {
       if (!authorised(req, env)) return send(res, 401, 'Sign in to see the full wallet calculator.', { 'www-authenticate': 'Basic realm="Direct+ wallet calculator", charset="UTF-8"' });
     }
     let body;
-    try { body = page(PAGES[route]); } catch (e) { return send(res, 500, 'The pages are not built: run npm run build.'); }
+    try { body = page(PAGES[route]); } catch { return send(res, 500, 'The pages are not built: run npm run build.'); }
     res.writeHead(200, Object.assign({ 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' }, HEADERS));
     res.end(req.method === 'HEAD' ? undefined : body);
   };

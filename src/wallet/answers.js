@@ -1,4 +1,4 @@
-/* Direct+ wallet: the prospect questionnaire (src/wallet/prospect.html). Its plain answers map onto the settings of
+/* Direct+ wallet: the prospect questionnaire (src/pages/estimate/). Its plain answers map onto the settings of
    settings.js, and with each member type's default answers they give exactly its preset (docs/wallet-model.md §12). */
 const WalletAnswers = ((Settings) => {
   'use strict';

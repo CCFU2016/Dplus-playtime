@@ -15,262 +15,1160 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  :root {
-    --bg: #f3f5f8;
-    --surface: #ffffff;
-    --surface-2: #eef1f5;
-    --ink: #121a24;
-    --ink-2: #445061;
-    --muted: #6b7686;
-    --rule: #dbe0e7;
-    --rule-strong: #b7c0cc;
-    --owed: #5f6b7a;
-    --cont-res: #a9c9f3;
-    --cont: #2a78d6;
-    --da-res: #f5bea3;
-    --da: #eb6834;
-    --band: #f1f3f6;
-    --critical: #c3362c;
-    --critical-bg: #fbeceb;
-    --notice-ink: #7a5200;
-    --notice-bg: #fff5da;
-    --focus: #2a78d6;
-    --select-bg: #121a24;
-    --select-ink: #ffffff;
-    --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
-    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4;
-      --muted: #8f9aa7; --rule: #27313c; --rule-strong: #3b4755; --owed: #8b95a3; --cont-res: #1f4f8f;
-      --cont: #3987e5; --da-res: #7c3417; --da: #d95926; --band: #182029; --critical: #ef6b61;
-      --critical-bg: #3a1614; --notice-ink: #f4c35a; --notice-bg: #30260b; --focus: #6fa8f0;
-      --select-bg: #eef2f6; --select-ink: #0d1116;
-    }
-  }
-  :root[data-theme="dark"] {
+/* Direct+ pages: the design tokens (light, and dark by system setting or data-theme) and the rules every page shares. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --ink: #121a24;
+  --ink-2: #445061;
+  --muted: #6b7686;
+  --rule: #dbe0e7;
+  --rule-strong: #b7c0cc;
+  --critical: #c3362c;
+  --critical-bg: #fbeceb;
+  --notice-ink: #7a5200;
+  --notice-bg: #fff5da;
+  --banner-bg: #fff5da;
+  --banner-ink: #5c3d00;
+  --banner-rule: #eda100;
+  --focus: #2a78d6;
+  --select-bg: #121a24;
+  --select-ink: #ffffff;
+  --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-cond: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
-    --bg: #0d1116; --surface: #141a21; --surface-2: #1b232c; --ink: #eef2f6; --ink-2: #c1cad4;
-    --muted: #8f9aa7; --rule: #27313c; --rule-strong: #3b4755; --owed: #8b95a3; --cont-res: #1f4f8f;
-    --cont: #3987e5; --da-res: #7c3417; --da: #d95926; --band: #182029; --critical: #ef6b61;
-    --critical-bg: #3a1614; --notice-ink: #f4c35a; --notice-bg: #30260b; --focus: #6fa8f0;
-    --select-bg: #eef2f6; --select-ink: #0d1116;
+    --bg: #0d1116;
+    --surface: #141a21;
+    --surface-2: #1b232c;
+    --ink: #eef2f6;
+    --ink-2: #c1cad4;
+    --muted: #8f9aa7;
+    --rule: #27313c;
+    --rule-strong: #3b4755;
+    --critical: #ef6b61;
+    --critical-bg: #3a1614;
+    --notice-ink: #f4c35a;
+    --notice-bg: #30260b;
+    --banner-bg: #2b2208;
+    --banner-ink: #ffe4a3;
+    --banner-rule: #c98500;
+    --focus: #6fa8f0;
+    --select-bg: #eef2f6;
+    --select-ink: #0d1116;
   }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0d1116;
+  --surface: #141a21;
+  --surface-2: #1b232c;
+  --ink: #eef2f6;
+  --ink-2: #c1cad4;
+  --muted: #8f9aa7;
+  --rule: #27313c;
+  --rule-strong: #3b4755;
+  --critical: #ef6b61;
+  --critical-bg: #3a1614;
+  --notice-ink: #f4c35a;
+  --notice-bg: #30260b;
+  --banner-bg: #2b2208;
+  --banner-ink: #ffe4a3;
+  --banner-rule: #c98500;
+  --focus: #6fa8f0;
+  --select-bg: #eef2f6;
+  --select-ink: #0d1116;
+}
 
-  body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
-  .page { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 24px; }
-  h1, h2, h3 { text-wrap: balance; margin: 0; }
-  p { margin: 0; }
-  button, input, select { font: inherit; color: inherit; }
-  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-  .num { font-variant-numeric: tabular-nums; }
+/* The hidden attribute always hides, whatever display a class sets. */
+[hidden] {
+  display: none !important;
+}
 
-  /* Masthead */
-  .masthead { display: grid; gap: 8px; max-width: 780px; }
-  .eyebrow { font-family: var(--font-cond); font-weight: 600; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  h1 { font-size: clamp(28px, 3.6vw, 38px); line-height: 1.12; font-weight: 600; letter-spacing: -0.01em; }
-  .lede { font-size: 16.5px; color: var(--ink-2); max-width: 64ch; }
-  .fine { font-size: 12.5px; color: var(--muted); max-width: 90ch; }
-  .markets-key { display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 2px 0 0; font-size: 14px; color: var(--ink-2); }
-  .markets-key div { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
-  .markets-key dt { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); white-space: nowrap; }
-  .markets-key dd { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+  margin: 0;
+}
+p {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
 
-  /* Layout */
-  .layout { display: grid; grid-template-columns: minmax(290px, 350px) minmax(0, 1fr); gap: 24px; align-items: start; }
-  @media (max-width: 920px) { .layout { grid-template-columns: minmax(0, 1fr); } }
-  .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; }
+.eyebrow {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  flex: none;
+}
 
-  /* Setup form */
-  .setup { padding: 18px; display: grid; gap: 18px; }
-  @media (min-width: 921px) { .setup { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); max-height: calc(100vh - 32px); overflow: auto; } }
-  .setup h2 { font-size: 15px; font-weight: 600; }
-  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
-  legend { padding: 0; }
-  .field { display: grid; gap: 6px; }
-  .field > label, .label { font-size: 13px; font-weight: 600; color: var(--ink); }
-  .hint { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
-  .money { display: flex; align-items: center; border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--surface); }
-  .money:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
-  .money span { padding-left: 10px; color: var(--muted); }
-  .money input { border: 0; background: transparent; width: 100%; min-width: 0; padding: 8px 10px 8px 6px; font-size: 15px; font-variant-numeric: tabular-nums; }
-  .money input:focus-visible { outline: none; }
-  .steppers { display: flex; flex-direction: column; align-self: stretch; flex: none; border-left: 1px solid var(--rule); }
-  .steppers button { flex: 1; width: 28px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; touch-action: manipulation; }
-  .steppers button + button { border-top: 1px solid var(--rule); }
-  .steppers button:first-child { border-top-right-radius: 5px; }
-  .steppers button:last-child { border-bottom-right-radius: 5px; }
-  .steppers button:hover { background: var(--band); color: var(--ink); }
-  .steppers button:active { background: var(--rule); }
-  .steppers svg { width: 10px; height: 6px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-  .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule-strong); border-radius: 7px; padding: 3px; gap: 3px; background: var(--surface-2); }
-  .seg input { position: absolute; opacity: 0; pointer-events: none; }
-  .seg label { text-align: center; font-size: 13px; font-weight: 500; padding: 7px 6px; border-radius: 5px; cursor: pointer; line-height: 1.3; }
-  .seg input:checked + label { background: var(--select-bg); color: var(--select-ink); }
-  .seg input:focus-visible + label { outline: 2px solid var(--focus); outline-offset: 1px; }
-  select#week { box-sizing: border-box; width: 100%; border: 1px solid var(--rule-strong); border-radius: 6px; background: var(--surface); padding: 7px 10px; cursor: pointer; }
-  .radio-row { display: grid; gap: 4px; }
-  .radio-row label, .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--ink-2); cursor: pointer; }
-  .radio-row input, .check input { margin-top: 3px; accent-color: var(--ink); }
-  .market { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--rule); }
-  .market legend { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; float: left; width: 100%; }
-  .market legend + * { clear: both; }
-  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .pair .field { grid-template-rows: 1fr auto; }   /* labels top-aligned, boxes bottom-aligned when one label wraps */
-  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
-  .sw-cont { background: var(--cont); } .sw-da { background: var(--da); } .sw-owed { background: var(--owed); }
-  .sw-cont-res { background: var(--cont-res); } .sw-da-res { background: var(--da-res); }
-  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; border-radius: 5px; margin: 8px 0 2px;
-    background: linear-gradient(to right, var(--cont) 0 var(--split, 60%), var(--da) var(--split, 60%) 100%); }
-  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); cursor: pointer; }
-  input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); cursor: pointer; }
-  input[type="range"]:disabled { opacity: .45; }
-  .split-read { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); }
-  .split-read b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Buttons */
+.btn {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn.ghost {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+.linkbtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  font-size: 13.5px;
+  text-align: left;
+}
 
-  /* Results */
-  .results { display: grid; gap: 20px; min-width: 0; }
-  .card { padding: 18px 20px 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
-  .card h2 { font-size: 17px; font-weight: 600; }
-  .card .sub { font-size: 13.5px; color: var(--ink-2); max-width: 75ch; }
-  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 640px) { .tiles { grid-template-columns: minmax(0, 1fr); } }
-  .tile { padding: 16px 20px; display: grid; gap: 4px; align-content: start; border-left: 1px solid var(--rule); }
-  .tile:first-child { border-left: 0; }
-  @media (max-width: 640px) { .tile { border-left: 0; border-top: 1px solid var(--rule); } .tile:first-child { border-top: 0; } }
-  .tile .t-label { font-size: 13px; color: var(--ink-2); display: flex; align-items: center; gap: 7px; }
-  .tile .t-value { font-size: 30px; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
-  .tile.hero .t-value { font-size: 38px; }
-  .tile .t-sub { font-size: 12.5px; color: var(--muted); }
-  .alert { border-radius: 8px; padding: 12px 16px; font-size: 14px; display: flex; gap: 10px; align-items: flex-start; }
-  .alert.critical { background: var(--critical-bg); color: var(--ink); border: 1px solid var(--critical); }
-  .alert .tag { font-family: var(--font-cond); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--critical); white-space: nowrap; padding-top: 1px; }
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+}
+thead th {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  vertical-align: bottom;
+}
+tbody td {
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+}
 
-  .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-  .tab { border: 1px solid var(--rule-strong); background: var(--surface); border-radius: 6px; padding: 5px 11px; font-size: 13px; cursor: pointer; display: grid; line-height: 1.25; text-align: left; }
-  .tab small { font-size: 11.5px; color: var(--muted); }
-  .tab[aria-selected="true"] { background: var(--select-bg); color: var(--select-ink); border-color: var(--select-bg); }
-  .tab[aria-selected="true"] small { color: inherit; opacity: .8; }
-  .card-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+/* Tooltip (PageUI.hoverable) */
+#tip {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  max-width: 260px;
+}
+#tip .tv {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+#tip .tl {
+  color: var(--ink-2);
+}
 
-  /* Daily cycle */
-  .cycle-wrap { overflow-x: auto; }
-  .cycle { display: grid; grid-template-columns: minmax(118px, .8fr) repeat(3, minmax(150px, 1fr)); min-width: 600px; }
-  .cycle > div { padding: 10px 12px; border-top: 1px solid var(--rule); }
-  .cycle .h { border-top: 0; padding-top: 0; display: grid; gap: 2px; align-content: end; }
-  .cycle .h .time { font-family: var(--font-cond); font-weight: 600; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink); }
-  .cycle .h .what { font-size: 12.5px; color: var(--muted); }
-  .cycle .mk { font-weight: 600; font-size: 14px; display: flex; gap: 8px; align-items: center; }
-  .cycle .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .cycle .n { font-size: 12.5px; color: var(--muted); }
-  .cycle .step { position: relative; }
-  .cycle .step:not(.h) { border-left: 1px solid var(--rule); }
+/* Direct+ limit calculator. Shared tokens and rules: shared/base.css. */
+:root {
+  --owed: #5f6b7a;
+  --cont-res: #a9c9f3;
+  --cont: #2a78d6;
+  --da-res: #f5bea3;
+  --da: #eb6834;
+  --band: #f1f3f6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --owed: #8b95a3;
+    --cont-res: #1f4f8f;
+    --cont: #3987e5;
+    --da-res: #7c3417;
+    --da: #d95926;
+    --band: #182029;
+  }
+}
+:root[data-theme='dark'] {
+  --owed: #8b95a3;
+  --cont-res: #1f4f8f;
+  --cont: #3987e5;
+  --da-res: #7c3417;
+  --da: #d95926;
+  --band: #182029;
+}
 
-  /* Allocation bar */
-  .alloc { display: grid; gap: 10px; }
-  .alloc h3 { font-size: 14px; font-weight: 600; }
-  .bar { display: flex; gap: 2px; height: 22px; position: relative; }
-  .bar .seg-b { height: 100%; min-width: 2px; cursor: default; }
-  .bar .seg-b:first-child { border-radius: 4px 0 0 4px; }
-  .bar .seg-b:last-child { border-radius: 0 4px 4px 0; }
-  .bar .seg-b:only-child { border-radius: 4px; }
-  .bar .seg-b:hover, .bar .seg-b:focus-visible { filter: brightness(1.08); }
-  .bar .marker { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--ink); }
-  .bar .marker span { position: absolute; top: -20px; transform: translateX(-50%); font-size: 12px; white-space: nowrap; color: var(--ink); }
-  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 22px; font-size: 13px; }
-  .legend .li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; color: var(--ink-2); }
-  .legend .li b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .legend .total { border-top: 1px solid var(--rule); padding-top: 6px; grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--ink-2); }
-  .legend .total b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-inline: 20px;
+  padding-block: 28px 56px;
+  display: grid;
+  gap: 24px;
+}
 
-  /* Week table */
-  .table-wrap { overflow-x: auto; }
-  .view-switch { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: 999px; padding: 2px; background: var(--surface); flex: none; }
-  .view-switch button { border: 0; background: transparent; color: var(--ink-2); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 500; cursor: pointer; }
-  .view-switch button[aria-pressed="true"] { background: var(--select-bg); color: var(--select-ink); }
-  .view-switch button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-  tbody tr.off td { background: var(--band); }
-  td.span-note { text-align: left; white-space: normal; }
-  td.weekend-block { vertical-align: middle; background: var(--band); border-left: 3px solid var(--cont); }
-  table { border-collapse: collapse; width: 100%; min-width: 640px; font-variant-numeric: tabular-nums; }
-  th, td { padding: 8px 8px; text-align: right; }
-  td { white-space: nowrap; }
-  thead th { white-space: normal; min-width: 62px; line-height: 1.3; }
-  th:first-child, td:first-child { text-align: left; }
-  thead th { font-family: var(--font-cond); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); vertical-align: bottom; }
-  thead tr.grp th { font-size: 12.5px; color: var(--ink-2); padding-bottom: 2px; }
-  thead tr.grp th span { display: inline-flex; align-items: center; gap: 6px; }
-  thead tr:last-child th { border-bottom: 1px solid var(--rule-strong); }
-  tbody td { border-bottom: 1px solid var(--rule); font-size: 14px; }
-  tbody tr.sel td { background: var(--surface-2); }
-  td.low { font-weight: 600; }
-  .small-split { font-size: 11.5px; color: var(--muted); font-weight: 400; }
-  .gl { border-left: 1px solid var(--rule); }
-  .pill { display: inline-block; font-size: 11.5px; font-weight: 500; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
-  .pill.crit { background: var(--critical-bg); color: var(--critical); border: 1px solid var(--critical); }
-  .pill.info { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--rule-strong); }
-  .neg { color: var(--critical); }
+/* Masthead */
+.masthead {
+  display: grid;
+  gap: 8px;
+  max-width: 780px;
+}
+h1 {
+  font-size: clamp(28px, 3.6vw, 38px);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.lede {
+  font-size: 16.5px;
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+.fine {
+  font-size: 12.5px;
+  color: var(--muted);
+  max-width: 90ch;
+}
+.markets-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 28px;
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.markets-key div {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+.markets-key dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.markets-key dd {
+  margin: 0;
+}
 
-  /* Auction chart */
-  .chart { width: 100%; min-height: 240px; }
-  .chart svg { display: block; overflow: visible; }
-  .chart text { font-family: var(--font); fill: var(--ink-2); }
-  .chart .tick { fill: var(--muted); font-size: 11.5px; }
-  .chart .xl { fill: var(--ink); font-size: 12.5px; font-weight: 500; }
-  .chart .xv { fill: var(--ink-2); font-size: 12px; }
-  .chart .dl { fill: var(--ink); font-size: 12.5px; font-weight: 600; }
-  .chart .hit { fill: transparent; cursor: default; }
-  .chart .hit:focus-visible { outline: none; stroke: var(--focus); stroke-width: 2px; }
-  .chart-key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); }
-  .chart-key span { display: inline-flex; align-items: center; gap: 6px; }
-  .m7-key { width: 18px; height: 4px; border-radius: 2px; background: var(--cont); display: inline-block; flex: none; }
-  .band-key { width: 14px; height: 12px; background: var(--band); border: 1px solid var(--rule); border-radius: 2px; }
-  .line-key { width: 16px; height: 2px; background: var(--ink); }
+/* Layout */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(290px, 350px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 920px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
-  /* O09 */
-  .o09 table { min-width: 560px; }
-  .o09 td, .o09 th { text-align: left; }
-  .o09 td.r, .o09 th.r { text-align: right; }
-  .code { font-family: var(--font-mono); font-size: 13px; }
-  .handoff { display: grid; gap: 10px; justify-items: start; padding: 16px 18px; border-left: 6px solid var(--cont); }
-  .handoff[hidden] { display: none; }
-  .handoff b { font-size: 15.5px; }
-  .handoff p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 75ch; }
-  .handoff .row { display: flex; flex-wrap: wrap; gap: 10px; }
-  a.btn { text-decoration: none; display: inline-block; }
-  .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--rule-strong); }
-  .copy-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .btn { border: 1px solid var(--ink); background: var(--ink); color: var(--surface); border-radius: 6px; padding: 7px 14px; font-size: 13.5px; font-weight: 500; cursor: pointer; }
-  .btn:hover { opacity: .9; }
-  .copy-state { font-size: 13px; color: var(--muted); }
+/* Setup form */
+.setup {
+  padding: 18px;
+  display: grid;
+  gap: 18px;
+}
+@media (min-width: 921px) {
+  .setup {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+  }
+}
+.setup h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.modes > legend {
+  margin-bottom: 8px;
+}
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+legend {
+  padding: 0;
+}
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field > label,
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+#inv-fields {
+  gap: 14px;
+}
+.money {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.money:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.money span {
+  padding-left: 10px;
+  color: var(--muted);
+}
+.money input {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px 8px 6px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.money input:focus-visible {
+  outline: none;
+}
+.steppers {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  flex: none;
+  border-left: 1px solid var(--rule);
+}
+.steppers button {
+  flex: 1;
+  width: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.steppers button + button {
+  border-top: 1px solid var(--rule);
+}
+.steppers button:first-child {
+  border-top-right-radius: 5px;
+}
+.steppers button:last-child {
+  border-bottom-right-radius: 5px;
+}
+.steppers button:hover {
+  background: var(--band);
+  color: var(--ink);
+}
+.steppers button:active {
+  background: var(--rule);
+}
+.steppers svg {
+  width: 10px;
+  height: 6px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  padding: 3px;
+  gap: 3px;
+  background: var(--surface-2);
+}
+.seg input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.seg label {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  line-height: 1.3;
+}
+.seg input:checked + label {
+  background: var(--select-bg);
+  color: var(--select-ink);
+}
+.seg input:focus-visible + label {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+select#week {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.radio-row {
+  display: grid;
+  gap: 4px;
+}
+.radio-row label,
+.check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.radio-row input,
+.check input {
+  margin-top: 3px;
+  accent-color: var(--ink);
+}
+.market {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+.market legend {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  float: left;
+  width: 100%;
+}
+.market legend + * {
+  clear: both;
+}
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.pair .field {
+  grid-template-rows: 1fr auto;
+} /* labels top-aligned, boxes bottom-aligned when one label wraps */
+.sw-cont {
+  background: var(--cont);
+}
+.sw-da {
+  background: var(--da);
+}
+.sw-owed {
+  background: var(--owed);
+}
+.sw-cont-res {
+  background: var(--cont-res);
+}
+.sw-da-res {
+  background: var(--da-res);
+}
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  margin: 8px 0 2px;
+  background: linear-gradient(to right, var(--cont) 0 var(--split, 60%), var(--da) var(--split, 60%) 100%);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  cursor: pointer;
+}
+input[type='range']::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  cursor: pointer;
+}
+input[type='range']:disabled {
+  opacity: 0.45;
+}
+.split-read {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.split-read b {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 
-  /* Method */
-  .method { padding: 20px 22px; display: grid; gap: 16px; }
-  details.method { display: block; padding: 0; }
-  details.method > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 22px; }
-  details.method > summary::-webkit-details-marker { display: none; }
-  details.method > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin: -4px 4px 0 0; transition: transform .15s; }
-  details.method[open] > summary::after { transform: rotate(-135deg); margin-top: 4px; }
-  details.method > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 10px; }
-  details.method .ft { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-width: 0; }
-  details.method .fh { font-size: 13px; color: var(--muted); }
-  details.method > .method-grid { padding: 0 22px 22px; }
-  .method h2 { font-size: 17px; font-weight: 600; }
-  .method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-  @media (max-width: 860px) { .method-grid { grid-template-columns: minmax(0, 1fr); } }
-  .method ol, .method ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; color: var(--ink-2); }
-  .method li b { color: var(--ink); font-weight: 600; }
-  .formula { font-family: var(--font-mono); font-size: 13px; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; color: var(--ink); overflow-x: auto; white-space: pre; line-height: 1.6; }
-  .method h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+/* Results */
+.results {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.card {
+  padding: 18px 20px 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+.card h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.card .sub {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  max-width: 75ch;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 640px) {
+  .tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tile {
+  padding: 16px 20px;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  border-left: 1px solid var(--rule);
+}
+.tile:first-child {
+  border-left: 0;
+}
+@media (max-width: 640px) {
+  .tile {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .tile:first-child {
+    border-top: 0;
+  }
+}
+.tile .t-label {
+  font-size: 13px;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.tile .t-value {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+.tile.hero .t-value {
+  font-size: 38px;
+}
+.tile .t-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.alert {
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.alert.critical {
+  background: var(--critical-bg);
+  color: var(--ink);
+  border: 1px solid var(--critical);
+}
+.alert .tag {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--critical);
+  white-space: nowrap;
+  padding-top: 1px;
+}
 
-  #tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12); max-width: 260px; }
-  #tip .tv { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
-  #tip .tl { color: var(--ink-2); }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tab {
+  border: 1px solid var(--rule-strong);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 5px 11px;
+  font-size: 13px;
+  cursor: pointer;
+  display: grid;
+  line-height: 1.25;
+  text-align: left;
+}
+.tab small {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.tab[aria-selected='true'] {
+  background: var(--select-bg);
+  color: var(--select-ink);
+  border-color: var(--select-bg);
+}
+.tab[aria-selected='true'] small {
+  color: inherit;
+  opacity: 0.8;
+}
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+/* Daily cycle */
+.cycle-wrap {
+  overflow-x: auto;
+}
+.cycle {
+  display: grid;
+  grid-template-columns: minmax(118px, 0.8fr) repeat(3, minmax(150px, 1fr));
+  min-width: 600px;
+}
+.cycle > div {
+  padding: 10px 12px;
+  border-top: 1px solid var(--rule);
+}
+.cycle .h {
+  border-top: 0;
+  padding-top: 0;
+  display: grid;
+  gap: 2px;
+  align-content: end;
+}
+.cycle .h .time {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.cycle .h .what {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.cycle .mk {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.cycle .v {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.cycle .n {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.cycle .step {
+  position: relative;
+}
+.cycle .step:not(.h) {
+  border-left: 1px solid var(--rule);
+}
+
+/* Allocation bar */
+.alloc {
+  display: grid;
+  gap: 10px;
+}
+.alloc h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 22px;
+  position: relative;
+}
+.bar .seg-b {
+  height: 100%;
+  min-width: 2px;
+  cursor: default;
+}
+.bar .seg-b:first-child {
+  border-radius: 4px 0 0 4px;
+}
+.bar .seg-b:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.bar .seg-b:only-child {
+  border-radius: 4px;
+}
+.bar .seg-b:hover,
+.bar .seg-b:focus-visible {
+  filter: brightness(1.08);
+}
+.bar .marker {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 2px;
+  background: var(--ink);
+}
+.bar .marker span {
+  position: absolute;
+  top: -20px;
+  transform: translateX(-50%);
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 6px 22px;
+  font-size: 13px;
+}
+.legend .li {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  color: var(--ink-2);
+}
+.legend .li b {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.legend .total {
+  border-top: 1px solid var(--rule);
+  padding-top: 6px;
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink-2);
+}
+.legend .total b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Week table */
+.view-switch {
+  display: inline-flex;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 2px;
+  background: var(--surface);
+  flex: none;
+}
+.view-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.view-switch button[aria-pressed='true'] {
+  background: var(--select-bg);
+  color: var(--select-ink);
+}
+.view-switch button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+tbody tr.off td {
+  background: var(--band);
+}
+td.span-note {
+  text-align: left;
+  white-space: normal;
+}
+td.weekend-block {
+  vertical-align: middle;
+  background: var(--band);
+  border-left: 3px solid var(--cont);
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 640px;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  padding: 8px 8px;
+  text-align: right;
+}
+td {
+  white-space: nowrap;
+}
+thead th {
+  white-space: normal;
+  min-width: 62px;
+  line-height: 1.3;
+}
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+thead th.group {
+  text-align: left;
+}
+thead tr.grp th {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  padding-bottom: 2px;
+}
+thead tr.grp th span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+thead tr:last-child th {
+  border-bottom: 1px solid var(--rule-strong);
+}
+tbody tr.sel td {
+  background: var(--surface-2);
+}
+td.low {
+  font-weight: 600;
+}
+.small-split {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.gl {
+  border-left: 1px solid var(--rule);
+}
+.pill {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+.pill.crit {
+  background: var(--critical-bg);
+  color: var(--critical);
+  border: 1px solid var(--critical);
+}
+.pill.info {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--rule-strong);
+}
+.neg {
+  color: var(--critical);
+}
+
+/* Auction chart */
+.chart {
+  width: 100%;
+  min-height: 240px;
+}
+.chart svg {
+  display: block;
+  overflow: visible;
+}
+.chart text {
+  font-family: var(--font);
+  fill: var(--ink-2);
+}
+.chart .tick {
+  fill: var(--muted);
+  font-size: 11.5px;
+}
+.chart .xl {
+  fill: var(--ink);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.chart .xv {
+  fill: var(--ink-2);
+  font-size: 12px;
+}
+.chart .dl {
+  fill: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.chart .hit {
+  fill: transparent;
+  cursor: default;
+}
+.chart .hit:focus-visible {
+  outline: none;
+  stroke: var(--focus);
+  stroke-width: 2px;
+}
+.chart-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.chart-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.band-key {
+  width: 14px;
+  height: 12px;
+  background: var(--band);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+.line-key {
+  width: 16px;
+  height: 2px;
+  background: var(--ink);
+}
+
+/* Settings for the Direct+ platform, and the links to the wallet estimate */
+.o09 table {
+  min-width: 560px;
+}
+.o09 td,
+.o09 th {
+  text-align: left;
+}
+.o09 td.r,
+.o09 th.r {
+  text-align: right;
+}
+.handoff {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 16px 18px;
+  border-left: 6px solid var(--cont);
+}
+.handoff b {
+  font-size: 15.5px;
+}
+.handoff p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  max-width: 75ch;
+}
+.handoff .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+a.btn {
+  text-decoration: none;
+  display: inline-block;
+}
+.btn:hover {
+  opacity: 0.9;
+}
+.copy-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.copy-state {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* How the calculation works */
+.method {
+  padding: 20px 22px;
+  display: grid;
+  gap: 16px;
+}
+details.method {
+  display: block;
+  padding: 0;
+}
+details.method > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
+}
+details.method > summary::-webkit-details-marker {
+  display: none;
+}
+details.method > summary::after {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  margin: -4px 4px 0 0;
+  transition: transform 0.15s;
+}
+details.method[open] > summary::after {
+  transform: rotate(-135deg);
+  margin-top: 4px;
+}
+details.method > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  border-radius: 10px;
+}
+details.method .ft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  min-width: 0;
+}
+details.method .fh {
+  font-size: 13px;
+  color: var(--muted);
+}
+details.method > .method-grid {
+  padding: 0 22px 22px;
+}
+.method h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+@media (max-width: 860px) {
+  .method-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.method ol,
+.method ul {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.method ol {
+  margin-top: 14px;
+}
+.method li b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.formula {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--ink);
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.6;
+}
+.method h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
 </style>
 </head>
 <body>
@@ -288,8 +1186,8 @@
 
   <main class="layout">
     <form id="setup" class="setup panel" autocomplete="off" novalidate>
-      <fieldset>
-        <legend class="label" style="margin-bottom:8px">What do you want to work out?</legend>
+      <fieldset class="modes">
+        <legend class="label">What do you want to work out?</legend>
         <div class="seg">
           <input type="radio" name="mode" id="mode-fwd" value="fwd" checked><label for="mode-fwd">Limits from my collateral</label>
           <input type="radio" name="mode" id="mode-inv" value="inv"><label for="mode-inv">Collateral for a target limit</label>
@@ -307,7 +1205,7 @@
         <div class="money"><span>€</span><input id="collateral" type="text" inputmode="numeric" data-step="10000" value="500,000" spellcheck="false"></div>
       </div>
 
-      <div id="inv-fields" class="field" hidden style="gap:14px">
+      <div id="inv-fields" class="field" hidden>
         <div class="field">
           <label for="t-cont">M7 continuous limit you need</label>
           <div class="money"><span>€</span><input id="t-cont" type="text" inputmode="numeric" data-step="10000" value="150,000" spellcheck="false"></div>
@@ -437,7 +1335,7 @@ Dynamic  = max(Excess, 0) × split ÷ reset days
 From 18:00       = base limit today + Dynamic
 After settlement = From 18:00 + settled purchases × split
 After a weekend  = next auction back at the full limit (lower of two readings)</div>
-        <ol style="margin-top:14px">
+        <ol>
           <li><b>16:00:</b> each market's limit resets to its base limit, the fixed amount you set to bridge the time until the evening update. Resting orders above it, including bids for future auctions, are deleted.</li>
           <li><b>Reserved for base limits:</b> ECC holds back today's base limit and the one it will hand out at 16:00 on the next business day, for both markets, because that one goes live before the next calculation can see today's trades.</li>
           <li><b>M7 continuous</b> does not reset on weekends or holidays: the base limit before them is BD + NBD per non-business day, and the evening limit must last until the next business morning. Reset days are always 1.</li>
@@ -915,737 +1813,1596 @@ const LimitEngine = (() => {
     MAX_DATE,
   };
 })();
-(function () {
+
+/* Direct+ pages: the small DOM, formatting, calendar and chart helpers that every page uses. No framework: each page's
+   script builds its own DOM with these. */
+const PageUI = ((Engine) => {
   'use strict';
-  var E = LimitEngine;
-  var $ = function (id) { return document.getElementById(id); };
-  var fmtInt = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
-  function eur(v) { return (v < 0 ? '−€' : '€') + fmtInt.format(Math.abs(Math.round(v))); }
-  function eurShort(v) {
-    var a = Math.abs(v), s = v < 0 ? '−€' : '€';
-    if (a >= 1e6) return s + (a / 1e6).toFixed(a >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'm';
-    if (a >= 1e4) return s + Math.round(a / 1e3) + 'k';
-    if (a >= 1e3) return s + (a / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
-    return s + Math.round(a);
-  }
-  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  var MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  // In a standard week (no ECC holiday from the Friday before to the Monday after) dates don't matter: the page names
-  // weekdays only ("Friday", "Mon"). Holiday weeks keep their dates. Set while a week is drawn (render, the wallet banner).
-  var plainWeek = false;
-  function dLabel(iso, withYear) {
-    var d = E.parse(iso);
-    if (plainWeek) return WDL[d.getUTCDay()];
-    return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()] + (withYear ? ' ' + d.getUTCFullYear() : '');
-  }
-  function dayNote(n) { return n === 'Weekend' ? 'weekend' : n; }
-  var WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  function shareAuctions(r) { return r.da.auctions.filter(function (a) { return !a.settled; }); }
-  function shareDaysShort(sh) {
-    var d = sh.map(function (a) { return WD[E.parse(a.date).getUTCDay()]; });
-    return d.length > 2 ? d[0] + '–' + d[d.length - 1] : d.join(', ');
-  }
-  function dShort(iso) { var d = E.parse(iso); return plainWeek ? WD[d.getUTCDay()] : WD[d.getUTCDay()] + ' ' + d.getUTCDate(); }
-  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
-  function num(id) { var v = parseFloat($(id).value.replace(/[^\d.]/g, '')); return isFinite(v) && v > 0 ? v : 0; }
 
-  // ---------- amounts: whole euros shown with thousands separators as you type; up/down arrows (buttons and keys) step ----------
-  function groupDigits(inp) {
-    var raw = inp.value, pos = inp.selectionStart == null ? raw.length : inp.selectionStart;
-    var before = raw.slice(0, pos).replace(/\D/g, '').length;
-    var digits = raw.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 12);
-    var out = digits ? fmtInt.format(+digits) : '';
-    if (out === raw) return;
-    inp.value = out;
-    if (document.activeElement !== inp) return;
-    var i = 0, seen = 0;
-    while (i < out.length && seen < before) { if (/\d/.test(out.charAt(i))) seen++; i++; }
-    inp.setSelectionRange(i, i);
-  }
-  function stepAmount(inp, dir) {
-    var step = +inp.getAttribute('data-step') || 1, v = num(inp.id);
-    v = dir > 0 ? Math.floor(v / step) * step + step : Math.max(0, Math.ceil(v / step) * step - step);
-    inp.value = fmtInt.format(v);
-    schedule();
-  }
-  var ARROWS = [[1, 'Up', 'M1 5l4-4 4 4'], [-1, 'Down', 'M1 1l4 4 4-4']];
-  Array.prototype.forEach.call(document.querySelectorAll('.money input'), function (inp) {
-    inp.addEventListener('input', function () { groupDigits(inp); });
-    inp.addEventListener('keydown', function (e) {
-      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-      e.preventDefault();
-      stepAmount(inp, e.key === 'ArrowUp' ? 1 : -1);
-    });
-    // Arrow buttons like a number field's: a press steps once, holding keeps stepping. Out of the tab order (the
-    // arrow keys do the same), but still announced and clickable for screen readers.
-    var box = el('div', 'steppers'), by = ' by €' + fmtInt.format(+inp.getAttribute('data-step') || 1);
-    ARROWS.forEach(function (a) {
-      var btn = el('button', 'step-' + a[1].toLowerCase()), timer = null;
-      btn.type = 'button'; btn.tabIndex = -1;
-      btn.setAttribute('aria-label', (a[0] > 0 ? 'Increase' : 'Decrease') + by);
-      btn.innerHTML = '<svg viewBox="0 0 10 6" aria-hidden="true"><path d="' + a[2] + '"/></svg>';
-      var stop = function () { clearTimeout(timer); timer = null; };
-      btn.addEventListener('pointerdown', function (e) {
-        if (e.button !== 0) return;
-        e.preventDefault(); stop(); stepAmount(inp, a[0]);
-        timer = setTimeout(function again() { stepAmount(inp, a[0]); timer = setTimeout(again, 80); }, 450);
-      });
-      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { btn.addEventListener(ev, stop); });
-      btn.addEventListener('click', function (e) { if (e.detail === 0) stepAmount(inp, a[0]); });   // keyboard or screen reader
-      box.appendChild(btn);
-    });
-    inp.parentNode.appendChild(box);
-  });
+  const DAY_MS = 86400000;
 
-  // ---------- default week: next Monday within the calendar range ----------
+  // ---------- DOM ----------
+
+  const $ = (id) => document.getElementById(id);
+
+  /** A new element, with an optional class and text. */
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  /** Empties `node` and returns it. */
+  function clear(node) {
+    node.textContent = '';
+    return node;
+  }
+
+  const isDark = () => getComputedStyle(document.documentElement).colorScheme === 'dark';
+
+  /** A header row: columns = [{ text, className }]. */
+  function headerRow(columns) {
+    const row = el('tr');
+    for (const { text, className } of columns) {
+      const cell = el('th', className || null, text);
+      cell.scope = 'col';
+      row.appendChild(cell);
+    }
+    return row;
+  }
+
+  /** A table's head, with one header row. */
+  function tableHead(table, columns) {
+    const head = el('thead');
+    head.appendChild(headerRow(columns));
+    table.appendChild(head);
+  }
+
+  /** A body row: cells = [{ text | node, className }]. Returns the row. */
+  function tableRow(body, cells) {
+    const row = el('tr');
+    for (const { text, node, className } of cells) {
+      const cell = el('td', className || null);
+      if (node) cell.appendChild(node);
+      else cell.textContent = text == null ? '' : text;
+      row.appendChild(cell);
+    }
+    body.appendChild(row);
+    return row;
+  }
+
+  // ---------- numbers and euros ----------
+
+  const wholeNumber = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
+  const euroSign = (value) => (value < 0 ? '−€' : '€');
+
+  /** Whole euros: €1,234 or −€1,234. */
+  const euros = (value) => euroSign(value) + wholeNumber.format(Math.abs(Math.round(value)));
+
+  /** To the nearest €1,000, as the wallet pages show every estimate: €12,000, 'under €1,000' or €0. */
+  function thousands(value) {
+    const size = Math.abs(value);
+    if (size < 0.5) return '€0';
+    if (size < 1000) return 'under €1,000';
+    return euroSign(value) + wholeNumber.format(Math.round(size / 1000) * 1000);
+  }
+
+  /** A difference to the nearest €1,000: +€2,000, −€1,000 or 'about the same'. */
+  function thousandsDiff(difference) {
+    const rounded = Math.round(difference / 1000) * 1000;
+    if (rounded === 0) return 'about the same';
+    return (rounded > 0 ? '+€' : '−€') + wholeNumber.format(Math.abs(rounded));
+  }
+
+  const trimZeros = (text) => text.replace(/\.?0+$/, '');
+
+  /** Short euros for chart labels: €950, €1.5k, €12k, €1.25m. */
+  function shortEuros(value) {
+    const size = Math.abs(value);
+    const sign = euroSign(value);
+    if (size >= 1e6) return `${sign}${trimZeros((size / 1e6).toFixed(size >= 1e7 ? 1 : 2))}m`;
+    if (size >= 1e4) return `${sign}${Math.round(size / 1e3)}k`;
+    if (size >= 1e3) return `${sign}${(size / 1e3).toFixed(1).replace(/\.0$/, '')}k`;
+    return `${sign}${Math.round(size)}`;
+  }
+
+  /** Short euros in whole thousands, as the wallet pages round: <€1k, €12k, €1.25m. */
+  function shortThousands(value) {
+    const size = Math.abs(value);
+    const sign = euroSign(value);
+    if (size >= 1e6) return `${sign}${trimZeros((size / 1e6).toFixed(2))}m`;
+    if (size >= 500) return `${sign}${Math.round(size / 1e3)}k`;
+    return size < 0.5 ? '€0' : '<€1k';
+  }
+
+  // ---------- dates (ISO strings, UTC days) ----------
+
+  const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const addDays = (date, days) => new Date(date.getTime() + days * DAY_MS);
+  const plusDays = (iso, days) => Engine.iso(addDays(Engine.parse(iso), days));
+  const mondayOf = (date) => addDays(date, -((date.getUTCDay() + 6) % 7));
+
+  /** 'Mon 5 Oct', or 'Mon 5 Oct 2026' with the year. */
+  function dateLabel(iso, withYear) {
+    const date = Engine.parse(iso);
+    const label = `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+    return withYear ? `${label} ${date.getUTCFullYear()}` : label;
+  }
+
+  // The weeks the pages can show: the full weeks of ECC's calendar in the engine.
+  const FIRST_WEEK = Engine.iso(mondayOf(addDays(Engine.parse(Engine.MIN_DATE), 6)));
+  const LAST_WEEK = Engine.iso(mondayOf(Engine.parse(Engine.MAX_DATE)));
+
+  /** The Monday of the week that holds `iso`, within the calendar's weeks. */
   function clampWeek(iso) {
-    if (iso < E.MIN_DATE) return E.MIN_DATE;
-    if (iso > E.MAX_DATE) return '2027-12-20';
-    return iso;
+    const monday = Engine.iso(mondayOf(Engine.parse(iso)));
+    if (monday < FIRST_WEEK) return FIRST_WEEK;
+    if (monday > LAST_WEEK) return LAST_WEEK;
+    return monday;
   }
-  function nextMondayIso() {
-    var now = new Date(), t = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-    var w = t.getUTCDay(), add = ((8 - w) % 7) || 7;
-    return clampWeek(E.iso(new Date(t.getTime() + add * 864e5)));
+
+  /** Next Monday (never today), within the calendar's weeks. */
+  function nextMonday() {
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    return clampWeek(Engine.iso(addDays(today, (8 - today.getUTCDay()) % 7 || 7)));
   }
-  var addDays = function (iso, n) { return E.iso(new Date(E.parse(iso).getTime() + n * 864e5)); };
-  // A standard week: from next Monday, the first week whose weekdays, the Friday before and the Monday after are all
-  // ECC business days, so no calculation in it covers a holiday.
-  function quietWeek(mon) {
-    for (var i = -3; i <= 7; i++) { var d = E.parse(addDays(mon, i)), w = d.getUTCDay(); if (w !== 0 && w !== 6 && !E.isBD(d)) return false; }
-    return true;
-  }
-  function standardWeek() {
-    for (var mon = nextMondayIso(); addDays(mon, 7) <= E.MAX_DATE; mon = addDays(mon, 7)) if (quietWeek(mon)) return mon;
-    return nextMondayIso();
-  }
-  // Weekday ECC holidays in the next 12 months (up to the end of the calendar). Each goes to the week holding the last
-  // business day before it, whose calculation has to bridge the holiday; holidays landing in the same week share an option.
+
+  const HOLIDAY_SHORT_NAMES = {
+    "New Year's Day": 'New Year',
+    'Good Friday': 'Easter',
+    'Easter Monday': 'Easter',
+    'Christmas Day': 'Christmas',
+  };
+
+  /**
+   * The weekday ECC holidays of the next 12 months, by week: each goes to the week that holds the last business day
+   * before it, whose calculation has to bridge the holiday. Holidays in the same week share it.
+   * Returns [{ monday, days: [iso], names: [short names, once each] }].
+   */
   function holidayWeeks() {
-    var today = E.iso(new Date()), until = addDays(today, 365), out = [], byWeek = {};
-    Object.keys(E.HOLIDAYS).sort().forEach(function (h) {
-      if (h < today || h > until || h > E.MAX_DATE) return;
-      var before = E.prevBD(E.parse(h)), w = before.getUTCDay(), mon = E.iso(new Date(before.getTime() - ((w + 6) % 7) * 864e5));
-      if (mon < E.MIN_DATE) return;
-      if (!byWeek[mon]) { byWeek[mon] = { mon: mon, days: [] }; out.push(byWeek[mon]); }
-      byWeek[mon].days.push(h);
-    });
-    return out;
-  }
-  var SHORT = { "New Year's Day": 'New Year', 'Good Friday': 'Easter', 'Easter Monday': 'Easter', 'Christmas Day': 'Christmas' };
-  function holidayLabel(g) {
-    var names = [];
-    g.days.forEach(function (h) { var n = SHORT[E.HOLIDAYS[h]] || E.HOLIDAYS[h]; if (names.indexOf(n) < 0) names.push(n); });
-    var a = E.parse(g.days[0]), b = E.parse(g.days[g.days.length - 1]);
-    var when = g.days.length === 1 ? dLabel(g.days[0], true)
-      : a.getUTCMonth() === b.getUTCMonth() ? a.getUTCDate() + '–' + b.getUTCDate() + ' ' + MO[b.getUTCMonth()] + ' ' + b.getUTCFullYear()
-      : dLabel(g.days[0]).slice(4) + ' – ' + dLabel(g.days[g.days.length - 1], true).slice(4);
-    return names.join(' and ') + ' · ' + when;
-  }
-  var weekHolidays = {};
-  (function fillWeeks() {
-    var sel = $('week'), std = el('option', null, 'A standard week, no holidays');
-    std.value = standardWeek(); sel.appendChild(std);
-    var groups = holidayWeeks();
-    if (groups.length) {
-      var og = document.createElement('optgroup'); og.label = 'Weeks with an ECC holiday, next 12 months';
-      groups.forEach(function (g) { var o = el('option', null, holidayLabel(g)); o.value = g.mon; weekHolidays[g.mon] = g.days; og.appendChild(o); });
-      sel.appendChild(og);
+    const today = Engine.iso(new Date());
+    const until = plusDays(today, 365);
+    const weeks = new Map();
+    for (const day of Object.keys(Engine.HOLIDAYS).sort()) {
+      if (day < today || day > until || day > Engine.MAX_DATE) continue;
+      const monday = Engine.iso(mondayOf(Engine.prevBD(Engine.parse(day))));
+      if (monday < Engine.MIN_DATE) continue;
+      if (!weeks.has(monday)) weeks.set(monday, { monday, days: [] });
+      weeks.get(monday).days.push(day);
     }
-  })();
-  function weekNote() {
-    var mon = $('week').value, fri = addDays(mon, 4), a = E.parse(mon), b = E.parse(fri);
-    var span = 'Mon ' + a.getUTCDate() + (a.getUTCMonth() === b.getUTCMonth() ? '' : ' ' + MO[a.getUTCMonth()]) + ' – Fri ' + b.getUTCDate() + ' ' + MO[b.getUTCMonth()] + ' ' + b.getUTCFullYear();
-    var hs = weekHolidays[mon];
-    if (!hs && quietWeek(mon)) {
-      $('week-note').textContent = (addedWeeks[mon] ? 'The week of your wallet estimate, a standard week' : 'A standard week') + ': every day is an ECC business day, and the Friday calculation covers the weekend.';
-      return;
-    }
-    if (!hs && addedWeeks[mon]) {
-      var near = [];
-      for (var i = -3; i <= 7; i++) { var iso = addDays(mon, i), w = E.parse(iso).getUTCDay(); if (w !== 0 && w !== 6 && !E.isBD(E.parse(iso))) near.push(iso); }
-      $('week-note').textContent = 'Showing ' + span + ', the week of your wallet estimate' + (near.length ? '. ' + near.map(function (h) { return E.HOLIDAYS[h] + ' (' + dShort(h) + ')'; }).join(' and ') + (near.length > 1 ? ' are' : ' is') + ' not an ECC business day, which affects this week\'s calculations.' : '. Every day is an ECC business day; the Friday calculation covers the weekend.');
-      return;
-    }
-    $('week-note').textContent = 'Showing ' + span + (hs
-      ? '. ' + hs.map(function (h) { return E.HOLIDAYS[h] + ' (' + dShort(h) + ')'; }).join(' and ') + (hs.length > 1 ? ' are not ECC business days.' : ' is not an ECC business day.')
-      : '. Every day is an ECC business day; the Friday calculation covers the weekend.');
-  }
-  var addedWeeks = {};
-  function ensureWeek(iso) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '') || E.parse(iso).getUTCDay() !== 1 || iso < E.MIN_DATE || addDays(iso, 7) > E.MAX_DATE) return false;
-    if (!$('week').querySelector('option[value="' + iso + '"]')) {
-      var o = el('option', null, 'Week of ' + dLabel(iso, true) + ', from your wallet estimate'); o.value = iso; $('week').appendChild(o); addedWeeks[iso] = true;
-    }
-    return true;
-  }
-  weekNote();
-
-  var selected = null; // selected calc day (iso)
-
-  function readState() {
-    var mode = document.querySelector('input[name="mode"]:checked').value;
-    var split = Math.max(0, Math.min(100, parseInt($('split').value, 10) || 0));
-    return {
-      mode: mode,
-      week: clampWeek($('week').value || standardWeek()),
-      C: num('collateral'), OR: num('open-risk'),
-      cont: { bd: num('c-bd'), nbd: num('c-nbd') },
-      da: { bd: num('a-bd'), nbd: num('a-nbd') },
-      split: split,
-      tCont: num('t-cont'), tContMeasure: document.querySelector('input[name="t-cont-when"]:checked').value,
-      tDa: num('t-da'), tDaNonBD: $('t-da-nonbd').checked,
-      keyMode: document.querySelector('input[name="keymode"]:checked').value,
-      cmode: document.querySelector('input[name="cmode"]:checked').value,
-      scope: document.querySelector('input[name="scope"]:checked').value
-    };
-  }
-
-  function compute(s) {
-    var days = E.weekDays(s.week);
-    var base = { OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: s.split }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - s.split } };
-    var C = s.C, key = s.split, inv = null;
-    if (s.mode === 'inv') {
-      var tgt = { cont: s.tCont, contMeasure: s.tContMeasure, da: s.tDa, daNonBD: s.tDaNonBD };
-      var gapOf = function (d) { return E.day(d, base).gap1; };
-      var solveDays = s.scope === 'weekend' ? days.filter(function (d) { return gapOf(d) > 1; }) : days;
-      if (!solveDays.length) solveDays = days;
-      var mine = E.solve(solveDays, base, tgt);
-      var best = E.cheapestKey(solveDays, base, tgt);
-      inv = { tgt: tgt, mine: mine, best: best, days: solveDays, rest: null };
-      if (s.scope === 'weekend' && solveDays.length < days.length) {
-        var restDays = days.filter(function (d) { return gapOf(d) === 1; });
-        inv.rest = { days: restDays, mine: E.solve(restDays, base, tgt), best: E.cheapestKey(restDays, base, tgt) };
-      }
-      if (s.keyMode === 'cheapest') { if (best) { key = best.key; C = best.C; } else C = null; }
-      else C = mine;
-      inv.C = C; inv.key = key;
-      if (s.cmode === 'daily') {
-        // Optimised by day: each calculation day on its own, with its own split when the cheapest split is chosen.
-        var one = function (d) { return s.keyMode === 'cheapest' ? E.cheapestKey([d], base, tgt) : { key: s.split, C: E.solve([d], base, tgt) }; };
-        inv.daily = days.map(one);
-        inv.staticWeek = s.keyMode === 'cheapest' ? E.cheapestKey(days, base, tgt) : { key: s.split, C: E.solve(days, base, tgt) };
-        if (inv.daily.some(function (x) { return !x || x.C === null; })) { inv.daily = null; C = null; inv.C = null; }
-        else {
-          var peak = inv.daily.reduce(function (m, x) { return !m || x.C > m.C ? x : m; }, null);
-          C = peak.C; key = peak.key; inv.C = C; inv.key = key; inv.binding = null;
-        }
-      }
-      if (C !== null && !inv.daily) {
-        var q = { OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: key }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - key } };
-        inv.binding = E.binding(C, solveDays, q, tgt);
-      }
-    }
-    var p = { C: C === null ? 0 : C, OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: key }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - key } };
-    var rows = days.map(function (d, i) {
-      var pi = p;
-      if (inv && inv.daily) pi = { C: inv.daily[i].C, OR: s.OR, cont: { bd: s.cont.bd, nbd: s.cont.nbd, key: inv.daily[i].key }, da: { bd: s.da.bd, nbd: s.da.nbd, key: 100 - inv.daily[i].key } };
-      var r = E.day(d, pi); r.p = pi; return r;
-    });
-    return { s: s, days: days, rows: rows, p: p, key: key, C: C, inv: inv };
-  }
-
-  // ---------- tiles ----------
-  function tile(label, value, sub, opts) {
-    var t = el('div', 'tile' + (opts && opts.hero ? ' hero' : ''));
-    var l = el('div', 't-label');
-    if (opts && opts.swatch) l.appendChild(el('span', 'swatch ' + opts.swatch));
-    l.appendChild(document.createTextNode(label));
-    t.appendChild(l);
-    t.appendChild(el('div', 't-value', value));
-    if (sub) t.appendChild(el('div', 't-sub', sub));
-    return t;
-  }
-  function allAuctions(rows) {
-    var out = [];
-    rows.forEach(function (r) { r.da.auctions.forEach(function (a) { out.push({ date: a.date, limit: a.limit, settled: a.settled, rollover: a.rollover, bd: a.bd, note: a.note, calc: r.date, resetDays: r.da.resetDays }); }); });
-    return out;
-  }
-  function minBy(arr, f) { return arr.reduce(function (m, x) { return (m === null || f(x) < f(m)) ? x : m; }, null); }
-  function maxBy(arr, f) { return arr.reduce(function (m, x) { return (m === null || f(x) > f(m)) ? x : m; }, null); }
-
-  function renderTiles(res) {
-    var box = $('tiles'); box.textContent = '';
-    if (res.s.mode === 'inv') {
-      var inv = res.inv;
-      if (inv.C === null) {
-        box.appendChild(tile('Collateral needed', 'Not reachable', 'A market with a 0% split cannot get above its base limit. Change the split or the target.', { hero: true }));
-        return;
-      }
-      if (inv.daily) {
-        var rowsD = res.rows, pk = maxBy(rowsD, function (r) { return r.p.C; }), others = rowsD.filter(function (r) { return r !== pk; });
-        var lo = minBy(others, function (r) { return r.p.C; }), hi2 = maxBy(others, function (r) { return r.p.C; });
-        var held = 0, daysHeld = 0;
-        rowsD.forEach(function (r) { held += r.p.C * r.gap1; daysHeld += r.gap1; });
-        box.appendChild(tile('Collateral, optimised by day', eur(pk.p.C), 'highest for ' + dLabel(pk.date) + '\'s calculation' + (pk.gap1 > 1 ? ' (covers ' + pk.gap1 + ' days)' : '') + (lo ? ' · other days ' + eur(lo.p.C) + (Math.round(hi2.p.C) !== Math.round(lo.p.C) ? ' to ' + eur(hi2.p.C) : '') : ''), { hero: true }));
-        var sw = inv.staticWeek;
-        box.appendChild(tile('Static, for comparison', sw && sw.C !== null ? eur(sw.C) : 'Not reachable', sw && sw.C !== null ? 'one amount all week, split ' + sw.key + ' / ' + (100 - sw.key) : ''));
-        box.appendChild(tile('Average held over the week', eur(held / daysHeld), 'weighted by the calendar days each amount is in place'));
-        return;
-      }
-      var splitTxt = inv.key + ' / ' + (100 - inv.key);
-      var scopeTxt = res.s.scope === 'weekend' && inv.days.length < res.days.length
-        ? 'for ' + inv.days.map(function (d) { return dShort(E.iso(d)); }).join(' and ') + '\'s calculation, which covers the weekend'
-        : 'for every day this week';
-      var restTxt = '';
-      if (inv.rest) {
-        var rb = res.s.keyMode === 'cheapest' ? inv.rest.best : null, rm = inv.rest.mine;
-        if (rb) restTxt = ' · the other days need about ' + eur(rb.C) + ' at ' + rb.key + ' / ' + (100 - rb.key);
-        else if (rm !== null) restTxt = ' · the other days need ' + eur(rm) + ' with this split';
-      }
-      box.appendChild(tile('Collateral needed', eur(inv.C), scopeTxt + ', M7 continuous / MATS auctions split ' + splitTxt + (res.s.keyMode === 'cheapest' ? ' (least collateral)' : '') + restTxt, { hero: true }));
-      if (res.s.keyMode === 'cheapest') {
-        var m = inv.mine;
-        box.appendChild(tile('With your split (' + res.s.split + ' / ' + (100 - res.s.split) + ')', m === null ? 'Not reachable' : eur(m), m === null ? '' : (m - inv.C > 0.5 ? eur(m - inv.C) + ' more than the cheapest split' : 'already the cheapest split')));
-      } else {
-        var b = inv.best;
-        box.appendChild(tile('Cheapest split' + (b ? ' (' + b.key + ' / ' + (100 - b.key) + ')' : ''), b ? eur(b.C) : 'Not reachable', b ? (inv.C - b.C > 0.5 ? 'saves ' + eur(inv.C - b.C) : 'your split is already the cheapest') : ''));
-      }
-      box.appendChild(tile('What sets the amount', bindingText(inv.binding), bindingSub(inv.binding)));
-      return;
-    }
-    var rows = res.rows;
-    var lowC = minBy(rows, function (r) { return r.cont.l18; }), highC = maxBy(rows, function (r) { return r.cont.l18; });
-    var auc = allAuctions(rows);
-    var lowA = minBy(auc, function (a) { return a.limit; }), highA = maxBy(auc, function (a) { return a.limit; });
-    var hiR = maxBy(rows, function (r) { return r.blr; }), loR = minBy(rows, function (r) { return r.blr; });
-    box.appendChild(tile('M7 continuous, from 18:00', eurShort(lowC.cont.l18), 'lowest, ' + dLabel(lowC.date) + ' · highest ' + eurShort(highC.cont.l18), { swatch: 'sw-cont' }));
-    box.appendChild(tile('MATS auctions, per day-ahead auction', eurShort(lowA.limit), 'lowest, ' + dLabel(lowA.date) + (lowA.note ? ' (' + dayNote(lowA.note) + ')' : '') + ' · highest ' + eurShort(highA.limit), { swatch: 'sw-da' }));
-    box.appendChild(tile('Reserved for base limits', eurShort(hiR.blr), 'peak, ' + dLabel(hiR.date) + (loR.blr < hiR.blr ? ' · lowest ' + eurShort(loR.blr) : ''), null));
-  }
-  function bindingText(b) {
-    if (!b) return '–';
-    if (b.market === 'base') return 'Base limits';
-    if (b.market === 'cont') return 'M7 continuous, ' + dShort(b.date);
-    return 'MATS auctions, ' + dShort(b.date);
-  }
-  function bindingSub(b) {
-    if (!b) return '';
-    if (b.market === 'base') return 'Collateral must at least cover the reserved base limits on ' + dLabel(b.date);
-    if (b.market === 'cont') return 'the evening calculation on ' + dLabel(b.date) + ' is the tightest';
-    var nm = E.holidayName(E.parse(b.date));
-    return 'day-ahead auction on ' + dLabel(b.date) + (nm ? ' (' + dayNote(nm) + ', share of ' + dShort(b.calc) + '\'s calculation)' : '');
-  }
-
-  // ---------- alert ----------
-  function renderAlert(res) {
-    var box = $('alert'); box.textContent = '';
-    var uncovered = res.rows.filter(function (r) { return r.baseUncovered; });
-    var short = res.rows.filter(function (r) { return !r.baseUncovered && r.excess < 0; });
-    if (!uncovered.length && !short.length) { box.hidden = true; return; }
-    box.hidden = false;
-    box.appendChild(el('span', 'tag', 'Shortfall'));
-    var msg;
-    if (uncovered.length) {
-      var w = maxBy(uncovered, function (r) { return r.blr; });
-      msg = 'Your reserved base limits (' + eur(w.blr) + ' on ' + dLabel(w.date) + ') exceed your collateral on ' + uncovered.map(function (r) { return dShort(r.date); }).join(', ') + '. ECC\'s tool flags this setup as invalid: lower the base limits or add collateral.';
-    } else {
-      var w2 = minBy(short, function (r) { return r.excess; });
-      msg = 'On ' + short.map(function (r) { return dShort(r.date); }).join(', ') + ' unsettled purchases and reserved base limits exceed your collateral by up to ' + eur(-w2.excess) + '. No dynamic limit is added those evenings; you keep only your base limits until settlement.';
-    }
-    box.appendChild(el('span', null, msg));
-  }
-
-  // ---------- day tabs + cycle + allocation ----------
-  function pickDefaultDay(rows) {
-    var best = null;
-    rows.forEach(function (r) { if (!best || r.excess < best.excess - 0.5 || (Math.abs(r.excess - best.excess) <= 0.5 && r.gap1 > best.gap1)) best = r; });
-    return best ? best.date : null;
-  }
-  function renderTabs(res) {
-    var box = $('day-tabs'); box.textContent = '';
-    var dates = res.rows.map(function (r) { return r.date; });
-    if (dates.indexOf(selected) < 0) selected = pickDefaultDay(res.rows);
-    res.rows.forEach(function (r) {
-      var b = el('button', 'tab'); b.type = 'button'; b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', r.date === selected ? 'true' : 'false');
-      b.appendChild(document.createTextNode(dShort(r.date)));
-      if (r.gap1 > 1 || !plainWeek) b.appendChild(el('small', null, r.gap1 > 1 ? 'to ' + dShort(r.nextBD) : MO[E.parse(r.date).getUTCMonth()]));
-      b.addEventListener('click', function () { selected = r.date; render(); });
-      box.appendChild(b);
+    return [...weeks.values()].map((week) => {
+      const names = week.days.map((day) => HOLIDAY_SHORT_NAMES[Engine.HOLIDAYS[day]] || Engine.HOLIDAYS[day]);
+      return { ...week, names: [...new Set(names)] };
     });
   }
-  function cell(cls, v, n) { var c = el('div', 'step ' + (cls || '')); if (v != null) c.appendChild(el('div', 'v', v)); if (n) c.appendChild(el('div', 'n', n)); return c; }
-  function renderCycle(res, r) {
-    var box = $('cycle'); box.textContent = '';
-    $('day-title').textContent = 'Your limits after the calculation on ' + dLabel(r.date, true);
-    var nxt = dLabel(r.nextBD);
-    var h0 = el('div', 'h'); box.appendChild(h0);
-    var h1 = el('div', 'h step'); h1.appendChild(el('span', 'time', '16:00')); h1.appendChild(el('span', 'what', 'Limit resets to the base limit')); box.appendChild(h1);
-    var h2 = el('div', 'h step'); h2.appendChild(el('span', 'time', 'From ~18:00 (best effort)')); h2.appendChild(el('span', 'what', 'Dynamic limit added, until ' + (r.gap1 > 1 ? nxt + ' morning' : 'the next morning'))); box.appendChild(h2);
-    var h3 = el('div', 'h step'); h3.appendChild(el('span', 'time', 'By 10:45, ' + nxt)); h3.appendChild(el('span', 'what', 'Settled purchases added back')); box.appendChild(h3);
 
-    var mk = el('div', 'mk'); mk.appendChild(el('span', 'swatch sw-cont')); mk.appendChild(document.createTextNode('M7 continuous')); box.appendChild(mk);
-    box.appendChild(cell('', eur(r.cont.l16), r.gap1 > 1 ? 'Covers ' + r.gap1 + ' days, until ' + dShort(r.nextBD) + ' 16:00' : 'Until the dynamic limit arrives'));
-    box.appendChild(cell('', eur(r.cont.l18), r.gap1 > 1 ? 'Must last until ' + dShort(r.nextBD) + ' morning' : 'Until settlement'));
-    box.appendChild(cell('', eur(r.cont.l09), '+ ' + eur(r.refill * r.p.cont.key / 100) + ' settled, until 16:00'));
+  // ---------- tooltip (the page's #tip element) ----------
 
-    var mk2 = el('div', 'mk'); mk2.appendChild(el('span', 'swatch sw-da')); mk2.appendChild(document.createTextNode('MATS auctions')); box.appendChild(mk2);
-    box.appendChild(cell('', eur(r.da.l16), r.gap1 > 1 ? 'Per auction day (max of BD, NBD)' : 'Base limit'));
-    var sh = shareAuctions(r), onlyWeekend = sh.every(function (a) { return a.note === 'Weekend'; });
-    box.appendChild(cell('', eur(r.da.l18), r.gap1 > 1
-      ? 'Per ' + (onlyWeekend ? 'weekend' : 'weekend or holiday') + ' auction: ' + sh.map(function (a) { return dShort(a.date); }).join(', ') +
-        ' · ÷ ' + r.gap1 + ' because ' + WDL[E.parse(r.date).getUTCDay()] + '\'s calculation lasts until ' + WDL[E.parse(r.nextBD).getUTCDay()]
-      : 'Per auction'));
-    box.appendChild(cell('', eur(r.da.l09), 'At ' + dShort(r.nextBD) + '\'s 12:00 auction' + (r.gap1 > 1 ? ', full limit again if the weekend auctions went unused' : '')));
-  }
-
-  var tip = $('tip');
-  function showTip(evt, value, label) {
-    tip.textContent = '';
-    tip.appendChild(el('div', 'tv', value)); tip.appendChild(el('div', 'tl', label));
+  function showTip(event, value, label) {
+    const tip = clear($('tip'));
+    tip.appendChild(el('div', 'tv', value));
+    tip.appendChild(el('div', 'tl', label));
     tip.hidden = false;
-    var x, y;
-    if (evt && evt.clientX != null && evt.type.indexOf('pointer') === 0) { x = evt.clientX; y = evt.clientY; }
-    else { var b = evt.target.getBoundingClientRect(); x = b.left + b.width / 2; y = b.top; }
-    var w = tip.offsetWidth, h = tip.offsetHeight;
-    var left = Math.min(Math.max(8, x + 12), window.innerWidth - w - 8);
-    var top = y - h - 12; if (top < 8) top = y + 16;
-    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+    let x;
+    let y;
+    if (event.clientX != null && event.type.startsWith('pointer')) {
+      x = event.clientX;
+      y = event.clientY;
+    } else {
+      const box = event.target.getBoundingClientRect();
+      x = box.left + box.width / 2;
+      y = box.top;
+    }
+    tip.style.left = `${Math.min(Math.max(8, x + 12), window.innerWidth - tip.offsetWidth - 8)}px`;
+    const top = y - tip.offsetHeight - 12;
+    tip.style.top = `${top < 8 ? y + 16 : top}px`;
   }
-  function hideTip() { tip.hidden = true; }
+  const hideTip = () => {
+    $('tip').hidden = true;
+  };
+
+  /** Makes `node` focusable, with a tooltip on hover and focus: the value in bold, then the label. */
   function hoverable(node, value, label) {
     node.tabIndex = 0;
-    node.setAttribute('aria-label', label + ': ' + value);
-    node.addEventListener('pointermove', function (e) { showTip(e, value, label); });
+    node.setAttribute('aria-label', `${label}: ${value}`);
+    node.addEventListener('pointermove', (event) => showTip(event, value, label));
     node.addEventListener('pointerleave', hideTip);
-    node.addEventListener('focus', function (e) { showTip(e, value, label); });
+    node.addEventListener('focus', (event) => showTip(event, value, label));
     node.addEventListener('blur', hideTip);
   }
 
-  function renderAlloc(res, r) {
-    var bar = $('alloc-bar'), leg = $('alloc-legend');
-    bar.textContent = ''; leg.textContent = '';
-    $('alloc-title').textContent = 'Where your collateral goes on ' + dLabel(r.date);
-    var C = r.p.C;
-    var parts = [
-      { v: r.p.OR, cls: 'sw-owed', label: 'Unsettled purchases (open risk)' },
-      { v: r.blrC, cls: 'sw-cont-res', label: 'M7 continuous: reserved for base limits' },
-      { v: r.shareC, cls: 'sw-cont', label: 'M7 continuous: share of excess' },
-      { v: r.blrA, cls: 'sw-da-res', label: 'MATS auctions: reserved for base limits' },
-      { v: r.shareA, cls: 'sw-da', label: 'MATS auctions: share of excess' }
-    ];
-    var total = Math.max(C, parts.reduce(function (s, x) { return s + x.v; }, 0));
-    parts.forEach(function (x) {
-      if (x.v <= 0 || total <= 0) return;
-      var seg = el('div', 'seg-b ' + x.cls); seg.style.flex = x.v + ' 0 0';
-      hoverable(seg, eur(x.v), x.label); bar.appendChild(seg);
-    });
-    if (total > C + 0.5 && total > 0) {
-      var m = el('div', 'marker'); m.style.left = (C / total * 100) + '%';
-      m.appendChild(el('span', null, 'Collateral ' + eurShort(C))); bar.appendChild(m);
-    }
-    parts.forEach(function (x) {
-      var li = el('div', 'li'); li.appendChild(el('span', 'swatch ' + x.cls));
-      li.appendChild(el('span', null, x.label)); li.appendChild(el('b', null, eur(x.v))); leg.appendChild(li);
-    });
-    var tot = el('div', 'total'); tot.appendChild(el('span', null, 'Collateral' + (r.excess < 0 ? ' (short by ' + eur(-r.excess) + ')' : '')));
-    tot.appendChild(el('b', null, eur(C))); leg.appendChild(tot);
+  // ---------- charts ----------
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  /** An <svg> of the given size, and add(tag, attributes, text) to draw in it. */
+  function svgCanvas(width, height) {
+    const root = document.createElementNS(SVG_NS, 'svg');
+    root.setAttribute('width', width);
+    root.setAttribute('height', height);
+    root.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    const add = (tag, attributes, text) => {
+      const node = document.createElementNS(SVG_NS, tag);
+      for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
+      if (text != null) node.textContent = text;
+      root.appendChild(node);
+      return node;
+    };
+    return { root, add };
   }
 
-  // ---------- week table ----------
-  // The week by calendar day, Monday to Sunday: the limits a member has each day. A business day has a morning limit
-  // (after settlement, from the previous business day's calculation), the base limit from 16:00 and the evening limit;
-  // a weekend or holiday keeps the last business day's evening limit for M7. MATS: the limit at that day's 12:00 auction.
-  var weekView = 'calc';                     // ECC's calculations by default (Direct+ decision); the day view is one click away
-  function renderWeek(res) { if (weekView === 'days') renderDays(res); else renderCalc(res); }
-  function renderDays(res) {
-    var t = $('week-table'); t.textContent = '';
-    var byDate = {}; res.rows.forEach(function (r) { byDate[r.date] = r; });
-    var last = res.rows[res.rows.length - 1];
-    function calcFor(iso) {                      // the calculation of that business day (outside the week: same parameters as this week's last one)
-      if (byDate[iso]) return byDate[iso];
-      var r = E.day(E.parse(iso), last.p || res.p); byDate[iso] = r; return r;
-    }
-    var thead = el('thead'), g = el('tr', 'grp');
-    g.appendChild(el('th', null, ''));
-    var gc = el('th', 'gl'); gc.colSpan = 3; var sc = el('span'); sc.appendChild(el('span', 'swatch sw-cont')); sc.appendChild(document.createTextNode('M7 continuous')); gc.appendChild(sc); gc.style.textAlign = 'left'; g.appendChild(gc);
-    var ga = el('th', 'gl'); var sa = el('span'); sa.appendChild(el('span', 'swatch sw-da')); sa.appendChild(document.createTextNode('MATS auctions')); ga.appendChild(sa); ga.style.textAlign = 'left'; g.appendChild(ga);
-    thead.appendChild(g);
-    var h = el('tr');
-    [['Day', null], ['Morning, after settlement', 'gl'], ['From 16:00', null], ['From ~18:00', null], ['Day-ahead auction, 12:00', 'gl']].forEach(function (c) { var th = el('th', c[1], c[0]); th.scope = 'col'; h.appendChild(th); });
-    thead.appendChild(h); t.appendChild(thead);
-    var tb = el('tbody'), mon = E.parse(res.s.week);
-    // Monday to Sunday, or on to the next business day when the week ends in a holiday (Easter Monday).
-    var end = Math.max(7, Math.round((E.parse(last.nextBD) - mon) / 864e5));
-    for (var i = 0; i < end; i++) {
-      var d = new Date(mon.getTime() + i * 864e5), iso = E.iso(d), bd = E.isBD(d), prev = E.iso(E.prevBD(d));
-      var pc = calcFor(prev), auc = pc.da.auctions.filter(function (a) { return a.date === iso; })[0];
-      var tr = el('tr', bd ? (iso === selected ? 'sel' : null) : 'off'), dc = el('td');
-      dc.appendChild(document.createTextNode(dLabel(iso)));
-      if (!bd) dc.appendChild(el('span', 'pill info', dayNote(E.holidayName(d)) === 'weekend' ? 'Weekend' : E.holidayName(d)));
-      tr.appendChild(dc);
-      if (bd) {
-        var r = calcFor(iso), m = el('td', 'gl', eur(pc.cont.l09));
-        if (pc.gap1 > 1) m.appendChild(el('div', 'small-split', 'from ' + dLabel(prev) + '\'s calculation'));
-        tr.appendChild(m);
-        tr.appendChild(el('td', null, eur(r.cont.l16)));
-        var ev = el('td', null, eur(r.cont.l18)); if (r.gap1 > 1) ev.appendChild(el('div', 'small-split', 'until ' + dLabel(r.nextBD) + ' morning')); tr.appendChild(ev);
-      } else if (i === 0 || E.isBD(new Date(d.getTime() - 864e5))) {
-        // M7 doesn't reset on weekends and holidays: one limit for the whole stretch, so one cell across those days.
-        var n = 0; while (n < end - i && !E.isBD(new Date(d.getTime() + n * 864e5))) n++;
-        var weekendOnly = n === 2 && d.getUTCDay() === 6;
-        var all = el('td', 'gl span-note weekend-block'); all.colSpan = 3; all.rowSpan = n;
-        all.appendChild(el('b', null, eur(pc.cont.l18) + (n === 1 ? ' all day' : weekendOnly ? ' for the whole weekend' : ' across these ' + n + ' days')));
-        all.appendChild(el('div', 'small-split', (n > 1 ? 'One limit, not per day: ' : '') + dLabel(prev) + '\'s evening limit, until ' + dLabel(pc.nextBD) + ' morning'));
-        tr.appendChild(all);
-      }
-      var a = el('td', 'gl', auc ? eur(auc.limit) : '–');
-      if (auc && !auc.settled) a.appendChild(el('div', 'small-split', 'a share of ' + dLabel(prev) + '\'s calculation'));
-      tr.appendChild(a);
-      tb.appendChild(tr);
-    }
-    t.appendChild(tb);
-  }
-  function renderCalc(res) {
-    var t = $('week-table'); t.textContent = '';
-    var thead = el('thead'), g = el('tr', 'grp');
-    var daily = res.inv && res.inv.daily;
-    g.appendChild(el('th', null, '')); if (daily) g.appendChild(el('th', null, '')); g.appendChild(el('th', null, '')); g.appendChild(el('th', null, ''));
-    var gc = el('th', 'gl'); gc.colSpan = 3; var sc = el('span'); sc.appendChild(el('span', 'swatch sw-cont')); sc.appendChild(document.createTextNode('M7 continuous')); gc.appendChild(sc); gc.style.textAlign = 'left'; g.appendChild(gc);
-    var ga = el('th', 'gl'); ga.colSpan = 3; var sa = el('span'); sa.appendChild(el('span', 'swatch sw-da')); sa.appendChild(document.createTextNode('MATS auctions')); ga.appendChild(sa); ga.style.textAlign = 'left'; g.appendChild(ga);
-    thead.appendChild(g);
-    var h = el('tr');
-    var cols = ['Calculation day'].concat(daily ? ['Collateral that day'] : []).concat(['Reserved for base limits', 'Excess collateral', '16:00', 'From 18:00', 'After settlement', '16:00', 'Per auction from 18:00', 'Next business day\'s auction']);
-    var off = daily ? 1 : 0;
-    cols.forEach(function (x, i) {
-      var th = el('th', (i === 3 + off || i === 6 + off) ? 'gl' : null, x); th.scope = 'col'; h.appendChild(th);
-    });
-    thead.appendChild(h); t.appendChild(thead);
-    var tb = el('tbody');
-    var lowC = minBy(res.rows, function (r) { return r.cont.l18; });
-    var lowA = minBy(res.rows, function (r) { return r.da.l18; });
-    res.rows.forEach(function (r) {
-      var tr = el('tr', r.date === selected ? 'sel' : null);
-      var d = el('td'); d.appendChild(document.createTextNode(dLabel(r.date)));
-      if (r.gap1 > 1) d.appendChild(el('span', 'pill info', r.gap1 + '-day gap'));
-      if (r.excess < 0) d.appendChild(el('span', 'pill crit', 'Shortfall'));
-      tr.appendChild(d);
-      if (daily) { var cc = el('td', null, eur(r.p.C)); cc.appendChild(el('div', 'small-split', r.p.cont.key + ' / ' + r.p.da.key)); tr.appendChild(cc); }
-      // Today's and the next business day's base limits, for both markets: split so it adds up to what is reserved.
-      var rc = el('td', null, eur(r.blr)); rc.appendChild(el('div', 'small-split', 'M7 ' + eurShort(r.blrC) + ' + MATS ' + eurShort(r.blrA))); tr.appendChild(rc);
-      tr.appendChild(el('td', r.excess < 0 ? 'neg' : null, eur(r.excess)));
-      tr.appendChild(el('td', 'gl', eur(r.cont.l16)));
-      tr.appendChild(el('td', r === lowC ? 'low' : null, eur(r.cont.l18)));
-      tr.appendChild(el('td', null, eur(r.cont.l09)));
-      var a16 = el('td', 'gl', eur(r.da.l16)); if (r.gap1 > 1) a16.appendChild(el('div', 'small-split', 'per auction day')); tr.appendChild(a16);
-      var a18 = el('td', (r === lowA ? 'low' : null), eur(r.da.l18) + (r.gap1 > 1 ? ' × ' + shareAuctions(r).length + ' (' + shareDaysShort(shareAuctions(r)) + ')' : ''));
-      tr.appendChild(a18);
-      tr.appendChild(el('td', null, eur(r.da.l09)));
-      tb.appendChild(tr);
-    });
-    t.appendChild(tb);
+  /** The outline of a bar from `bottom` up to `top` (SVG y), with rounded top corners. */
+  function barPath(x, width, top, bottom) {
+    const r = Math.min(4, (bottom - top) / 2);
+    return (
+      `M${x},${bottom}V${top + r}Q${x},${top} ${x + r},${top}` +
+      `H${x + width - r}Q${x + width},${top} ${x + width},${top + r}V${bottom}Z`
+    );
   }
 
-  // ---------- auction chart ----------
+  /** A round step for about `count` gridlines up to `max`: 1, 2, 2.5 or 5 times a power of ten. */
   function niceStep(max, count) {
-    var raw = max / count, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
-    var nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
-    return nf * mag;
+    const raw = max / count;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+    const factor = raw / magnitude;
+    const nice = factor <= 1 ? 1 : factor <= 2 ? 2 : factor <= 2.5 ? 2.5 : factor <= 5 ? 5 : 10;
+    return nice * magnitude;
   }
-  // Bars: M7 (blue) and MATS (orange) side by side each business day. Over a weekend or holiday M7 is one limit, so one
-  // blue bar spans the days, between the first day's orange bar (left) and the last day's (right); orange bars of days in
-  // between stand in front of it with a surface outline.
-  function renderAuctions(res) {
-    var box = $('auction-chart'); box.textContent = '';
-    var items = allAuctions(res.rows), byCalc = {};
-    res.rows.forEach(function (r) { byCalc[r.date] = r; });
-    items.forEach(function (a) { var r = byCalc[a.calc]; a.m7 = a.bd ? r.cont.l09 : r.cont.l18; a.m7Until = r.nextBD; });
-    var runs = [];
-    items.forEach(function (a, i) {
-      var last = runs[runs.length - 1];
-      if (!a.bd && last && !last.bd && last.calc === a.calc) { last.to = i; return; }
-      runs.push({ from: i, to: i, bd: a.bd, calc: a.calc, v: a.m7, until: a.m7Until, date: a.date });
-    });
-    var target = res.s.mode === 'inv' && res.inv && res.inv.C !== null ? res.s.tDa : 0;
-    var W = Math.max(300, box.clientWidth || 600), H = 270;
-    var m = { l: 52, r: 12, t: 34, b: 30 };
-    var pw = W - m.l - m.r, ph = H - m.t - m.b;
-    var vmax = Math.max(target, maxBy(items, function (a) { return a.limit; }).limit, maxBy(items, function (a) { return a.m7; }).m7) || 1;
-    var step = niceStep(vmax * 1.15, 4), top = Math.ceil(vmax * 1.15 / step) * step;
-    var y = function (v) { return m.t + ph - (v / top) * ph; };
-    var NS = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-    function s(tag, attrs, text) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; svg.appendChild(n); return n; }
-    function bar(x0, w, v, fill, series, ring) {
-      var yt = y(v), yb = y(0), r = Math.min(4, (yb - yt) / 2), d = 'M' + x0 + ',' + yb + 'V' + (yt + r) + 'Q' + x0 + ',' + yt + ' ' + (x0 + r) + ',' + yt + 'H' + (x0 + w - r) + 'Q' + (x0 + w) + ',' + yt + ' ' + (x0 + w) + ',' + (yt + r) + 'V' + yb + 'Z';
-      if (yb - yt > 0.5) s('path', ring ? { d: d, fill: fill, stroke: 'var(--surface)', 'stroke-width': 2, 'data-series': series } : { d: d, fill: fill, 'data-series': series });
-      return yt;
-    }
-    var slot = pw / items.length, bw = Math.min(20, slot * 0.3), g = 2;       // bar width, 2px gap between a pair
-    var cxOf = function (i) { return m.l + i * slot + slot / 2; };
-    items.forEach(function (a, i) { if (!a.bd) s('rect', { x: m.l + i * slot, y: m.t, width: slot, height: ph, fill: 'var(--band)' }); });
-    for (var v = 0; v <= top + 1e-9; v += step) {
-      s('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: v === 0 ? 'var(--rule-strong)' : 'var(--rule)', 'stroke-width': 1 });
-      s('text', { x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'tick' }, eurShort(v));
-    }
-    items.forEach(function (a, i) { s('text', { x: cxOf(i), y: H - m.b + 18, 'text-anchor': 'middle', class: 'xl' }, dShort(a.date)); });
-    // where each orange bar goes: right of the blue one on a business day; in a stretch, left on its first day, right on its
-    // last, centred (in front of the blue bar) in between
-    var matsX = {}, loM = minBy(runs, function (r) { return r.v; }), hiM = maxBy(runs, function (r) { return r.v; });
-    runs.forEach(function (r) {
-      var n = r.to - r.from + 1, x0, w;
-      if (n === 1) { x0 = cxOf(r.from) - bw - g / 2; w = bw; matsX[r.from] = cxOf(r.from) + g / 2; }
-      else {
-        matsX[r.from] = cxOf(r.from) - bw - g / 2; matsX[r.to] = cxOf(r.to) + g / 2;
-        for (var k = r.from + 1; k < r.to; k++) matsX[k] = cxOf(k) - bw / 2;
-        x0 = cxOf(r.from) + g / 2; w = cxOf(r.to) - g / 2 - x0;
+
+  /**
+   * Horizontal stacked bars (the wallet pages): one row per bar, its width relative to the largest total.
+   *   rows    [{ label, total, totalText, segments: [{ value, color, lightInk, text, tip: { value, label } }] }];
+   *           segments of €0.50 or less are left out, and lightInk marks light fills that take dark text in light mode
+   *   reserve the px each row keeps for its total, next to the bar
+   * A segment's label that does not fit is hidden: the tooltip and the table still give it.
+   */
+  function stackedBars(box, rows, reserve) {
+    clear(box);
+    const max = Math.max(...rows.map((row) => row.total), 1);
+    for (const row of rows) {
+      const line = el('div', 'bar-row');
+      line.appendChild(el('div', 'rl', row.label));
+      const track = el('div', 'bar-track');
+      const bar = el('div', 'bar');
+      bar.style.width = `calc((100% - ${reserve}px) * ${row.total / max})`;
+      for (const segment of row.segments) {
+        if (segment.value <= 0.5) continue;
+        const piece = el('div', segment.lightInk && !isDark() ? 'sg light-ink' : 'sg');
+        piece.style.flex = `${segment.value} 0 0`;
+        piece.style.background = segment.color;
+        piece.appendChild(el('span', null, segment.text));
+        hoverable(piece, segment.tip.value, segment.tip.label);
+        bar.appendChild(piece);
       }
-      var yt = bar(x0, w, r.v, 'var(--cont)', 'm7'), cx = x0 + w / 2;
-      if (n > 1 && w < 170) {
-        s('text', { x: cx, y: yt - 20, 'text-anchor': 'middle', class: 'dl' }, eurShort(r.v));
-        s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'xv' }, 'one limit');
-      } else if (n > 1) s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(r.v) + ', one limit for ' + n + ' days');
-      else if (r === loM || r === hiM) s('text', { x: cx, y: yt - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(r.v));
-      var hit = s('rect', { x: x0 - 2, y: m.t, width: w + 4, height: ph, class: 'hit' });
-      hoverable(hit, eur(r.v), r.bd ? 'M7 continuous · ' + dLabel(r.date) + ' at 12:00, after the morning settlement (' + dLabel(r.calc) + '\'s calculation)'
-        : 'M7 continuous · ' + dLabel(items[r.from].date) + (n > 1 ? ' to ' + dLabel(items[r.to].date) : '') + ': one limit' + (n > 1 ? ' for all ' + n + ' days' : '') + ', ' + dLabel(r.calc) + '\'s evening limit until ' + dLabel(r.until) + ' morning');
-      r.n = n;
-    });
-    var lo = minBy(items, function (a) { return a.limit; }), hi = maxBy(items, function (a) { return a.limit; });
-    items.forEach(function (a, i) {
-      var run = runs.filter(function (r) { return i >= r.from && i <= r.to; })[0], inside = run.n > 2 && i > run.from && i < run.to;
-      var x0 = matsX[i], yt = bar(x0, bw, a.limit, 'var(--da)', 'mats', inside);
-      if (a === lo || a === hi) s('text', { x: x0 + bw / 2, y: yt - 7, 'text-anchor': 'middle', class: 'dl' }, eurShort(a.limit));
-      var hit = s('rect', { x: x0 - 2, y: m.t, width: bw + 4, height: ph, class: 'hit' });
-      hoverable(hit, eur(a.limit), 'MATS auctions · ' + dLabel(a.date) + ' day-ahead auction · ' + (a.settled ? (a.rollover ? 'after settlement, full limit again if the weekend or holiday auctions went unused' : 'after settlement') : (a.note ? dayNote(a.note) + ', ' : '') + 'share of ' + dShort(a.calc) + '\'s calculation'));
-    });
-    if (target > 0) {
-      s('line', { x1: m.l, x2: W - m.r, y1: y(target), y2: y(target), stroke: 'var(--ink)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4' });
-      s('text', { x: W - m.r, y: y(target) - 6, 'text-anchor': 'end', class: 'dl' }, 'MATS target ' + eurShort(target));
+      track.appendChild(bar);
+      track.appendChild(el('div', 'bar-total', row.totalText));
+      line.appendChild(track);
+      box.appendChild(line);
     }
-    box.appendChild(svg);
-    var key = $('auction-key'); key.textContent = '';
-    var k0 = el('span'); k0.appendChild(el('span', 'swatch sw-cont')); k0.appendChild(document.createTextNode('M7 continuous at 12:00 (one bar across a weekend: one limit)')); key.appendChild(k0);
-    var k1 = el('span'); k1.appendChild(el('span', 'swatch sw-da')); k1.appendChild(document.createTextNode('MATS auctions: limit at the day-ahead auction')); key.appendChild(k1);
-    if (items.some(function (a) { return !a.bd; })) { var k2 = el('span'); k2.appendChild(el('span', 'band-key')); k2.appendChild(document.createTextNode('Weekend or holiday')); key.appendChild(k2); }
-    if (target > 0) { var k3 = el('span'); k3.appendChild(el('span', 'line-key')); k3.appendChild(document.createTextNode('Your MATS target')); key.appendChild(k3); }
-  }
-
-  // ---------- O09 ----------
-  function o09Rows(res) {
-    return [
-      ['M7 continuous', res.p.cont.bd, res.p.cont.nbd, res.p.cont.key],
-      ['MATS auctions', res.p.da.bd, res.p.da.nbd, res.p.da.key]
-    ];
-  }
-  function renderO09(res) {
-    $('o09-note').hidden = !(res.inv && res.inv.daily);
-    var t = $('o09-table'); t.textContent = '';
-    var thead = el('thead'), h = el('tr');
-    [['Market', ''], ['Base limit, business day', 'r'], ['Base limit, non-business day', 'r'], ['Split of excess collateral', 'r']].forEach(function (x) { var th = el('th', x[1], x[0]); th.scope = 'col'; h.appendChild(th); });
-    thead.appendChild(h); t.appendChild(thead);
-    var tb = el('tbody');
-    o09Rows(res).forEach(function (r) {
-      var tr = el('tr');
-      tr.appendChild(el('td', null, r[0]));
-      tr.appendChild(el('td', 'r', eur(r[1]))); tr.appendChild(el('td', 'r', eur(r[2]))); tr.appendChild(el('td', 'r', r[3] + '%'));
-      tb.appendChild(tr);
+    requestAnimationFrame(() => {
+      for (const piece of box.querySelectorAll('.sg')) {
+        const label = piece.firstChild;
+        label.style.visibility = label.scrollWidth + 8 <= piece.clientWidth ? '' : 'hidden';
+      }
     });
-    t.appendChild(tb);
   }
-  var lastRes = null;
-  $('copy-o09').addEventListener('click', function () {
-    if (!lastRes) return;
-    var lines = ['Market\tBase limit, business day\tBase limit, non-business day\tSplit %'];
-    o09Rows(lastRes).forEach(function (r) { lines.push([r[0], Math.round(r[1]), Math.round(r[2]), r[3]].join('\t')); });
-    var text = lines.join('\n');
-    var state = $('copy-state');
-    try {
-      navigator.clipboard.writeText(text).then(function () { state.textContent = 'Copied.'; }, function () { state.textContent = 'Copy blocked here. Select the table and copy it instead.'; });
-    } catch (e) { state.textContent = 'Copy blocked here. Select the table and copy it instead.'; }
-  });
 
-  // ---------- links to and from the wallet estimate ----------
-  // Values travel in the link after the # (not sent to the server, nothing stored). From the wallet the link also carries
-  // the wallet's own answers, so "Back" and "Use these limits" reopen the same estimate.
-  function enc(o) { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
-  function dec(t) { try { return JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return null; } }
-  // The wallet estimate: on the hosted site, or next to this file when opened from disk; elsewhere no link.
-  function walletPage() {
-    if (/\/limits\/?$/.test(location.pathname)) return '/estimate';
-    if (location.protocol === 'file:' && /\/standalone\/direct-plus-limit-calculator\.html$/.test(location.pathname)) return '../wallet/standalone/direct-plus-wallet-prospect.html';
+  /** A legend entry: a colour swatch and its text. */
+  function legendItem(color, text) {
+    const item = el('span');
+    const swatch = el('span', 'swatch');
+    swatch.style.background = color;
+    item.appendChild(swatch);
+    item.appendChild(document.createTextNode(text));
+    return item;
+  }
+
+  const last = (list) => list[list.length - 1];
+
+  return {
+    $,
+    el,
+    clear,
+    isDark,
+    headerRow,
+    tableHead,
+    tableRow,
+    wholeNumber,
+    euros,
+    thousands,
+    thousandsDiff,
+    shortEuros,
+    shortThousands,
+    WEEKDAYS,
+    WEEKDAYS_LONG,
+    MONTHS,
+    DAY_MS,
+    addDays,
+    plusDays,
+    mondayOf,
+    dateLabel,
+    clampWeek,
+    nextMonday,
+    holidayWeeks,
+    hoverable,
+    svgCanvas,
+    barPath,
+    niceStep,
+    stackedBars,
+    legendItem,
+    last,
+  };
+})(LimitEngine);
+
+/* Direct+ pages: the links between the limit calculator and the wallet estimate. Values travel in the link after the #:
+   browsers don't send that part to the server, and nothing is stored. */
+const Handoff = (() => {
+  'use strict';
+
+  // Where each page is: its route on the hosted site (scripts/serve.js), and its file in dist/.
+  const PAGES = {
+    limits: { route: '/limits', file: 'standalone/direct-plus-limit-calculator.html' },
+    estimate: { route: '/estimate', file: 'wallet/standalone/direct-plus-wallet-prospect.html' },
+  };
+
+  /** A value as URL-safe base64 of its JSON. */
+  function encode(value) {
+    const bytes = new TextEncoder().encode(JSON.stringify(value));
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  /** The value encode() wrote, or null for anything else. */
+  function decode(text) {
+    try {
+      const binary = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0))));
+    } catch {
+      return null;
+    }
+  }
+
+  /** The parts of the address after the #, as a Map of key → value (in order). */
+  function readHash() {
+    const parts = new Map();
+    for (const part of location.hash.replace(/^#/, '').split('&')) {
+      const split = part.indexOf('=');
+      if (split > 0) parts.set(part.slice(0, split), part.slice(split + 1));
+    }
+    return parts;
+  }
+
+  /** The text after the # for [key, value] pairs. */
+  const hashOf = (pairs) => pairs.map(([key, value]) => `${key}=${value}`).join('&');
+
+  /**
+   * The link to page `target` ('limits' or 'estimate'): its route on the hosted site, or its file next to this one when
+   * the page is opened from dist/ on disk. Anywhere else, such as the claude.ai copy, there is no link (null).
+   */
+  function linkTo(target) {
+    const { pathname, protocol } = location;
+    for (const page of Object.values(PAGES)) {
+      if (new RegExp(`${page.route}/?$`).test(pathname)) return PAGES[target].route;
+      if (protocol === 'file:' && pathname.endsWith(`/${page.file}`)) {
+        const up = '../'.repeat(page.file.split('/').length - 1);
+        return up + PAGES[target].file;
+      }
+    }
     return null;
   }
-  var fromWallet = null, walletBack = [];   // the wallet's hand-off, and its own state (answers) to take back
-  function walletHref(res, back) {
-    var page = walletPage(); if (!page || res.C === null || !(res.C > 0)) return null;
-    var setup = { C: Math.round(res.C), key: res.key, cbd: res.s.cont.bd, cnbd: res.s.cont.nbd, abd: res.s.da.bd, anbd: res.s.da.nbd, week: res.s.week };
-    return page + '#' + walletBack.filter(function (kv) { return kv.indexOf('ecc=') !== 0; }).concat(back ? [] : ['ecc=' + enc(setup)]).join('&');
+
+  return { encode, decode, readHash, hashOf, linkTo };
+})();
+
+/* Direct+ limit calculator: collateral to ECC trading limits for M7 continuous and MATS auctions, and back. The engine
+   (src/engine.js) does the calculation; this script reads the form and draws the results. */
+(() => {
+  'use strict';
+
+  const E = LimitEngine;
+  const {
+    $,
+    el,
+    clear,
+    euros,
+    shortEuros,
+    wholeNumber,
+    dateLabel,
+    WEEKDAYS,
+    WEEKDAYS_LONG,
+    MONTHS,
+    DAY_MS,
+    addDays,
+    plusDays,
+    hoverable,
+    headerRow,
+    tableHead,
+    tableRow,
+    svgCanvas,
+    barPath,
+    niceStep,
+    last,
+  } = PageUI;
+
+  const minBy = (list, value) =>
+    list.reduce((best, item) => (best === null || value(item) < value(best) ? item : best), null);
+  const maxBy = (list, value) =>
+    list.reduce((best, item) => (best === null || value(item) > value(best) ? item : best), null);
+  const weekdayOf = (iso) => E.parse(iso).getUTCDay();
+  const gapAfter = (day) => Math.round((E.nextBD(day) - day) / DAY_MS);
+
+  // ---------- page state ----------
+
+  let selectedDay = null; // the calculation day shown in the daily cycle (ISO)
+  let weekView = 'calc'; // the week table: ECC's calculations (the default, a Direct+ decision) or 'days'
+  let current = null; // the last drawing: the form, its results and its day labels
+  let fromWallet = null; // what the wallet estimate handed over, when it opened this page
+  let walletState = []; // the wallet estimate's own state in the link, as [key, value], to take back
+
+  // ---------- day labels ----------
+
+  /* In a standard week (no ECC holiday from the Friday before to the Monday after) the dates don't matter, so the page
+     names days by weekday only: 'Friday', 'Mon'. Holiday weeks keep their dates: 'Fri 25 Dec', 'Fri 25'. */
+  function dayLabels(standardWeek) {
+    return {
+      day: (iso, withYear) => (standardWeek ? WEEKDAYS_LONG[weekdayOf(iso)] : dateLabel(iso, withYear)),
+      short: (iso) =>
+        standardWeek ? WEEKDAYS[weekdayOf(iso)] : `${WEEKDAYS[weekdayOf(iso)]} ${E.parse(iso).getUTCDate()}`,
+    };
   }
-  function updateLinks(res) {
-    var to = walletHref(res, false);
-    $('to-wallet').hidden = !to; if (to) $('to-wallet').href = to;
+  const DATED = dayLabels(false);
+
+  const dayNote = (name) => (name === 'Weekend' ? 'weekend' : name);
+
+  /** The auctions that get a share of a calculation: all but the settled one on the next business day. */
+  const shareAuctions = (row) => row.da.auctions.filter((auction) => !auction.settled);
+
+  function shareDaysShort(auctions) {
+    const names = auctions.map((auction) => WEEKDAYS[weekdayOf(auction.date)]);
+    return names.length > 2 ? `${names[0]}–${last(names)}` : names.join(', ');
+  }
+
+  // ---------- amount fields ----------
+  // Whole euros, shown with thousands separators as you type. The arrow keys and the arrow buttons step by data-step.
+
+  function amount(id) {
+    const value = parseFloat($(id).value.replace(/[^\d.]/g, ''));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  /** Regroups the digits with thousands separators, keeping the caret after the same digit. */
+  function groupDigits(input) {
+    const raw = input.value;
+    const caret = input.selectionStart ?? raw.length;
+    const digitsBefore = raw.slice(0, caret).replace(/\D/g, '').length;
+    const digits = raw
+      .replace(/\D/g, '')
+      .replace(/^0+(?=\d)/, '')
+      .slice(0, 12);
+    const grouped = digits ? wholeNumber.format(+digits) : '';
+    if (grouped === raw) return;
+    input.value = grouped;
+    if (document.activeElement !== input) return;
+    let position = 0;
+    for (let seen = 0; position < grouped.length && seen < digitsBefore; position++) {
+      if (/\d/.test(grouped[position])) seen++;
+    }
+    input.setSelectionRange(position, position);
+  }
+
+  function stepAmount(input, direction) {
+    const step = +input.dataset.step || 1;
+    const value = amount(input.id);
+    const next =
+      direction > 0 ? Math.floor(value / step) * step + step : Math.max(0, Math.ceil(value / step) * step - step);
+    input.value = wholeNumber.format(next);
+    schedule();
+  }
+
+  const STEPPERS = [
+    { direction: 1, name: 'up', label: 'Increase', path: 'M1 5l4-4 4 4' },
+    { direction: -1, name: 'down', label: 'Decrease', path: 'M1 1l4 4 4-4' },
+  ];
+
+  /* Arrow buttons like a number field's: a press steps once, holding keeps stepping. They are out of the tab order (the
+     arrow keys do the same), but still announced and clickable for screen readers. */
+  function addSteppers(input) {
+    const box = el('div', 'steppers');
+    const by = ` by €${wholeNumber.format(+input.dataset.step || 1)}`;
+    for (const { direction, name, label, path } of STEPPERS) {
+      const button = el('button', `step-${name}`);
+      button.type = 'button';
+      button.tabIndex = -1;
+      button.setAttribute('aria-label', label + by);
+      button.innerHTML = `<svg viewBox="0 0 10 6" aria-hidden="true"><path d="${path}"/></svg>`;
+      let timer = null;
+      const stop = () => {
+        clearTimeout(timer);
+        timer = null;
+      };
+      const repeat = () => {
+        stepAmount(input, direction);
+        timer = setTimeout(repeat, 80);
+      };
+      button.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        stop();
+        stepAmount(input, direction);
+        timer = setTimeout(repeat, 450);
+      });
+      for (const type of ['pointerup', 'pointerleave', 'pointercancel']) button.addEventListener(type, stop);
+      button.addEventListener('click', (event) => {
+        if (event.detail === 0) stepAmount(input, direction); // a keyboard or screen reader click
+      });
+      box.appendChild(button);
+    }
+    input.parentNode.appendChild(box);
+  }
+
+  function setUpAmount(input) {
+    input.addEventListener('input', () => groupDigits(input));
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+      event.preventDefault();
+      stepAmount(input, event.key === 'ArrowUp' ? 1 : -1);
+    });
+    addSteppers(input);
+  }
+
+  // ---------- weeks ----------
+
+  const holidaysByWeek = {}; // the holidays of each holiday week in the list
+  const walletWeeks = new Set(); // weeks added to the list for a wallet estimate
+
+  /** The weekday ECC holidays from the Friday before the week to the Monday after it. */
+  function nearbyHolidays(monday) {
+    const days = [];
+    for (let i = -3; i <= 7; i++) {
+      const iso = plusDays(monday, i);
+      const weekday = weekdayOf(iso);
+      if (weekday !== 0 && weekday !== 6 && !E.isBD(E.parse(iso))) days.push(iso);
+    }
+    return days;
+  }
+
+  /** A standard week: its weekdays, the Friday before and the Monday after are all ECC business days, so no
+   *  calculation in it covers a holiday. */
+  const isStandardWeek = (monday) => nearbyHolidays(monday).length === 0;
+
+  function firstStandardWeek() {
+    for (let monday = PageUI.nextMonday(); plusDays(monday, 7) <= E.MAX_DATE; monday = plusDays(monday, 7)) {
+      if (isStandardWeek(monday)) return monday;
+    }
+    return PageUI.nextMonday();
+  }
+
+  function holidayOptionLabel({ days, names }) {
+    const first = E.parse(days[0]);
+    const end = E.parse(last(days));
+    let when;
+    if (days.length === 1) when = DATED.day(days[0], true);
+    else if (first.getUTCMonth() === end.getUTCMonth()) {
+      when = `${first.getUTCDate()}–${end.getUTCDate()} ${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`;
+    } else when = `${DATED.day(days[0]).slice(4)} – ${DATED.day(last(days), true).slice(4)}`;
+    return `${names.join(' and ')} · ${when}`;
+  }
+
+  function fillWeeks() {
+    const select = $('week');
+    const standard = el('option', null, 'A standard week, no holidays');
+    standard.value = firstStandardWeek();
+    select.appendChild(standard);
+    const weeks = PageUI.holidayWeeks();
+    if (!weeks.length) return;
+    const group = document.createElement('optgroup');
+    group.label = 'Weeks with an ECC holiday, next 12 months';
+    for (const week of weeks) {
+      const option = el('option', null, holidayOptionLabel(week));
+      option.value = week.monday;
+      holidaysByWeek[week.monday] = week.days;
+      group.appendChild(option);
+    }
+    select.appendChild(group);
+  }
+
+  const holidayList = (days) => days.map((day) => `${E.HOLIDAYS[day]} (${DATED.short(day)})`).join(' and ');
+
+  function weekNote() {
+    const monday = $('week').value;
+    const from = E.parse(monday);
+    const to = E.parse(plusDays(monday, 4));
+    const sameMonth = from.getUTCMonth() === to.getUTCMonth();
+    const span =
+      `Mon ${from.getUTCDate()}${sameMonth ? '' : ` ${MONTHS[from.getUTCMonth()]}`} – ` +
+      `Fri ${to.getUTCDate()} ${MONTHS[to.getUTCMonth()]} ${to.getUTCFullYear()}`;
+    const plain = '. Every day is an ECC business day; the Friday calculation covers the weekend.';
+    const holidays = holidaysByWeek[monday];
+    const fromEstimate = walletWeeks.has(monday);
+    let note;
+    if (!holidays && isStandardWeek(monday)) {
+      note =
+        `${fromEstimate ? 'The week of your wallet estimate, a standard week' : 'A standard week'}: ` +
+        'every day is an ECC business day, and the Friday calculation covers the weekend.';
+    } else if (!holidays && fromEstimate) {
+      const near = nearbyHolidays(monday);
+      note = `Showing ${span}, the week of your wallet estimate`;
+      note += near.length
+        ? `. ${holidayList(near)} ${near.length > 1 ? 'are' : 'is'} not an ECC business day, which affects this week's calculations.`
+        : plain;
+    } else if (holidays) {
+      note = `Showing ${span}. ${holidayList(holidays)}`;
+      note += holidays.length > 1 ? ' are not ECC business days.' : ' is not an ECC business day.';
+    } else {
+      note = `Showing ${span}${plain}`;
+    }
+    $('week-note').textContent = note;
+  }
+
+  /** Adds the week of a wallet estimate to the list when it is missing; false when `iso` is not a Monday in range. */
+  function ensureWeek(iso) {
+    const isMonday = /^\d{4}-\d{2}-\d{2}$/.test(iso || '') && weekdayOf(iso) === 1;
+    if (!isMonday || iso < E.MIN_DATE || plusDays(iso, 7) > E.MAX_DATE) return false;
+    if (!$('week').querySelector(`option[value="${iso}"]`)) {
+      const option = el('option', null, `Week of ${DATED.day(iso, true)}, from your wallet estimate`);
+      option.value = iso;
+      $('week').appendChild(option);
+      walletWeeks.add(iso);
+    }
+    return true;
+  }
+
+  // ---------- the form and the calculation ----------
+
+  const checked = (name) => document.querySelector(`input[name="${name}"]:checked`).value;
+
+  function readForm() {
+    return {
+      mode: checked('mode'),
+      week: PageUI.clampWeek($('week').value || firstStandardWeek()),
+      C: amount('collateral'),
+      OR: amount('open-risk'),
+      cont: { bd: amount('c-bd'), nbd: amount('c-nbd') },
+      da: { bd: amount('a-bd'), nbd: amount('a-nbd') },
+      split: Math.max(0, Math.min(100, parseInt($('split').value, 10) || 0)),
+      tCont: amount('t-cont'),
+      tContMeasure: checked('t-cont-when'),
+      tDa: amount('t-da'),
+      tDaNonBD: $('t-da-nonbd').checked,
+      keyMode: checked('keymode'),
+      cmode: checked('cmode'),
+      scope: checked('scope'),
+    };
+  }
+
+  /** The engine's two-market parameters for the form, with continuous share `key` and collateral C. */
+  const engineParams = (input, key, C) => ({
+    C,
+    OR: input.OR,
+    cont: { bd: input.cont.bd, nbd: input.cont.nbd, key },
+    da: { bd: input.da.bd, nbd: input.da.nbd, key: 100 - key },
+  });
+
+  /**
+   * The collateral that the target limits need (the second mode), with the split chosen: the cheapest split or the
+   * member's own. 'Weekend only' sizes the calculation before the weekend or holiday and reports the other days;
+   * 'optimised by day' sizes every calculation day on its own.
+   */
+  function sizeCollateral(input, days) {
+    const base = engineParams(input, input.split);
+    const targets = { cont: input.tCont, contMeasure: input.tContMeasure, da: input.tDa, daNonBD: input.tDaNonBD };
+    const cheapestSplit = input.keyMode === 'cheapest';
+    const weekendOnly = input.scope === 'weekend';
+    let solveDays = weekendOnly ? days.filter((day) => gapAfter(day) > 1) : days;
+    if (!solveDays.length) solveDays = days;
+    const sizing = {
+      targets,
+      days: solveDays,
+      mine: E.solve(solveDays, base, targets),
+      cheapest: E.cheapestKey(solveDays, base, targets),
+      otherDays: null,
+      byDay: null,
+      staticWeek: null,
+      binding: null,
+    };
+    if (weekendOnly && solveDays.length < days.length) {
+      const rest = days.filter((day) => gapAfter(day) === 1);
+      sizing.otherDays = { mine: E.solve(rest, base, targets), cheapest: E.cheapestKey(rest, base, targets) };
+    }
+    let C = cheapestSplit ? (sizing.cheapest ? sizing.cheapest.C : null) : sizing.mine;
+    let key = cheapestSplit && sizing.cheapest ? sizing.cheapest.key : input.split;
+    if (input.cmode === 'daily') {
+      const sized = (list) =>
+        cheapestSplit ? E.cheapestKey(list, base, targets) : { key: input.split, C: E.solve(list, base, targets) };
+      const byDay = days.map((day) => sized([day]));
+      sizing.staticWeek = sized(days);
+      if (byDay.some((one) => !one || one.C === null)) {
+        C = null;
+      } else {
+        const peak = byDay.reduce((top, one) => (!top || one.C > top.C ? one : top), null);
+        sizing.byDay = byDay;
+        C = peak.C;
+        key = peak.key;
+      }
+    }
+    if (C !== null && !sizing.byDay) sizing.binding = E.binding(C, solveDays, engineParams(input, key), targets);
+    return { ...sizing, C, key };
+  }
+
+  function compute(input) {
+    const days = E.weekDays(input.week);
+    const sizing = input.mode === 'inv' ? sizeCollateral(input, days) : null;
+    const key = sizing ? sizing.key : input.split;
+    const C = sizing ? sizing.C : input.C;
+    const p = engineParams(input, key, C === null ? 0 : C);
+    const rows = days.map((day, i) => {
+      const own = sizing && sizing.byDay ? engineParams(input, sizing.byDay[i].key, sizing.byDay[i].C) : p;
+      return { ...E.day(day, own), p: own };
+    });
+    return { input, days, rows, p, key, C, sizing };
+  }
+
+  /** Every auction of the week's calculations, with the calculation that set it. */
+  const allAuctions = (rows) =>
+    rows.flatMap((row) =>
+      row.da.auctions.map(({ date, limit, settled, rollover, bd, note }) => ({
+        date,
+        limit,
+        settled,
+        rollover,
+        bd,
+        note,
+        calc: row.date,
+      })),
+    );
+
+  // ---------- tiles ----------
+
+  function tile(label, value, sub, { hero = false, swatch = null } = {}) {
+    const node = el('div', hero ? 'tile hero' : 'tile');
+    const head = el('div', 't-label');
+    if (swatch) head.appendChild(el('span', `swatch ${swatch}`));
+    head.appendChild(document.createTextNode(label));
+    node.appendChild(head);
+    node.appendChild(el('div', 't-value', value));
+    if (sub) node.appendChild(el('div', 't-sub', sub));
+    return node;
+  }
+
+  function limitTiles({ rows, labels }) {
+    const lowCont = minBy(rows, (row) => row.cont.l18);
+    const highCont = maxBy(rows, (row) => row.cont.l18);
+    const auctions = allAuctions(rows);
+    const lowAuction = minBy(auctions, (auction) => auction.limit);
+    const highAuction = maxBy(auctions, (auction) => auction.limit);
+    const highReserve = maxBy(rows, (row) => row.blr);
+    const lowReserve = minBy(rows, (row) => row.blr);
+    const auctionNote = lowAuction.note ? ` (${dayNote(lowAuction.note)})` : '';
+    return [
+      tile(
+        'M7 continuous, from 18:00',
+        shortEuros(lowCont.cont.l18),
+        `lowest, ${labels.day(lowCont.date)} · highest ${shortEuros(highCont.cont.l18)}`,
+        { swatch: 'sw-cont' },
+      ),
+      tile(
+        'MATS auctions, per day-ahead auction',
+        shortEuros(lowAuction.limit),
+        `lowest, ${labels.day(lowAuction.date)}${auctionNote} · highest ${shortEuros(highAuction.limit)}`,
+        { swatch: 'sw-da' },
+      ),
+      tile(
+        'Reserved for base limits',
+        shortEuros(highReserve.blr),
+        `peak, ${labels.day(highReserve.date)}` +
+          (lowReserve.blr < highReserve.blr ? ` · lowest ${shortEuros(lowReserve.blr)}` : ''),
+      ),
+    ];
+  }
+
+  function dailyTiles({ rows, sizing, labels }) {
+    const peak = maxBy(rows, (row) => row.p.C);
+    const others = rows.filter((row) => row !== peak);
+    const low = minBy(others, (row) => row.p.C);
+    const high = maxBy(others, (row) => row.p.C);
+    let held = 0;
+    let daysHeld = 0;
+    for (const row of rows) {
+      held += row.p.C * row.gap1;
+      daysHeld += row.gap1;
+    }
+    let peakSub = `highest for ${labels.day(peak.date)}'s calculation`;
+    if (peak.gap1 > 1) peakSub += ` (covers ${peak.gap1} days)`;
+    if (low) {
+      peakSub += ` · other days ${euros(low.p.C)}`;
+      if (Math.round(high.p.C) !== Math.round(low.p.C)) peakSub += ` to ${euros(high.p.C)}`;
+    }
+    const fixed = sizing.staticWeek;
+    const reachable = fixed && fixed.C !== null;
+    return [
+      tile('Collateral, optimised by day', euros(peak.p.C), peakSub, { hero: true }),
+      tile(
+        'Static, for comparison',
+        reachable ? euros(fixed.C) : 'Not reachable',
+        reachable ? `one amount all week, split ${fixed.key} / ${100 - fixed.key}` : '',
+      ),
+      tile(
+        'Average held over the week',
+        euros(held / daysHeld),
+        'weighted by the calendar days each amount is in place',
+      ),
+    ];
+  }
+
+  function bindingText(binding, labels) {
+    if (!binding) return '–';
+    if (binding.market === 'base') return 'Base limits';
+    if (binding.market === 'cont') return `M7 continuous, ${labels.short(binding.date)}`;
+    return `MATS auctions, ${labels.short(binding.date)}`;
+  }
+
+  function bindingSub(binding, labels) {
+    if (!binding) return '';
+    if (binding.market === 'base')
+      return `Collateral must at least cover the reserved base limits on ${labels.day(binding.date)}`;
+    if (binding.market === 'cont') return `the evening calculation on ${labels.day(binding.date)} is the tightest`;
+    const name = E.holidayName(E.parse(binding.date));
+    const share = name ? ` (${dayNote(name)}, share of ${labels.short(binding.calc)}'s calculation)` : '';
+    return `day-ahead auction on ${labels.day(binding.date)}${share}`;
+  }
+
+  function sizingTiles(view) {
+    const { input, days, sizing, labels } = view;
+    if (sizing.C === null) {
+      const why = 'A market with a 0% split cannot get above its base limit. Change the split or the target.';
+      return [tile('Collateral needed', 'Not reachable', why, { hero: true })];
+    }
+    if (sizing.byDay) return dailyTiles(view);
+    const cheapestSplit = input.keyMode === 'cheapest';
+    const scope =
+      input.scope === 'weekend' && sizing.days.length < days.length
+        ? `for ${sizing.days.map((day) => labels.short(E.iso(day))).join(' and ')}'s calculation, which covers the weekend`
+        : 'for every day this week';
+    let otherDays = '';
+    if (sizing.otherDays) {
+      const cheapest = cheapestSplit ? sizing.otherDays.cheapest : null;
+      const mine = sizing.otherDays.mine;
+      if (cheapest)
+        otherDays = ` · the other days need about ${euros(cheapest.C)} at ${cheapest.key} / ${100 - cheapest.key}`;
+      else if (mine !== null) otherDays = ` · the other days need ${euros(mine)} with this split`;
+    }
+    const sub =
+      `${scope}, M7 continuous / MATS auctions split ${sizing.key} / ${100 - sizing.key}` +
+      (cheapestSplit ? ' (least collateral)' : '') +
+      otherDays;
+    const tiles = [tile('Collateral needed', euros(sizing.C), sub, { hero: true })];
+    if (cheapestSplit) {
+      const { mine } = sizing;
+      let mineSub = '';
+      if (mine !== null) {
+        mineSub =
+          mine - sizing.C > 0.5
+            ? `${euros(mine - sizing.C)} more than the cheapest split`
+            : 'already the cheapest split';
+      }
+      tiles.push(
+        tile(
+          `With your split (${input.split} / ${100 - input.split})`,
+          mine === null ? 'Not reachable' : euros(mine),
+          mineSub,
+        ),
+      );
+    } else {
+      const { cheapest } = sizing;
+      let cheapestSub = '';
+      if (cheapest) {
+        cheapestSub =
+          sizing.C - cheapest.C > 0.5 ? `saves ${euros(sizing.C - cheapest.C)}` : 'your split is already the cheapest';
+      }
+      tiles.push(
+        tile(
+          `Cheapest split${cheapest ? ` (${cheapest.key} / ${100 - cheapest.key})` : ''}`,
+          cheapest ? euros(cheapest.C) : 'Not reachable',
+          cheapestSub,
+        ),
+      );
+    }
+    tiles.push(tile('What sets the amount', bindingText(sizing.binding, labels), bindingSub(sizing.binding, labels)));
+    return tiles;
+  }
+
+  function renderTiles(view) {
+    const box = clear($('tiles'));
+    const tiles = view.input.mode === 'inv' ? sizingTiles(view) : limitTiles(view);
+    for (const node of tiles) box.appendChild(node);
+  }
+
+  // ---------- shortfall alert ----------
+
+  function renderAlert({ rows, labels }) {
+    const box = clear($('alert'));
+    const uncovered = rows.filter((row) => row.baseUncovered);
+    const short = rows.filter((row) => !row.baseUncovered && row.excess < 0);
+    box.hidden = !uncovered.length && !short.length;
+    if (box.hidden) return;
+    const dayList = (list) => list.map((row) => labels.short(row.date)).join(', ');
+    let message;
+    if (uncovered.length) {
+      const worst = maxBy(uncovered, (row) => row.blr);
+      message =
+        `Your reserved base limits (${euros(worst.blr)} on ${labels.day(worst.date)}) exceed your collateral on ` +
+        `${dayList(uncovered)}. ECC's tool flags this setup as invalid: lower the base limits or add collateral.`;
+    } else {
+      const worst = minBy(short, (row) => row.excess);
+      message =
+        `On ${dayList(short)} unsettled purchases and reserved base limits exceed your collateral by up to ` +
+        `${euros(-worst.excess)}. No dynamic limit is added those evenings; you keep only your base limits until settlement.`;
+    }
+    box.appendChild(el('span', 'tag', 'Shortfall'));
+    box.appendChild(el('span', null, message));
+  }
+
+  // ---------- calculation day: tabs, daily cycle, where the collateral goes ----------
+
+  /** The day to show first: the smallest excess collateral, and on a tie the longest gap. */
+  function defaultDay(rows) {
+    let best = null;
+    for (const row of rows) {
+      const tied = best && Math.abs(row.excess - best.excess) <= 0.5;
+      if (!best || row.excess < best.excess - 0.5 || (tied && row.gap1 > best.gap1)) best = row;
+    }
+    return best ? best.date : null;
+  }
+
+  function renderTabs({ rows, labels, standardWeek }) {
+    const box = clear($('day-tabs'));
+    if (!rows.some((row) => row.date === selectedDay)) selectedDay = defaultDay(rows);
+    for (const row of rows) {
+      const tab = el('button', 'tab');
+      tab.type = 'button';
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', row.date === selectedDay ? 'true' : 'false');
+      tab.appendChild(document.createTextNode(labels.short(row.date)));
+      if (row.gap1 > 1 || !standardWeek) {
+        tab.appendChild(
+          el('small', null, row.gap1 > 1 ? `to ${labels.short(row.nextBD)}` : MONTHS[E.parse(row.date).getUTCMonth()]),
+        );
+      }
+      tab.addEventListener('click', () => {
+        selectedDay = row.date;
+        render();
+      });
+      box.appendChild(tab);
+    }
+  }
+
+  function cycleHeader(time, what) {
+    const cell = el('div', 'h step');
+    cell.appendChild(el('span', 'time', time));
+    cell.appendChild(el('span', 'what', what));
+    return cell;
+  }
+
+  function cycleMarket(swatch, name) {
+    const cell = el('div', 'mk');
+    cell.appendChild(el('span', `swatch ${swatch}`));
+    cell.appendChild(document.createTextNode(name));
+    return cell;
+  }
+
+  function cycleCell(value, note) {
+    const cell = el('div', 'step');
+    cell.appendChild(el('div', 'v', value));
+    if (note) cell.appendChild(el('div', 'n', note));
+    return cell;
+  }
+
+  function renderCycle(row, { labels }) {
+    const box = clear($('cycle'));
+    $('day-title').textContent = `Your limits after the calculation on ${labels.day(row.date, true)}`;
+    const next = labels.day(row.nextBD);
+    const nextShort = labels.short(row.nextBD);
+    const long = row.gap1 > 1;
+    const shared = shareAuctions(row);
+    const kind = shared.every((auction) => auction.note === 'Weekend') ? 'weekend' : 'weekend or holiday';
+    const perAuction = long
+      ? `Per ${kind} auction: ${shared.map((auction) => labels.short(auction.date)).join(', ')} · ÷ ${row.gap1} because ` +
+        `${WEEKDAYS_LONG[weekdayOf(row.date)]}'s calculation lasts until ${WEEKDAYS_LONG[weekdayOf(row.nextBD)]}`
+      : 'Per auction';
+    const cells = [
+      el('div', 'h'),
+      cycleHeader('16:00', 'Limit resets to the base limit'),
+      cycleHeader(
+        'From ~18:00 (best effort)',
+        `Dynamic limit added, until ${long ? `${next} morning` : 'the next morning'}`,
+      ),
+      cycleHeader(`By 10:45, ${next}`, 'Settled purchases added back'),
+      cycleMarket('sw-cont', 'M7 continuous'),
+      cycleCell(
+        euros(row.cont.l16),
+        long ? `Covers ${row.gap1} days, until ${nextShort} 16:00` : 'Until the dynamic limit arrives',
+      ),
+      cycleCell(euros(row.cont.l18), long ? `Must last until ${nextShort} morning` : 'Until settlement'),
+      cycleCell(euros(row.cont.l09), `+ ${euros((row.refill * row.p.cont.key) / 100)} settled, until 16:00`),
+      cycleMarket('sw-da', 'MATS auctions'),
+      cycleCell(euros(row.da.l16), long ? 'Per auction day (max of BD, NBD)' : 'Base limit'),
+      cycleCell(euros(row.da.l18), perAuction),
+      cycleCell(
+        euros(row.da.l09),
+        `At ${nextShort}'s 12:00 auction${long ? ', full limit again if the weekend auctions went unused' : ''}`,
+      ),
+    ];
+    for (const cell of cells) box.appendChild(cell);
+  }
+
+  function renderAllocation(row, { labels }) {
+    const bar = clear($('alloc-bar'));
+    const legend = clear($('alloc-legend'));
+    $('alloc-title').textContent = `Where your collateral goes on ${labels.day(row.date)}`;
+    const C = row.p.C;
+    const parts = [
+      { value: row.p.OR, swatch: 'sw-owed', label: 'Unsettled purchases (open risk)' },
+      { value: row.blrC, swatch: 'sw-cont-res', label: 'M7 continuous: reserved for base limits' },
+      { value: row.shareC, swatch: 'sw-cont', label: 'M7 continuous: share of excess' },
+      { value: row.blrA, swatch: 'sw-da-res', label: 'MATS auctions: reserved for base limits' },
+      { value: row.shareA, swatch: 'sw-da', label: 'MATS auctions: share of excess' },
+    ];
+    const total = Math.max(
+      C,
+      parts.reduce((sum, part) => sum + part.value, 0),
+    );
+    for (const part of parts) {
+      if (part.value <= 0 || total <= 0) continue;
+      const segment = el('div', `seg-b ${part.swatch}`);
+      segment.style.flex = `${part.value} 0 0`;
+      hoverable(segment, euros(part.value), part.label);
+      bar.appendChild(segment);
+    }
+    if (total > C + 0.5 && total > 0) {
+      const marker = el('div', 'marker');
+      marker.style.left = `${(C / total) * 100}%`;
+      marker.appendChild(el('span', null, `Collateral ${shortEuros(C)}`));
+      bar.appendChild(marker);
+    }
+    for (const part of parts) {
+      const item = el('div', 'li');
+      item.appendChild(el('span', `swatch ${part.swatch}`));
+      item.appendChild(el('span', null, part.label));
+      item.appendChild(el('b', null, euros(part.value)));
+      legend.appendChild(item);
+    }
+    const footer = el('div', 'total');
+    footer.appendChild(el('span', null, `Collateral${row.excess < 0 ? ` (short by ${euros(-row.excess)})` : ''}`));
+    footer.appendChild(el('b', null, euros(C)));
+    legend.appendChild(footer);
+  }
+
+  // ---------- the week table: by ECC calculation, or by day ----------
+
+  function groupHeader({ name, swatch, span }) {
+    const cell = el('th', 'gl group');
+    cell.colSpan = span;
+    const title = el('span');
+    title.appendChild(el('span', `swatch ${swatch}`));
+    title.appendChild(document.createTextNode(name));
+    cell.appendChild(title);
+    return cell;
+  }
+
+  /** The table head: a row naming the markets over their columns, then the column names. */
+  function weekTableHead(table, blanks, groups, columns) {
+    const head = el('thead');
+    const groupRow = el('tr', 'grp');
+    for (let i = 0; i < blanks; i++) groupRow.appendChild(el('th', null, ''));
+    for (const group of groups) groupRow.appendChild(groupHeader(group));
+    head.appendChild(groupRow);
+    head.appendChild(headerRow(columns));
+    table.appendChild(head);
+  }
+
+  function withNote(cell, note) {
+    if (note) cell.appendChild(el('div', 'small-split', note));
+    return cell;
+  }
+
+  function pill(cell, className, text) {
+    cell.appendChild(el('span', `pill ${className}`, text));
+  }
+
+  /* One row per calculation day: ECC's evening calculation, what it reserves, and the limits it sets. */
+  function renderCalculations({ rows, sizing, labels }) {
+    const table = clear($('week-table'));
+    const byDay = Boolean(sizing && sizing.byDay);
+    const columns = [
+      'Calculation day',
+      ...(byDay ? ['Collateral that day'] : []),
+      'Reserved for base limits',
+      'Excess collateral',
+      '16:00',
+      'From 18:00',
+      'After settlement',
+      '16:00',
+      'Per auction from 18:00',
+      "Next business day's auction",
+    ];
+    const offset = byDay ? 1 : 0;
+    weekTableHead(
+      table,
+      byDay ? 4 : 3,
+      [
+        { name: 'M7 continuous', swatch: 'sw-cont', span: 3 },
+        { name: 'MATS auctions', swatch: 'sw-da', span: 3 },
+      ],
+      columns.map((text, i) => ({ text, className: i === 3 + offset || i === 6 + offset ? 'gl' : null })),
+    );
+    const body = el('tbody');
+    const lowCont = minBy(rows, (row) => row.cont.l18);
+    const lowAuction = minBy(rows, (row) => row.da.l18);
+    for (const row of rows) {
+      const line = el('tr', row.date === selectedDay ? 'sel' : null);
+      const day = el('td');
+      day.appendChild(document.createTextNode(labels.day(row.date)));
+      if (row.gap1 > 1) pill(day, 'info', `${row.gap1}-day gap`);
+      if (row.excess < 0) pill(day, 'crit', 'Shortfall');
+      line.appendChild(day);
+      if (byDay) line.appendChild(withNote(el('td', null, euros(row.p.C)), `${row.p.cont.key} / ${row.p.da.key}`));
+      // Today's and the next business day's base limits, for both markets: split so it adds up to what is reserved.
+      line.appendChild(
+        withNote(el('td', null, euros(row.blr)), `M7 ${shortEuros(row.blrC)} + MATS ${shortEuros(row.blrA)}`),
+      );
+      line.appendChild(el('td', row.excess < 0 ? 'neg' : null, euros(row.excess)));
+      line.appendChild(el('td', 'gl', euros(row.cont.l16)));
+      line.appendChild(el('td', row === lowCont ? 'low' : null, euros(row.cont.l18)));
+      line.appendChild(el('td', null, euros(row.cont.l09)));
+      line.appendChild(withNote(el('td', 'gl', euros(row.da.l16)), row.gap1 > 1 ? 'per auction day' : null));
+      const shared = shareAuctions(row);
+      const perAuction = euros(row.da.l18) + (row.gap1 > 1 ? ` × ${shared.length} (${shareDaysShort(shared)})` : '');
+      line.appendChild(el('td', row === lowAuction ? 'low' : null, perAuction));
+      line.appendChild(el('td', null, euros(row.da.l09)));
+      body.appendChild(line);
+    }
+    table.appendChild(body);
+  }
+
+  /* The week by calendar day, Monday to Sunday: the limits a member has each day. A business day has a morning limit
+     (after settlement, from the previous business day's calculation), the base limit from 16:00 and the evening limit;
+     a weekend or holiday keeps the last business day's evening limit for M7. MATS: the limit at that day's 12:00
+     auction. */
+  function renderDays({ input, rows, labels }) {
+    const table = clear($('week-table'));
+    const byDate = Object.fromEntries(rows.map((row) => [row.date, row]));
+    const lastRow = last(rows);
+    // The calculation of a business day; outside the week, with the same parameters as the week's last one.
+    const calculationOf = (iso) => {
+      if (!byDate[iso]) byDate[iso] = E.day(E.parse(iso), lastRow.p);
+      return byDate[iso];
+    };
+    weekTableHead(
+      table,
+      1,
+      [
+        { name: 'M7 continuous', swatch: 'sw-cont', span: 3 },
+        { name: 'MATS auctions', swatch: 'sw-da', span: 1 },
+      ],
+      [
+        { text: 'Day' },
+        { text: 'Morning, after settlement', className: 'gl' },
+        { text: 'From 16:00' },
+        { text: 'From ~18:00' },
+        { text: 'Day-ahead auction, 12:00', className: 'gl' },
+      ],
+    );
+    const body = el('tbody');
+    const monday = E.parse(input.week);
+    // Monday to Sunday, or on to the next business day when the week ends in a holiday (Easter Monday).
+    const end = Math.max(7, Math.round((E.parse(lastRow.nextBD) - monday) / DAY_MS));
+    for (let i = 0; i < end; i++) {
+      const date = addDays(monday, i);
+      const iso = E.iso(date);
+      const businessDay = E.isBD(date);
+      const previous = E.iso(E.prevBD(date));
+      const before = calculationOf(previous);
+      const auction = before.da.auctions.find((one) => one.date === iso);
+      const line = el('tr', businessDay ? (iso === selectedDay ? 'sel' : null) : 'off');
+      const day = el('td');
+      day.appendChild(document.createTextNode(labels.day(iso)));
+      if (!businessDay) pill(day, 'info', E.holidayName(date));
+      line.appendChild(day);
+      if (businessDay) {
+        const own = calculationOf(iso);
+        line.appendChild(
+          withNote(
+            el('td', 'gl', euros(before.cont.l09)),
+            before.gap1 > 1 ? `from ${labels.day(previous)}'s calculation` : null,
+          ),
+        );
+        line.appendChild(el('td', null, euros(own.cont.l16)));
+        line.appendChild(
+          withNote(
+            el('td', null, euros(own.cont.l18)),
+            own.gap1 > 1 ? `until ${labels.day(own.nextBD)} morning` : null,
+          ),
+        );
+      } else if (i === 0 || E.isBD(addDays(date, -1))) {
+        // M7 doesn't reset on weekends and holidays: one limit for the whole stretch, so one cell across those days.
+        let length = 0;
+        while (length < end - i && !E.isBD(addDays(date, length))) length++;
+        const weekend = length === 2 && date.getUTCDay() === 6;
+        const stretch = el('td', 'gl span-note weekend-block');
+        stretch.colSpan = 3;
+        stretch.rowSpan = length;
+        const reach = length === 1 ? ' all day' : weekend ? ' for the whole weekend' : ` across these ${length} days`;
+        stretch.appendChild(el('b', null, euros(before.cont.l18) + reach));
+        const oneLimit = length > 1 ? 'One limit, not per day: ' : '';
+        stretch.appendChild(
+          el(
+            'div',
+            'small-split',
+            `${oneLimit}${labels.day(previous)}'s evening limit, until ${labels.day(before.nextBD)} morning`,
+          ),
+        );
+        line.appendChild(stretch);
+      }
+      const share = auction && !auction.settled ? `a share of ${labels.day(previous)}'s calculation` : null;
+      line.appendChild(withNote(el('td', 'gl', auction ? euros(auction.limit) : '–'), share));
+      body.appendChild(line);
+    }
+    table.appendChild(body);
+  }
+
+  const renderWeek = (view) => (weekView === 'days' ? renderDays(view) : renderCalculations(view));
+
+  // ---------- the chart: limits at 12:00 each day ----------
+
+  /* M7 (blue) and MATS (orange) side by side each business day. Over a weekend or holiday M7 is one limit, so one blue
+     bar spans the days, between the first day's orange bar (left) and the last day's (right); orange bars of days in
+     between stand in front of it, outlined in the surface colour. */
+  function renderAuctions(view) {
+    const box = clear($('auction-chart'));
+    const { rows, labels } = view;
+    const items = allAuctions(rows);
+    const byCalc = Object.fromEntries(rows.map((row) => [row.date, row]));
+    for (const item of items) {
+      const row = byCalc[item.calc];
+      item.m7 = item.bd ? row.cont.l09 : row.cont.l18;
+      item.m7Until = row.nextBD;
+    }
+    // Runs of days with one M7 limit: a business day on its own, or a weekend or holiday stretch of one calculation.
+    const runs = [];
+    items.forEach((item, i) => {
+      const previous = last(runs);
+      if (!item.bd && previous && !previous.bd && previous.calc === item.calc) previous.to = i;
+      else
+        runs.push({
+          from: i,
+          to: i,
+          bd: item.bd,
+          calc: item.calc,
+          value: item.m7,
+          until: item.m7Until,
+          date: item.date,
+        });
+    });
+    const target = view.sizing && view.sizing.C !== null ? view.input.tDa : 0;
+
+    const width = Math.max(300, box.clientWidth || 600);
+    const height = 270;
+    const margin = { left: 52, right: 12, top: 34, bottom: 30 };
+    const plotWidth = width - margin.left - margin.right;
+    const plotHeight = height - margin.top - margin.bottom;
+    const highest = Math.max(target, maxBy(items, (item) => item.limit).limit, maxBy(items, (item) => item.m7).m7) || 1;
+    const step = niceStep(highest * 1.15, 4);
+    const top = Math.ceil((highest * 1.15) / step) * step;
+    const y = (value) => margin.top + plotHeight - (value / top) * plotHeight;
+    const { root, add } = svgCanvas(width, height);
+    const label = (x, yPos, className, text) =>
+      add('text', { x, y: yPos, 'text-anchor': 'middle', class: className }, text);
+    const bar = (x, barWidth, value, fill, series, ring) => {
+      const barTop = y(value);
+      const bottom = y(0);
+      if (bottom - barTop > 0.5) {
+        const shape = { d: barPath(x, barWidth, barTop, bottom), fill };
+        if (ring) Object.assign(shape, { stroke: 'var(--surface)', 'stroke-width': 2 });
+        add('path', { ...shape, 'data-series': series });
+      }
+      return barTop;
+    };
+
+    const slot = plotWidth / items.length;
+    const barWidth = Math.min(20, slot * 0.3);
+    const gap = 2; // between the blue and the orange bar of a day
+    const centre = (i) => margin.left + i * slot + slot / 2;
+    items.forEach((item, i) => {
+      if (!item.bd)
+        add('rect', { x: margin.left + i * slot, y: margin.top, width: slot, height: plotHeight, fill: 'var(--band)' });
+    });
+    for (let value = 0; value <= top + 1e-9; value += step) {
+      const stroke = value === 0 ? 'var(--rule-strong)' : 'var(--rule)';
+      add('line', { x1: margin.left, x2: width - margin.right, y1: y(value), y2: y(value), stroke, 'stroke-width': 1 });
+      add('text', { x: margin.left - 8, y: y(value) + 4, 'text-anchor': 'end', class: 'tick' }, shortEuros(value));
+    }
+    items.forEach((item, i) => label(centre(i), height - margin.bottom + 18, 'xl', labels.short(item.date)));
+
+    // Where each orange bar goes: right of the blue one on a business day; in a stretch, left on its first day, right
+    // on its last, and centred in front of the blue bar in between.
+    const matsX = {};
+    const lowRun = minBy(runs, (run) => run.value);
+    const highRun = maxBy(runs, (run) => run.value);
+    for (const run of runs) {
+      run.days = run.to - run.from + 1;
+      let x;
+      let runWidth;
+      if (run.days === 1) {
+        x = centre(run.from) - barWidth - gap / 2;
+        runWidth = barWidth;
+        matsX[run.from] = centre(run.from) + gap / 2;
+      } else {
+        matsX[run.from] = centre(run.from) - barWidth - gap / 2;
+        matsX[run.to] = centre(run.to) + gap / 2;
+        for (let k = run.from + 1; k < run.to; k++) matsX[k] = centre(k) - barWidth / 2;
+        x = centre(run.from) + gap / 2;
+        runWidth = centre(run.to) - gap / 2 - x;
+      }
+      const barTop = bar(x, runWidth, run.value, 'var(--cont)', 'm7');
+      const middle = x + runWidth / 2;
+      if (run.days > 1 && runWidth < 170) {
+        label(middle, barTop - 20, 'dl', shortEuros(run.value));
+        label(middle, barTop - 7, 'xv', 'one limit');
+      } else if (run.days > 1) {
+        label(middle, barTop - 7, 'dl', `${shortEuros(run.value)}, one limit for ${run.days} days`);
+      } else if (run === lowRun || run === highRun) {
+        label(middle, barTop - 7, 'dl', shortEuros(run.value));
+      }
+      const hit = add('rect', { x: x - 2, y: margin.top, width: runWidth + 4, height: plotHeight, class: 'hit' });
+      const stretch =
+        `M7 continuous · ${labels.day(items[run.from].date)}` +
+        (run.days > 1 ? ` to ${labels.day(items[run.to].date)}` : '') +
+        `: one limit${run.days > 1 ? ` for all ${run.days} days` : ''}, ` +
+        `${labels.day(run.calc)}'s evening limit until ${labels.day(run.until)} morning`;
+      const businessDay = `M7 continuous · ${labels.day(run.date)} at 12:00, after the morning settlement (${labels.day(run.calc)}'s calculation)`;
+      hoverable(hit, euros(run.value), run.bd ? businessDay : stretch);
+    }
+
+    const lowItem = minBy(items, (item) => item.limit);
+    const highItem = maxBy(items, (item) => item.limit);
+    items.forEach((item, i) => {
+      const run = runs.find((one) => i >= one.from && i <= one.to);
+      const inFront = run.days > 2 && i > run.from && i < run.to;
+      const x = matsX[i];
+      const barTop = bar(x, barWidth, item.limit, 'var(--da)', 'mats', inFront);
+      if (item === lowItem || item === highItem) label(x + barWidth / 2, barTop - 7, 'dl', shortEuros(item.limit));
+      const hit = add('rect', { x: x - 2, y: margin.top, width: barWidth + 4, height: plotHeight, class: 'hit' });
+      let when;
+      if (!item.settled)
+        when = `${item.note ? `${dayNote(item.note)}, ` : ''}share of ${labels.short(item.calc)}'s calculation`;
+      else if (item.rollover)
+        when = 'after settlement, full limit again if the weekend or holiday auctions went unused';
+      else when = 'after settlement';
+      hoverable(hit, euros(item.limit), `MATS auctions · ${labels.day(item.date)} day-ahead auction · ${when}`);
+    });
+
+    if (target > 0) {
+      add('line', {
+        x1: margin.left,
+        x2: width - margin.right,
+        y1: y(target),
+        y2: y(target),
+        stroke: 'var(--ink)',
+        'stroke-width': 1.5,
+        'stroke-dasharray': '5 4',
+      });
+      add(
+        'text',
+        { x: width - margin.right, y: y(target) - 6, 'text-anchor': 'end', class: 'dl' },
+        `MATS target ${shortEuros(target)}`,
+      );
+    }
+    box.appendChild(root);
+
+    const key = clear($('auction-key'));
+    const keyItem = (className, text) => {
+      const item = el('span');
+      item.appendChild(el('span', className));
+      item.appendChild(document.createTextNode(text));
+      key.appendChild(item);
+    };
+    keyItem('swatch sw-cont', 'M7 continuous at 12:00 (one bar across a weekend: one limit)');
+    keyItem('swatch sw-da', 'MATS auctions: limit at the day-ahead auction');
+    if (items.some((item) => !item.bd)) keyItem('band-key', 'Weekend or holiday');
+    if (target > 0) keyItem('line-key', 'Your MATS target');
+  }
+
+  // ---------- settings for the Direct+ platform (ECC's O09 form) ----------
+
+  const platformSettings = ({ p }) => [
+    { market: 'M7 continuous', bd: p.cont.bd, nbd: p.cont.nbd, key: p.cont.key },
+    { market: 'MATS auctions', bd: p.da.bd, nbd: p.da.nbd, key: p.da.key },
+  ];
+
+  function renderPlatformSettings(view) {
+    $('o09-note').hidden = !(view.sizing && view.sizing.byDay);
+    const table = clear($('o09-table'));
+    tableHead(table, [
+      { text: 'Market' },
+      { text: 'Base limit, business day', className: 'r' },
+      { text: 'Base limit, non-business day', className: 'r' },
+      { text: 'Split of excess collateral', className: 'r' },
+    ]);
+    const body = el('tbody');
+    for (const setting of platformSettings(view)) {
+      tableRow(body, [
+        { text: setting.market },
+        { text: euros(setting.bd), className: 'r' },
+        { text: euros(setting.nbd), className: 'r' },
+        { text: `${setting.key}%`, className: 'r' },
+      ]);
+    }
+    table.appendChild(body);
+  }
+
+  async function copyPlatformSettings() {
+    if (!current) return;
+    const lines = [
+      'Market\tBase limit, business day\tBase limit, non-business day\tSplit %',
+      ...platformSettings(current).map((setting) =>
+        [setting.market, Math.round(setting.bd), Math.round(setting.nbd), setting.key].join('\t'),
+      ),
+    ];
+    const state = $('copy-state');
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      state.textContent = 'Copied.';
+    } catch {
+      state.textContent = 'Copy blocked here. Select the table and copy it instead.';
+    }
+  }
+
+  // ---------- links to and from the wallet estimate ----------
+  // From the wallet the link also carries the wallet's own answers, so "Back" and "Use these limits" reopen the same
+  // estimate.
+
+  function walletLink(view) {
+    const page = Handoff.linkTo('estimate');
+    if (!page || view.C === null || !(view.C > 0)) return null;
+    const { input } = view;
+    const setup = {
+      C: Math.round(view.C),
+      key: view.key,
+      cbd: input.cont.bd,
+      cnbd: input.cont.nbd,
+      abd: input.da.bd,
+      anbd: input.da.nbd,
+      week: input.week,
+    };
+    const pairs = [...walletState.filter(([key]) => key !== 'ecc'), ['ecc', Handoff.encode(setup)]];
+    return `${page}#${Handoff.hashOf(pairs)}`;
+  }
+
+  function updateLinks(view) {
+    const link = walletLink(view);
+    $('to-wallet').hidden = !link;
+    if (link) $('to-wallet').href = link;
     $('handoff').hidden = !fromWallet;
     if (!fromWallet) return;
-    if (to) $('handoff-use').href = to; $('handoff-use').hidden = !to;
-    $('handoff-back').href = walletPage() + '#' + walletBack.join('&');
+    if (link) $('handoff-use').href = link;
+    $('handoff-use').hidden = !link;
+    $('handoff-back').href = `${Handoff.linkTo('estimate')}#${Handoff.hashOf(walletState)}`;
   }
-  (function arrive() {
-    var kv = location.hash.replace(/^#/, '').split('&').filter(Boolean), w = null;
-    kv.forEach(function (x) { if (x.indexOf('w=') === 0) w = dec(x.slice(2)); else walletBack.push(x); });
-    if (!w || !(w.C > 0) || !(w.key >= 0 && w.key <= 100) || !ensureWeek(w.week) || !walletPage()) { walletBack = []; return; }
+
+  /** Opened from the wallet estimate: take over its collateral, split, base limits, open risk and week. */
+  function arriveFromWallet() {
+    const hash = Handoff.readHash();
+    const w = hash.has('w') ? Handoff.decode(hash.get('w')) : null;
+    const valid = w && w.C > 0 && w.key >= 0 && w.key <= 100;
+    if (!valid || !ensureWeek(w.week) || !Handoff.linkTo('estimate')) return;
     fromWallet = w;
+    walletState = [...hash].filter(([key]) => key !== 'w');
     $('mode-fwd').checked = true;
-    $('week').value = w.week; weekNote();
-    [['collateral', w.C], ['open-risk', w.or], ['c-bd', w.cbd], ['c-nbd', w.cnbd], ['a-bd', w.abd], ['a-nbd', w.anbd]].forEach(function (f) { $(f[0]).value = fmtInt.format(Math.max(0, +f[1] || 0)); });
+    $('week').value = w.week;
+    weekNote();
+    const fields = {
+      collateral: w.C,
+      'open-risk': w.or,
+      'c-bd': w.cbd,
+      'c-nbd': w.cnbd,
+      'a-bd': w.abd,
+      'a-nbd': w.anbd,
+    };
+    for (const [id, value] of Object.entries(fields)) $(id).value = wholeNumber.format(Math.max(0, +value || 0));
     $('split').value = w.key;
-    if (w.day) selected = w.day;
-    plainWeek = quietWeek(w.week);
-    $('handoff-text').textContent = 'Collateral ' + eur(w.C) + ' at a ' + w.key + ' / ' + (100 - w.key) + ' split, with the base limits and open risk (' + eur(w.or) + ') of your wallet estimate, for ' + (plainWeek ? 'a standard week' : 'the week of ' + dLabel(w.week, true)) + '.' +
-      (w.daily ? ' Your wallet adjusts the collateral every business day; this is its highest day.' : '') +
-      (w.day ? ' On ' + dLabel(w.day) + '\'s calculation, the one that sets the amount, your trading needs M7 continuous ' + eur(w.tc) + ' from 18:00' + (w.ta > 0 ? ' and MATS auctions ' + eur(w.ta) + ' per auction' : '') + '.' : '') +
-      ' Change anything here, then take it back to the wallet.';
-    plainWeek = false;
-  })();
-
-  // ---------- main render ----------
-  function syncForm(s) {
-    $('fwd-fields').hidden = s.mode !== 'fwd';
-    $('inv-fields').hidden = s.mode !== 'inv';
-    $('scope-field').hidden = s.cmode === 'daily';
-    $('split').style.setProperty('--split', s.split + '%');
-    $('split-c').textContent = s.split + '%'; $('split-a').textContent = (100 - s.split) + '%';
-    $('split-label').textContent = s.mode === 'inv' && s.keyMode === 'cheapest' ? 'Your current split (for comparison)' : 'Your split of excess collateral';
+    if (w.day) selectedDay = w.day;
+    const standardWeek = isStandardWeek(w.week);
+    const labels = dayLabels(standardWeek);
+    let text =
+      `Collateral ${euros(w.C)} at a ${w.key} / ${100 - w.key} split, with the base limits and open risk ` +
+      `(${euros(w.or)}) of your wallet estimate, for ${standardWeek ? 'a standard week' : `the week of ${labels.day(w.week, true)}`}.`;
+    if (w.daily) text += ' Your wallet adjusts the collateral every business day; this is its highest day.';
+    if (w.day) {
+      text +=
+        ` On ${labels.day(w.day)}'s calculation, the one that sets the amount, your trading needs M7 continuous ` +
+        `${euros(w.tc)} from 18:00${w.ta > 0 ? ` and MATS auctions ${euros(w.ta)} per auction` : ''}.`;
+    }
+    $('handoff-text').textContent = `${text} Change anything here, then take it back to the wallet.`;
   }
+
+  // ---------- drawing ----------
+
+  function syncForm(input) {
+    $('fwd-fields').hidden = input.mode !== 'fwd';
+    $('inv-fields').hidden = input.mode !== 'inv';
+    $('scope-field').hidden = input.cmode === 'daily';
+    $('split').style.setProperty('--split', `${input.split}%`);
+    $('split-c').textContent = `${input.split}%`;
+    $('split-a').textContent = `${100 - input.split}%`;
+    const comparing = input.mode === 'inv' && input.keyMode === 'cheapest';
+    $('split-label').textContent = comparing
+      ? 'Your current split (for comparison)'
+      : 'Your split of excess collateral';
+  }
+
   function render() {
-    var s = readState();
-    syncForm(s);
-    var res = compute(s); lastRes = res;
-    plainWeek = quietWeek(s.week);
-    try { draw(res); } finally { plainWeek = false; }
-  }
-  function draw(res) {
-    renderTiles(res);
-    renderAlert(res);
-    renderTabs(res);
-    var r = res.rows.filter(function (x) { return x.date === selected; })[0] || res.rows[0];
-    renderCycle(res, r);
-    renderAlloc(res, r);
-    renderWeek(res);
-    renderAuctions(res);
-    renderO09(res);
-    updateLinks(res);
+    const input = readForm();
+    syncForm(input);
+    const standardWeek = isStandardWeek(input.week);
+    current = { ...compute(input), standardWeek, labels: dayLabels(standardWeek) };
+    renderTiles(current);
+    renderAlert(current);
+    renderTabs(current);
+    const row = current.rows.find((one) => one.date === selectedDay) || current.rows[0];
+    renderCycle(row, current);
+    renderAllocation(row, current);
+    renderWeek(current);
+    renderAuctions(current);
+    renderPlatformSettings(current);
+    updateLinks(current);
   }
 
-  var timer = null;
-  function schedule() { clearTimeout(timer); timer = setTimeout(render, 60); }
+  let renderTimer = null;
+  function schedule() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(render, 60);
+  }
+
+  function showWeekView(view) {
+    weekView = view;
+    for (const button of document.querySelectorAll('.view-switch button')) {
+      button.setAttribute('aria-pressed', String(button.dataset.view === view));
+    }
+    $('view-sub-days').hidden = view !== 'days';
+    $('view-sub-calc').hidden = view !== 'calc';
+    render();
+  }
+
+  // ---------- start ----------
+
+  for (const input of document.querySelectorAll('.money input')) setUpAmount(input);
+  fillWeeks();
+  weekNote();
+  arriveFromWallet();
   $('setup').addEventListener('input', schedule);
   $('setup').addEventListener('change', schedule);
-  $('setup').addEventListener('submit', function (e) { e.preventDefault(); });
-  $('week').addEventListener('change', function () { selected = null; weekNote(); });
-  Array.prototype.forEach.call(document.querySelectorAll('.view-switch button'), function (b) {
-    b.addEventListener('click', function () {
-      weekView = b.getAttribute('data-view');
-      Array.prototype.forEach.call(document.querySelectorAll('.view-switch button'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-      $('view-sub-days').hidden = weekView !== 'days'; $('view-sub-calc').hidden = weekView !== 'calc';
-      render();
-    });
+  $('setup').addEventListener('submit', (event) => event.preventDefault());
+  $('week').addEventListener('change', () => {
+    selectedDay = null;
+    weekNote();
   });
-  var ro = null;
-  if (window.ResizeObserver) { ro = new ResizeObserver(function () { if (!lastRes) return; plainWeek = quietWeek(lastRes.s.week); try { renderAuctions(lastRes); } finally { plainWeek = false; } }); ro.observe($('auction-chart')); }
+  for (const button of document.querySelectorAll('.view-switch button')) {
+    button.addEventListener('click', () => showWeekView(button.dataset.view));
+  }
+  $('copy-o09').addEventListener('click', copyPlatformSettings);
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => {
+      if (current) renderAuctions(current);
+    }).observe($('auction-chart'));
+  }
   render();
 })();
+
 </script>
 </body>
 </html>

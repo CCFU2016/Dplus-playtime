@@ -69,7 +69,7 @@ All wallet code lives in `src/wallet/`. It uses only the engine's public API, in
 | `settings.js` | Every setting (label, unit, kind, tag, source, default) and the presets | nothing |
 | `answers.js` | The prospect questionnaire: answers → settings | settings |
 | `wallet.js` | Totals by purpose and by wallet segment, the expected–stress range, sensitivities; `WalletCalc`, the one object the pages use | all |
-| `page.html`, `prospect.html` | The pages, with `/*__ENGINE__*/` and `/*__WALLET__*/` markers | |
+| `src/pages/wallet/`, `src/pages/estimate/` | The pages: markup, stylesheet and script each, with the shared files in `src/pages/shared/` | |
 
 - **Style:** every module is an IIFE that defines one global and exports it for Node; modern JavaScript, no dependencies, no build framework.
 - **Rule numbers:** each rule version (current and draft art. 10.8) keeps its numbers in one object, `RULES` in `brp.js`. Every number carries its source in a comment: document, article, paragraph.
@@ -816,7 +816,7 @@ Everything else the brief states, I found in the sources as described:
 
 ---
 
-## 12. The prospect questionnaire (`src/wallet/prospect.html`)
+## 12. The prospect questionnaire (`src/pages/estimate/`)
 
 A shareable page for prospects, built into `dist/wallet/direct-plus-wallet-prospect.html`. It asks seven questions
 (Niki asked for portfolio questions rather than per-connection BRP details) and shows a plain-English estimate: what the money is for, where it sits in the wallet, when it's needed, what moves

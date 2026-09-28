@@ -6,3 +6,5 @@ package-lock.json
 
 # Prose: the Markdown layout is deliberate
 *.md
+# Page templates: whitespace between inline elements shows, and the build splits them on exact text.
+src/pages/**/*.html
