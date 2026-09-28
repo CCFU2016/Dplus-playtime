@@ -204,17 +204,21 @@ meets(C, k) = for every calculation day D in the horizon:
                 and r.cont[measure] ≥ T_cont(D) − 1e-6
                 and every auction a in r.da.auctions (weekend ones only if traded): a.limit ≥ T_auc(a.date) − 1e-6
 C*(k) = smallest whole euro with meets(C, k)   (doubling from €1m, then bisection)
-split = the k in 0..100 with the smallest C*(k); ties go to the member's own split
+split = the k in 0..100 with the smallest C*(k); ties go to the split closest to the member's own (the lower if two are)
 ```
 
 **Per-day targets** are an addition to the brief, which only mentions per-day OR. Without them the Friday period
 couldn't ask for three days of continuous trading.
 
-**Split search.** The engine's own `cheapestKey` takes a constant OR, so the wallet scans the 101 splits. That's
-fast enough for two markets.
+**Split search.** The engine's own `cheapestKey` takes a constant OR, so the wallet has its own search, by the same
+method. A market's limits depend only on the collateral and its own share, so the smallest continuous share that meets
+the continuous targets leaves the auctions the most: C works with some split exactly when it works with that one. So
+the search bisects on C once, not once per split. It gives the same answer as scanning the 101 splits, about twelve
+times faster (28 Sep 2026: the whole wallet calculation went from about 350 ms to 50–100 ms).
 
 **Tests (Phase 2):**
 - With constant OR and constant targets, it returns exactly `E.solve` and `E.cheapestKey`.
+- With OR and targets per day, the split search gives the same answer as scanning every split (40 random weeks).
 - On a Monday, OR covers three days.
 - The deck example needs **€502,986 at OR 0 and €602,986 at OR €100k**, both at 33/67. I checked both against the current engine on 26 Sep 2026.
 

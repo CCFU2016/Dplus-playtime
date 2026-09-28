@@ -75,7 +75,47 @@ test('and so it does on 150 random weeks, days and settings', () => {
     };
     const search = constant(days, p, tgt);
     assert.equal(L.solve(search, key), E.solve(days, p, tgt), `case ${i}: solve`);
-    if (i % 5 === 0) assert.deepEqual(L.cheapest(search), E.cheapestKey(days, p, tgt), `case ${i}: cheapest`);
+    assert.deepEqual(L.cheapest(search), E.cheapestKey(days, p, tgt), `case ${i}: cheapest`);
+  }
+});
+
+/** The split search the slow way: solve() with every split from 0 to 100. The cheapest wins, then the split closest to
+ *  the member's own, then the lower. */
+function everySplit(search) {
+  let best = null;
+  for (let key = 0; key <= 100; key++) {
+    const C = L.solve(search, key);
+    if (C === null) continue;
+    const closer = best && C === best.C && Math.abs(key - search.key) < Math.abs(best.key - search.key);
+    if (!best || C < best.C || closer) best = { key, C };
+  }
+  return best;
+}
+
+test('the split search gives the answer of trying every split, with open risk and targets per day', () => {
+  const random = mulberry32(7);
+  const pick = (list) => list[Math.floor(random() * list.length)];
+  const amounts = [0, 1, 5000, 10000, 20000];
+  for (let i = 0; i < 40; i++) {
+    const week = E.weekDays(pick(['2026-10-05', '2026-12-21', '2027-03-22', '2027-05-03']));
+    const days = random() < 0.3 ? [pick(week)] : week;
+    // Every date a target can fall on: the calculation days and the auction days up to the next business day.
+    const dates = [];
+    for (let day = days[0]; day <= E.nextBD(days.at(-1)); day = new Date(day.getTime() + 864e5)) dates.push(E.iso(day));
+    const byDate = (values) => Object.fromEntries(dates.map((date) => [date, pick(values)]));
+    const openRisk = byDate([0, 30000, 100000, 250000]);
+    const contTargets = byDate([0, 50000, 150000]);
+    const aucTargets = byDate([0, 20000, 100000]);
+    const search = {
+      days,
+      key: Math.floor(random() * 101),
+      measure: pick(['l18', 'l09']),
+      bl: { cont: { bd: pick(amounts), nbd: pick(amounts) }, da: { bd: pick(amounts), nbd: pick(amounts) } },
+      OR: (date) => openRisk[date],
+      cont: (date) => contTargets[date],
+      auc: (date) => aucTargets[date],
+    };
+    assert.deepEqual(L.cheapest(search), everySplit(search), `case ${i}`);
   }
 });
 
