@@ -1,7 +1,7 @@
 {
   "name": "direct-plus-limits",
   "private": true,
-  "description": "Direct+ limit calculator: ECC direct clearing (DCP) collateral to trading limit and back",
+  "description": "Direct+ calculators: ECC trading limits from collateral (and back), and the Direct+ wallet a member needs",
   "packageManager": "npm@11.12.1",
   "engines": {
     "node": ">=20"
@@ -12,6 +12,16 @@
     "build:wallet": "node scripts/build.js wallet",
     "start": "node scripts/serve.js",
     "test": "node tests/ecc_examples.test.js && node tests/snapshot.js && node tests/markets.test.js && node tests/ecc_dist_unchanged.test.js && node tests/wallet/run.js && node tests/serve.test.js",
-    "test:ui": "node scripts/build.js && python3 tests/ui_smoke.py && python3 tests/ui_smoke_wallet.py && python3 tests/ui_smoke_prospect.py && python3 tests/ui_smoke_handoff.py"
+    "test:ui": "node scripts/build.js && python3 tests/ui_smoke.py && python3 tests/ui_smoke_wallet.py && python3 tests/ui_smoke_prospect.py && python3 tests/ui_smoke_handoff.py",
+    "lint": "eslint .",
+    "lint:py": "ruff check tests && ruff format --check tests",
+    "format": "prettier --write . && ruff format tests",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "globals": "^16.5.0",
+    "prettier": "^3.9.9"
   }
 }

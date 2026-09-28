@@ -1,0 +1,8 @@
+# Build output, source material and pinned test data
+dist/
+reference/
+tests/golden/
+package-lock.json
+
+# Prose: the Markdown layout is deliberate
+*.md
