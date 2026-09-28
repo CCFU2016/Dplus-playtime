@@ -1,60 +1,87 @@
-// The web server for the hosted site (scripts/serve.js), on pages built fresh into a temp dir:
-//  1. the public routes serve the right page; unknown routes 404, other methods 405;
-//  2. /wallet is hidden without WALLET_PASSWORD and needs the right basic-auth login with it;
-//  3. the public pages carry no personal names from the repo's decision notes.
-const fs = require('fs'), os = require('os'), path = require('path'), http = require('http');
+// The web server of the hosted site (scripts/serve.js), on pages built fresh into a temporary directory.
+const { test, before, after } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const http = require('http');
+const os = require('os');
+const path = require('path');
 const { buildEcc, buildWallet, buildIndex } = require('../scripts/build.js');
 const { createHandler } = require('../scripts/serve.js');
-const t = require('./wallet/assert.js')('serve');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dplus-serve-'));
-buildEcc(dir); buildWallet(dir); buildIndex(dir);
 const env = {};
 const server = http.createServer(createHandler(dir, env));
-const basic = (u, p) => 'Basic ' + Buffer.from(u + ':' + p).toString('base64');
+let base = '';
 
-server.listen(0, '127.0.0.1', async () => {
-  const base = 'http://127.0.0.1:' + server.address().port;
-  const get = (p, o) => fetch(base + p, o).then(async r => ({ status: r.status, type: r.headers.get('content-type'), auth: r.headers.get('www-authenticate'), text: await r.text() }));
-  try {
-    // 1. Public routes
-    const home = await get('/');
-    t.ok(home.status === 200 && /text\/html/.test(home.type) && home.text.includes('Direct+ calculators'), '/ serves the landing page');
-    t.ok(home.text.includes('href="/estimate"') && home.text.includes('href="/limits"'), 'the landing page links both calculators');
-    t.ok(home.text.includes('Proof of concept by NVS, not a finished product'), 'the landing page carries the proof-of-concept disclaimer');
-    const est = await get('/estimate');
-    t.ok(est.status === 200 && est.text === fs.readFileSync(path.join(dir, 'wallet/standalone/direct-plus-wallet-prospect.html'), 'utf8'), '/estimate serves the prospect questionnaire');
-    const lim = await get('/limits');
-    t.ok(lim.status === 200 && lim.text === fs.readFileSync(path.join(dir, 'standalone/direct-plus-limit-calculator.html'), 'utf8'), '/limits serves the ECC limit calculator');
-    t.ok((await get('/estimate/?x=1')).status === 200 && (await get('/Limits')).status === 200, 'a trailing slash, a query or capitals still find the page');
-    t.eq((await get('/healthz')).text, 'ok', '/healthz');
-    t.eq((await get('/dist/index.html')).status, 404, 'files are only served by route');
-    t.eq((await get('/../package.json')).status, 404, 'no path traversal');
-    t.eq((await get('/', { method: 'POST' })).status, 405, 'POST is refused');
-    const head = await get('/estimate', { method: 'HEAD' });
-    t.ok(head.status === 200 && head.text === '', 'HEAD answers without a body');
+const basicAuth = (user, password) => `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
+async function get(route, options) {
+  const response = await fetch(base + route, options);
+  return {
+    status: response.status,
+    type: response.headers.get('content-type'),
+    auth: response.headers.get('www-authenticate'),
+    text: await response.text(),
+  };
+}
+const built = (file) => fs.readFileSync(path.join(dir, file), 'utf8');
 
-    // 2. /wallet
-    t.eq((await get('/wallet')).status, 404, '/wallet is hidden without WALLET_PASSWORD');
-    env.WALLET_PASSWORD = 'correct horse';
-    const noAuth = await get('/wallet');
-    t.ok(noAuth.status === 401 && /^Basic /.test(noAuth.auth || ''), '/wallet asks for a login');
-    t.eq((await get('/wallet', { headers: { authorization: basic('directplus', 'wrong') } })).status, 401, 'a wrong password is refused');
-    t.eq((await get('/wallet', { headers: { authorization: basic('someone', 'correct horse') } })).status, 401, 'a wrong user name is refused');
-    const ok = await get('/wallet', { headers: { authorization: basic('directplus', 'correct horse') } });
-    t.ok(ok.status === 200 && ok.text.includes('Settings'), 'the right login opens the full wallet calculator');
-    env.WALLET_USER = 'ops';
-    t.eq((await get('/wallet', { headers: { authorization: basic('ops', 'correct horse') } })).status, 200, 'WALLET_USER sets the user name');
+before(async () => {
+  buildEcc(dir);
+  buildWallet(dir);
+  buildIndex(dir);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  base = `http://127.0.0.1:${server.address().port}`;
+});
 
-    // 3. No personal names on the public pages
-    for (const p of ['/', '/estimate', '/limits']) {
-      const text = (await get(p)).text;
-      t.ok(!/\bNiki\b|Florian|Dorgerloh/.test(text), p + ' carries no personal names');
-    }
-  } catch (e) {
-    t.ok(false, 'request failed: ' + e.message);
-  }
+after(() => {
   server.close();
   fs.rmSync(dir, { recursive: true, force: true });
-  t.done();
+});
+
+test('the landing page links both calculators and says it is a proof of concept', async () => {
+  const home = await get('/');
+  assert.equal(home.status, 200);
+  assert.match(home.type, /text\/html/);
+  assert.ok(home.text.includes('Direct+ calculators'), 'the landing page');
+  assert.ok(home.text.includes('href="/estimate"') && home.text.includes('href="/limits"'), 'links both calculators');
+  assert.ok(home.text.includes('Proof of concept by NVS, not a finished product'), 'the proof-of-concept disclaimer');
+});
+
+test('the public routes serve their pages', async () => {
+  assert.equal((await get('/estimate')).text, built('wallet/standalone/direct-plus-wallet-prospect.html'), '/estimate');
+  assert.equal((await get('/limits')).text, built('standalone/direct-plus-limit-calculator.html'), '/limits');
+  assert.equal((await get('/estimate/?x=1')).status, 200, 'a trailing slash and a query');
+  assert.equal((await get('/Limits')).status, 200, 'capitals');
+  assert.equal((await get('/healthz')).text, 'ok', '/healthz');
+  const head = await get('/estimate', { method: 'HEAD' });
+  assert.deepEqual([head.status, head.text], [200, ''], 'HEAD answers without a body');
+});
+
+test('anything else is refused', async () => {
+  assert.equal((await get('/dist/index.html')).status, 404, 'files are only served by route');
+  assert.equal((await get('/../package.json')).status, 404, 'no path traversal');
+  assert.equal((await get('/', { method: 'POST' })).status, 405, 'POST');
+});
+
+test('/wallet is hidden without WALLET_PASSWORD, and needs the right login with it', async () => {
+  assert.equal((await get('/wallet')).status, 404, 'hidden without WALLET_PASSWORD');
+  env.WALLET_PASSWORD = 'correct horse';
+  const noLogin = await get('/wallet');
+  assert.equal(noLogin.status, 401, 'asks for a login');
+  assert.match(noLogin.auth || '', /^Basic /);
+  const as = (user, password) => get('/wallet', { headers: { authorization: basicAuth(user, password) } });
+  assert.equal((await as('directplus', 'wrong')).status, 401, 'a wrong password');
+  assert.equal((await as('directplus', 'correct horse and more')).status, 401, 'a longer password');
+  assert.equal((await as('someone', 'correct horse')).status, 401, 'a wrong user name');
+  const signedIn = await as('directplus', 'correct horse');
+  assert.equal(signedIn.status, 200, 'the right login');
+  assert.ok(signedIn.text.includes('Settings'), 'opens the full wallet calculator');
+  env.WALLET_USER = 'ops';
+  assert.equal((await as('ops', 'correct horse')).status, 200, 'WALLET_USER sets the user name');
+});
+
+test('the public pages carry no personal names from the decision notes', async () => {
+  for (const route of ['/', '/estimate', '/limits']) {
+    assert.doesNotMatch((await get(route)).text, /\bNiki\b|Florian|Dorgerloh/, route);
+  }
 });

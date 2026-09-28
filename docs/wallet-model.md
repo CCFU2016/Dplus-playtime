@@ -77,7 +77,7 @@ All wallet code lives in `src/wallet/`. It uses only the engine's public API, in
   - `build:ecc` keeps today's output byte for byte.
   - `build:wallet` writes `dist/wallet/direct-plus-wallet-calculator.html` and `dist/wallet/standalone/…`, inlining the same `src/engine.js` file.
   - `build` runs both.
-- **Hash test:** `tests/ecc_dist_unchanged.test.js` builds the ECC pages into a temporary directory and compares their SHA-256.
+- **Hash test:** `tests/dist.test.js` builds the ECC pages into a temporary directory and compares their SHA-256.
 - **Engine version:** the engine on branch `worktree-limits-tasks` (Task 2) also accepts a list of markets. The wallet only uses the brief's list, so either version works. Record the ECC hashes after that branch is merged into `main`, or they will need re-recording.
 - **Calendar:** the Dutch calendar, the ramp-up series (18 months) and the exit tail (up to 21 months) run past the engine's `MAX_DATE` (2027-12-24). They don't use ECC business days, so no engine change is needed. The Dutch working-day list must cover 2026–2029.
 

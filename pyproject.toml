@@ -1,11 +1,16 @@
-# Tooling for the Python browser tests (tests/*.py). Install with: pip install -r requirements-dev.txt
+# Tooling for the Python browser tests (tests/ui/). Install with: pip install -r requirements-dev.txt
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-include = ["tests/*.py"]
+include = ["tests/ui/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+# The formatter keeps lines to 120 where it can; a long check message stays on one line.
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["support", "limits", "wallet", "estimate", "handoff"]
 
 [tool.ruff.format]
 quote-style = "single"
