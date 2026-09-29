@@ -52,6 +52,13 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     };
   }
 
+  /** The largest open position during a day, MWh, on each side: the continuous buys (sells) not yet closed again,
+   *  1 − s of them, and the auction buys (sells), which stay open until closed or used. */
+  function largestOpen({ st, volMult }) {
+    const open = (continuous, auctions) => ((1 - (+st.s || 0)) * continuous + auctions) * volMult;
+    return { long: open(st.contBuy, st.aucBuy), short: open(st.contSell, st.aucSell) };
+  }
+
   /**
    * ECC settlement (wallet-model §3): the cash that the daily collections need, and two buffers on top.
    *   float    purchases paid one collection before their sale (bought before the 16:00 cut, sold after it). Each
@@ -61,11 +68,12 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
    *            sold again (1 − s of them) and the auction buys, which stay open until sold or used. Traders only: for
    *            aggregators and asset owners buying is a planned cost that the collections already cover.
    */
-  function settlementNeed({ st, days, flowOf, stress, priceFactor, volMult }) {
+  function settlementNeed(run) {
+    const { st, days, flowOf, stress, priceFactor, volMult } = run;
     const windows = Settlement.windows(days, flowOf, () => st.feesPerWindow || 0);
     const cash = Settlement.cashPath(windows, st.replenish);
     const float = (st.carryShare || 0) * (st.contBuy + st.aucBuy) * volMult * st.price * priceFactor;
-    const openMWh = ((1 - (+st.s || 0)) * st.contBuy + st.aucBuy) * volMult;
+    const openMWh = largestOpen(run).long;
     const badDays = +(stress ? st.badDaysStress : st.badDays) || 0;
     const badDay = badDays * openMWh * (+st.badMove || 0);
     return {
@@ -214,11 +222,10 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
 
   /**
    * BRP collateral on the member's own figures (wallet-model §4). Direct+ members put up their marginal collateral:
-   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). They also cover what they
-   * may leave open (the open-position buffer, §4.5), and put up whichever of the two is larger: a member whose
-   * imbalance already counts in the rule doesn't pay for it twice. A member without assets takes the open-position
-   * rule instead of TenneT's rule in force ('open'). 'standalone' is the member as its own BRP, with the minimum and the
-   * floors and without the buffer, for comparison.
+   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). A member without assets
+   * covers what it may leave open instead: the open-position rule ('open', §4.5) in place of TenneT's rule in force,
+   * and from 2027 the draft or the open-position buffer, whichever is larger. 'standalone' is the member as its own BRP,
+   * with the minimum and the floors and without the buffer, for comparison.
    */
   function brpCollateral(run, weekly) {
     const { st, days, hot, stress } = run;
@@ -227,8 +234,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     // €40 for now (Direct+ decision), in a tough week too; blank: the market's average price.
     const price = optional(st.brpPrice) ?? (hot ? st.stressAvgPrice : st.price);
     // Without assets (no connections in the Direct+ BRP, nothing nominated in from other BRPs), what a member buys and
-    // sells nets out unless it is left open, and a net sale or purchase can't be delivered: its open position is what
-    // Direct+ allows, or what the plan leaves open if that is more (Direct+ decision, 29 Sep 2026).
+    // sells nets out unless it is left open (Direct+ decision, 29 Sep 2026).
     const openRule = marginal && listMW(st.connectionsMW).length === 0 && !(+st.nominatedIn > 0);
     // The rule before the draft: TenneT's rule in force, or the open-position rule for a member without assets.
     const now = openRule ? 'open' : 'current';
@@ -265,17 +271,18 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
       smart: st.smartMean !== 0 || st.smartSd > 0,
     });
     // What the member may leave open, when it may or has no assets (null otherwise).
-    const open =
-      marginal && (openRule || +st.openCap > 0)
-        ? OpenPosition.buffer({
-            cap: +st.openCap || 0,
-            planned: openRule ? run.volumes.sells - run.volumes.buys : 0, // + open short, − open long
-            days: +st.openDays || 0,
-            percentile: st.openPercentile,
-            measure: st.openMeasure,
-          })
-        : null;
-    // Next to a TenneT rule the buffer counts if larger; the open-position rule is the buffer itself.
+    // What a member without assets may leave open. Direct+ can't limit it, so its largest open position at any time of
+    // the day, or what its plan leaves open if that is more: a net sale or purchase can't be delivered without assets.
+    const open = openRule
+      ? OpenPosition.buffer({
+          largest: largestOpen(run),
+          planned: run.volumes.sells - run.volumes.buys, // + an open short, − an open long
+          days: +st.openDays || 0,
+          percentile: st.openPercentile,
+          measure: st.openMeasure,
+        })
+      : null;
+    // Next to the draft the buffer counts if larger; the open-position rule is the buffer itself.
     const floor = open && rule !== 'open' ? open.security : 0;
     return {
       basis: marginal ? 'marginal' : 'standalone',

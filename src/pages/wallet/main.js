@@ -31,9 +31,12 @@
   const fieldOf = (key) => FIELDS.find((field) => field.key === key);
   /** A stress price to the cent, so that the open-position buffer's line adds up: €255.86/MWh. */
   const perMWh = (price) => `€${price.toFixed(2)}/MWh`;
-  /** The open-position buffer's working: 20 MWh a day × 1 day at risk × €255.86/MWh (the …), €5,117. */
+  /** An open position to the tenth, so that the buffer's line adds up: 50.3 MWh. */
+  const TENTHS = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 });
+  const positionMWh = (value) => `${TENTHS.format(value)} MWh`;
+  /** The open-position buffer's working: 50.3 MWh short × 1 day at risk × €255.86/MWh (the …), €12,870. */
   const openWorking = (open) =>
-    `${wholeNumber.format(open.position)} MWh a day × ${open.days} day${open.days === 1 ? '' : 's'} at risk × ` +
+    `${positionMWh(open.position)} ${open.side} × ${open.days} day${open.days === 1 ? '' : 's'} at risk × ` +
     `${perMWh(open.price)} (${open.description}), ${euros(open.security)}`;
 
   // ---------- page state ----------
@@ -357,8 +360,9 @@
     let text;
     if (br.rule === 'open') {
       text =
-        'Without assets, what you buy and sell nets out unless you leave it open, so Direct+ covers that instead of ' +
-        `TenneT's rule in force: ${openWorking(open)}. There is no minimum for members.`;
+        "Without assets, what you buy and sell nets out unless you leave it open, and Direct+ can't limit that. So " +
+        `instead of TenneT's rule in force your largest open position at any time of the day is covered: ` +
+        `${openWorking(open)}. There is no minimum for members.`;
     } else if (br.basis === 'marginal') {
       text =
         br[br.rule].security < 0.5 && current
@@ -395,7 +399,7 @@
     };
     const levers = LEVERS[br.rule];
     if (open) {
-      levers.push({ key: 'openCap', label: 'Open position allowed' }, { key: 'openPercentile', label: 'Stress price' });
+      levers.push({ key: 's', label: 'Largest open position' }, { key: 'openPercentile', label: 'Stress price' });
     }
     const title = br.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security on your own';
     return partCard('var(--p-brp)', title, br.security, y.brp.security, text, levers);
@@ -545,14 +549,15 @@
         { text: format(expected), className: 'r' },
         { text: format(stress), className: 'r' },
       ]);
-    const mwhs = (value) => wholeNumber.format(value);
+    const mwhs = (value) => TENTHS.format(value);
     line('Daily net volume used (MWh)', br.volume, y.brp.volume, mwhs);
     let ruleLine;
     if (br.rule === 'open') {
       const [o, os] = [open, y.brp.open];
-      line('Open position Direct+ allows (MWh a day)', o.cap, os.cap, mwhs);
-      if (o.planned) line('Your plan leaves open (MWh a day)', Math.abs(o.planned), Math.abs(os.planned), mwhs);
-      line(`Open position, ${o.side} (MWh a day)`, o.position, os.position, mwhs);
+      line('Largest open position, short (MWh)', o.largest.short, os.largest.short, mwhs);
+      line('Largest open position, long (MWh)', o.largest.long, os.largest.long, mwhs);
+      if (o.fromPlan) line('Your plan leaves open (MWh)', Math.abs(o.planned), Math.abs(os.planned), mwhs);
+      line(`Open position that counts, ${o.side} (MWh)`, o.position, os.position, mwhs);
       line('Days at risk', o.days, os.days, mwhs);
       line(`Stress price (${o.label.toLowerCase()} of ${o.measureName})`, o.price, os.price, perMWh);
       ruleLine = line('Your BRP collateral: open position × days × price', o.security, os.security);
@@ -577,7 +582,7 @@
     if (open && br.rule !== 'open') {
       const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
       line(
-        `Open-position buffer: ${wholeNumber.format(open.position)} MWh × ${days} × ${perMWh(open.price)} ` +
+        `Open-position buffer: ${positionMWh(open.position)} ${open.side} × ${days} × ${perMWh(open.price)} ` +
           `(${open.label.toLowerCase()} of ${open.measureName})`,
         open.security,
         y.brp.open.security,

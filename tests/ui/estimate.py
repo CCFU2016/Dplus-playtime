@@ -275,8 +275,8 @@ def brp_details(run):
 
 
 def open_position(run):
-    """The trader example has no assets and may leave 20 MWh a day open: its BRP calculation shows the open-position
-    rule in place of TenneT's rule in force. The asset owner keeps TenneT's rule and leaves nothing open."""
+    """The trader example has no assets: its BRP calculation shows the open-position rule, on its largest open
+    position at any time of the day, in place of TenneT's rule in force. The asset owner keeps TenneT's rule and leaves nothing open."""
     tab = run.open('estimate')
     check = run.check
     skip(tab)  # the trader example
@@ -291,14 +291,14 @@ def open_position(run):
         'trader: the open-position rule in place of the rule in force: ' + ' | '.join(tabs),
     )
     steps = [
-        ['Open position Direct+ allows', '20 MWh a day'],
+        ['Your largest open position', '50.3 MWh'],
         ['Days at risk', '1 day'],
         ['Stress price', '€255.86/MWh'],
-        ['BRP collateral', '€5,117'],
+        ['BRP collateral', '€12,870'],
     ]
     rows = calc_rows(details)
     check(rows == steps, 'trader: the open-position rule sets it: ' + ' | '.join(' '.join(row) for row in rows))
-    check('Up to 20 MWh a day, 1 day at risk' in core(tab), 'trader: the open position in the core assumptions')
+    check('Largest 50.3 MWh short, 1 day at risk' in core(tab), 'trader: the open position in the core assumptions')
     tab.click('[data-extype="asset"]')
     check('Open position' not in core(tab), 'asset owner: nothing left open, no buffer')
 

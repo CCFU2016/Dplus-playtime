@@ -7,7 +7,7 @@ import re
 from support import PHONE, fits, main, redrawn
 
 # The financial trader preset, week of 5 Oct 2026: a normal to a tough week.
-TRADER_EXAMPLE = '€35,000 to €79,000'
+TRADER_EXAMPLE = '€43,000 to €87,000'
 
 
 def hero(tab):
@@ -59,25 +59,25 @@ def settings(run):
 
 
 def open_position(run):
-    """The trader preset has no assets and may leave 20 MWh a day open: the open-position rule sets its BRP collateral,
+    """The trader preset has no assets: the open-position rule, on its largest open position, sets its BRP collateral,
     and the percentile, the days at risk and the measure in Settings move it."""
     tab = run.open('wallet')
     check = run.check
     total = tab.inner_text('#brp-table tbody tr:last-child')
-    check('open position × days × price' in total and '€5,000' in total, 'the open-position rule sets it: ' + total)
+    check('open position × days × price' in total and '€13,000' in total, 'the open-position rule sets it: ' + total)
     tab.click('#tab-settings')
     tab.select_option('[data-key="openPercentile"]', 'p98')
     tab.fill('[data-key="openDays"]', '3')
     redrawn(tab)
     tab.click('#tab-wallet')
     total = tab.inner_text('#brp-table tbody tr:last-child')
-    check('€13,000' in total, 'p98 and three days at risk: 20 × 3 × €220.63 = €13,238: ' + total)
+    check('€33,000' in total, 'p98 and three days at risk: 50.3 × 3 × €220.63 = €33,293: ' + total)
     tab.click('#tab-settings')
     tab.select_option('[data-key="openMeasure"]', 'spread')
     redrawn(tab)
     tab.click('#tab-wallet')
     total = tab.inner_text('#brp-table tbody tr:last-child')
-    check('€7,000' in total, 'the spread over day-ahead at p98: 20 × 3 × €120.10 = €7,206: ' + total)
+    check('€18,000' in total, 'the spread over day-ahead at p98: 50.3 × 3 × €120.10 = €18,123: ' + total)
 
 
 def levers(run):

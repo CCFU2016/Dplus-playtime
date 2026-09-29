@@ -463,8 +463,13 @@
     invoices: 'Imbalance invoices',
   };
 
-  /** A stress price to the cent, so that the open-position buffer's line adds up: €255.86/MWh. */
+  /** A stress price to the cent and an open position to the tenth, so that the open-position buffer's line adds up:
+   *  €255.86/MWh, 50.3 MWh. */
   const perMWh = (price) => `€${price.toFixed(2)}/MWh`;
+  const TENTHS = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 });
+  const positionMWh = (value) => `${TENTHS.format(value)} MWh`;
+  /** What an open position on `side` is: sold and not yet bought back, or bought and not yet sold. */
+  const HELD = { short: 'sold and not yet bought back', long: 'bought and not yet sold' };
 
   function describe(part, { expected, settings }) {
     const { ecc, settlement } = expected;
@@ -498,16 +503,16 @@
       if (brp.rule === 'open') {
         return (
           "Your share of the Direct+ BRP's security towards TenneT. Without assets, what you buy and sell nets out " +
-          `unless you leave it open, so it covers what you may leave open: ${wholeNumber.format(open.position)} MWh a ` +
-          `day at a high imbalance price, ${thousands(open.security)}.`
+          "unless you leave it open, and Direct+ can't limit that: it covers your largest open position, " +
+          `${positionMWh(open.position)}, at a high imbalance price, ${thousands(open.security)}.`
         );
       }
       let text =
         "Your share of the Direct+ BRP's security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.";
       if (open) {
         text +=
-          ` It also covers the ${wholeNumber.format(open.position)} MWh a day you may leave open, which TenneT settles ` +
-          `at its imbalance price: ${thousands(open.security)}, or the rule's amount if that is larger.`;
+          ` It also covers your largest open position, ${positionMWh(open.position)}, which TenneT would settle at its ` +
+          `imbalance price: ${thousands(open.security)}, or the rule's amount if that is larger.`;
       }
       return text;
     }
@@ -567,18 +572,18 @@
       value: mwh(brp.volume),
     };
     const fixedPrice = settings.brpPrice != null && settings.brpPrice !== '';
-    // What the member may leave open, step by step: what Direct+ allows, what the plan leaves open (without assets),
-    // the days at risk and the stress price.
+    // What a member without assets may leave open, step by step: its largest open position at any time of the day on
+    // the side that loses most, what its plan leaves open if that is more, the days at risk and the stress price.
     const { open } = brp;
     const openRows = () => {
       const rows = [
         {
-          label: 'Open position Direct+ allows',
-          how: 'what you may leave open, either way',
-          value: `${mwh(open.cap)} a day`,
+          label: 'Your largest open position',
+          how: `${HELD[open.side]}, at the most during the day (${open.side}, the side that loses most)`,
+          value: positionMWh(open.largest[open.side]),
         },
       ];
-      if (open.planned) {
+      if (open.fromPlan) {
         rows.push(
           {
             label: 'Your plan leaves open',
@@ -586,13 +591,9 @@
               open.planned > 0
                 ? 'you sell more than you buy, with no assets to deliver it'
                 : 'you buy more than you sell, with no assets to use it',
-            value: `${mwh(Math.abs(open.planned))} a day`,
+            value: positionMWh(Math.abs(open.planned)),
           },
-          {
-            label: 'Open position',
-            how: `${open.side}, the side that loses most`,
-            value: `${mwh(open.position)} a day`,
-          },
+          { label: 'Open position', how: 'the larger of the two', value: positionMWh(open.position) },
         );
       }
       rows.push(
@@ -712,8 +713,8 @@
           },
         ],
         note:
-          'Without assets, what you buy and sell nets out unless you leave it open, so Direct+ covers what you may ' +
-          "leave open instead of TenneT's rule in force.",
+          "Without assets, what you buy and sell nets out unless you leave it open, and Direct+ can't limit that. So " +
+          "your largest open position is covered instead of TenneT's rule in force.",
       };
     }
 
@@ -1053,7 +1054,10 @@
     if (open) {
       const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
       const over = open.measure === 'spread' ? ' over day-ahead' : '';
-      add('Open position', `Up to ${mwh(open.position)} a day, ${days} at risk, at ${perMWh(open.price)}${over}`);
+      add(
+        'Open position',
+        `Largest ${positionMWh(open.position)} ${open.side}, ${days} at risk, at ${perMWh(open.price)}${over}`,
+      );
     }
     add('Collateral at ECC', answers.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
     add('Top-ups', TOPUP_TEXT[settings.replenish]);
@@ -1113,14 +1117,15 @@
     }
     const { open } = x.brp;
     if (open) {
-      const planned = open.planned
-        ? ` Your plan leaves ${wholeNumber.format(Math.abs(open.planned))} MWh a day open: you ` +
+      const planned = open.fromPlan
+        ? ` Your plan leaves more open, ${positionMWh(Math.abs(open.planned))}: you ` +
           `${open.planned > 0 ? 'sell more than you buy' : 'buy more than you sell'}, with no assets.`
         : '';
       add(
-        `You may leave up to ${wholeNumber.format(open.cap)} MWh a day open, and TenneT settles what is left open at its ` +
-          `imbalance price.${planned} Your BRP collateral covers ${wholeNumber.format(open.position)} MWh a day for ` +
-          `${open.days === 1 ? 'one day' : `${open.days} days`} at ${perMWh(open.price)}, ${open.description}: ` +
+        "Direct+ can't limit what you leave open, and TenneT settles what is left open at its imbalance price. So your " +
+          `BRP collateral covers your largest open position at any time of the day: ` +
+          `${positionMWh(open.largest[open.side])} ${HELD[open.side]}.${planned} It covers ${positionMWh(open.position)} ` +
+          `for ${open.days === 1 ? 'one day' : `${open.days} days`} at ${perMWh(open.price)}, ${open.description}: ` +
           `${open.loses}.` +
           (open.measure === 'spread'
             ? ' That assumes the position was traded at day-ahead and its money stays in your wallet until TenneT settles.'

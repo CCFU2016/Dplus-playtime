@@ -2030,8 +2030,9 @@ const WalletTennet = ((Engine, Dates, Brp) => {
    nothing under TenneT's formula, yet it can leave a position open, and the Direct+ BRP is then settled at TenneT's
    imbalance price. ECC's limits don't catch it: a sale uses no limit (ECC manual §3.11). So Direct+ members also cover
    what they may leave open: option 1 of the paper "Covering open-position risk in the Direct+ BRP" (draft, 26 Sep 2026).
-     S = E_cap × T × P_stress
-     E_cap     the most energy a day Direct+ lets the member leave open (MWh a day), monitored and enforced
+     S = E × T × P_stress
+     E         the open position, MWh. The paper has a cap Direct+ enforces (E_cap); Direct+ can't limit it (Direct+
+               decision, 29 Sep 2026), so this is the largest open position the member holds at any time of the day
      T         the days at risk before Direct+ can act: one (Direct+ decision, 29 Sep 2026; the paper has three)
      P_stress  a high percentile of the day's imbalance price in 2025, or of its spread over the day-ahead price
                (MEASURES): the top end for an open short, max(0, −bottom end) for an open long, whichever is larger
@@ -2113,24 +2114,33 @@ const WalletOpenPosition = (() => {
   }
 
   /**
-   * The buffer S, € (`security`), at percentile `percentile` of `measure`, for `days` days at risk. The open position
-   * is `cap` MWh a day either way (what Direct+ allows), or what the plan leaves open if that is more: `planned` MWh a
-   * day, + when the member sells more than it buys (open short), − when it buys more (open long). The side that loses
-   * more sets S.
+   * The buffer S, € (`security`), at percentile `percentile` of `measure`, for `days` days at risk. Direct+ can't limit
+   * what a member leaves open, so the open position on each side is the largest the member holds at any time of the
+   * day (`largest`: { short, long }, MWh), or what its plan leaves open if that is more: `planned` MWh, + when it sells
+   * more than it buys (an open short), − when it buys more (an open long). The side that loses more sets S.
    */
-  function buffer({ cap = 0, planned = 0, days = 1, percentile = DEFAULT_PERCENTILE, measure = DEFAULT_MEASURE }) {
+  function buffer({
+    largest = { short: 0, long: 0 },
+    planned = 0,
+    days = 1,
+    percentile = DEFAULT_PERCENTILE,
+    measure = DEFAULT_MEASURE,
+  }) {
     const stress = stressPrice(percentile, measure);
-    const short = { position: Math.max(cap, planned), price: stress.short };
-    const long = { position: Math.max(cap, -planned), price: stress.longLoss };
-    const side = short.position * short.price >= long.position * long.price ? 'short' : 'long';
-    const { position, price } = side === 'short' ? short : long;
+    const sides = {
+      short: { position: Math.max(largest.short, planned), price: stress.short, fromPlan: planned > largest.short },
+      long: { position: Math.max(largest.long, -planned), price: stress.longLoss, fromPlan: -planned > largest.long },
+    };
+    const side = sides.short.position * sides.short.price >= sides.long.position * sides.long.price ? 'short' : 'long';
+    const { position, price, fromPlan } = sides[side];
     return {
       ...stress,
-      cap,
+      largest,
       planned,
       days,
       side,
       position,
+      fromPlan,
       price,
       loses: MEASURES[measure][side],
       security: days * position * price,
@@ -2811,18 +2821,10 @@ const WalletSettings = ((OpenPosition) => {
       id: 'open',
       title: 'Open positions',
       note:
-        'What you may leave open is settled at the imbalance price, so it is covered too: open position × days at risk × ' +
-        "stress price. Your BRP collateral is this or the rule's amount, whichever is larger.",
+        "Members without assets: what they leave open is settled at the imbalance price, and Direct+ can't limit it. So " +
+        "instead of TenneT's rule in force their BRP collateral covers their largest open position at any time of the " +
+        'day (from the buys and sells, and the share closed again set under ECC limits) × days at risk × stress price.',
       fields: [
-        {
-          key: 'openCap',
-          label: 'Open position Direct+ allows you',
-          unit: 'MWh a day',
-          kind: 'number',
-          tag: 'Direct+ contract',
-          src: 'The most energy a day you may leave open, monitored and enforced by Direct+; 0 if you always close your positions. Whether members may leave positions open on purpose is not decided yet',
-          default: 0,
-        },
         {
           key: 'openDays',
           label: 'Days at risk before Direct+ can act',
@@ -2909,7 +2911,6 @@ const WalletSettings = ((OpenPosition) => {
         imbShare: LEVELS.imbShare.tight,
         imbBase: 'traded',
         bias: LEVELS.bias.neither,
-        openCap: 20, // the options paper's example: a trader allowed 20 MWh a day open (for approval)
       },
     },
     aggregator: {
@@ -3167,6 +3168,13 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     };
   }
 
+  /** The largest open position during a day, MWh, on each side: the continuous buys (sells) not yet closed again,
+   *  1 − s of them, and the auction buys (sells), which stay open until closed or used. */
+  function largestOpen({ st, volMult }) {
+    const open = (continuous, auctions) => ((1 - (+st.s || 0)) * continuous + auctions) * volMult;
+    return { long: open(st.contBuy, st.aucBuy), short: open(st.contSell, st.aucSell) };
+  }
+
   /**
    * ECC settlement (wallet-model §3): the cash that the daily collections need, and two buffers on top.
    *   float    purchases paid one collection before their sale (bought before the 16:00 cut, sold after it). Each
@@ -3176,11 +3184,12 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
    *            sold again (1 − s of them) and the auction buys, which stay open until sold or used. Traders only: for
    *            aggregators and asset owners buying is a planned cost that the collections already cover.
    */
-  function settlementNeed({ st, days, flowOf, stress, priceFactor, volMult }) {
+  function settlementNeed(run) {
+    const { st, days, flowOf, stress, priceFactor, volMult } = run;
     const windows = Settlement.windows(days, flowOf, () => st.feesPerWindow || 0);
     const cash = Settlement.cashPath(windows, st.replenish);
     const float = (st.carryShare || 0) * (st.contBuy + st.aucBuy) * volMult * st.price * priceFactor;
-    const openMWh = ((1 - (+st.s || 0)) * st.contBuy + st.aucBuy) * volMult;
+    const openMWh = largestOpen(run).long;
     const badDays = +(stress ? st.badDaysStress : st.badDays) || 0;
     const badDay = badDays * openMWh * (+st.badMove || 0);
     return {
@@ -3329,11 +3338,10 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
 
   /**
    * BRP collateral on the member's own figures (wallet-model §4). Direct+ members put up their marginal collateral:
-   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). They also cover what they
-   * may leave open (the open-position buffer, §4.5), and put up whichever of the two is larger: a member whose
-   * imbalance already counts in the rule doesn't pay for it twice. A member without assets takes the open-position
-   * rule instead of TenneT's rule in force ('open'). 'standalone' is the member as its own BRP, with the minimum and the
-   * floors and without the buffer, for comparison.
+   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). A member without assets
+   * covers what it may leave open instead: the open-position rule ('open', §4.5) in place of TenneT's rule in force,
+   * and from 2027 the draft or the open-position buffer, whichever is larger. 'standalone' is the member as its own BRP,
+   * with the minimum and the floors and without the buffer, for comparison.
    */
   function brpCollateral(run, weekly) {
     const { st, days, hot, stress } = run;
@@ -3342,8 +3350,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     // €40 for now (Direct+ decision), in a tough week too; blank: the market's average price.
     const price = optional(st.brpPrice) ?? (hot ? st.stressAvgPrice : st.price);
     // Without assets (no connections in the Direct+ BRP, nothing nominated in from other BRPs), what a member buys and
-    // sells nets out unless it is left open, and a net sale or purchase can't be delivered: its open position is what
-    // Direct+ allows, or what the plan leaves open if that is more (Direct+ decision, 29 Sep 2026).
+    // sells nets out unless it is left open (Direct+ decision, 29 Sep 2026).
     const openRule = marginal && listMW(st.connectionsMW).length === 0 && !(+st.nominatedIn > 0);
     // The rule before the draft: TenneT's rule in force, or the open-position rule for a member without assets.
     const now = openRule ? 'open' : 'current';
@@ -3380,17 +3387,18 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
       smart: st.smartMean !== 0 || st.smartSd > 0,
     });
     // What the member may leave open, when it may or has no assets (null otherwise).
-    const open =
-      marginal && (openRule || +st.openCap > 0)
-        ? OpenPosition.buffer({
-            cap: +st.openCap || 0,
-            planned: openRule ? run.volumes.sells - run.volumes.buys : 0, // + open short, − open long
-            days: +st.openDays || 0,
-            percentile: st.openPercentile,
-            measure: st.openMeasure,
-          })
-        : null;
-    // Next to a TenneT rule the buffer counts if larger; the open-position rule is the buffer itself.
+    // What a member without assets may leave open. Direct+ can't limit it, so its largest open position at any time of
+    // the day, or what its plan leaves open if that is more: a net sale or purchase can't be delivered without assets.
+    const open = openRule
+      ? OpenPosition.buffer({
+          largest: largestOpen(run),
+          planned: run.volumes.sells - run.volumes.buys, // + an open short, − an open long
+          days: +st.openDays || 0,
+          percentile: st.openPercentile,
+          measure: st.openMeasure,
+        })
+      : null;
+    // Next to the draft the buffer counts if larger; the open-position rule is the buffer itself.
     const floor = open && rule !== 'open' ? open.security : 0;
     return {
       basis: marginal ? 'marginal' : 'standalone',
@@ -3889,9 +3897,12 @@ const PageUI = ((Engine) => {
   const fieldOf = (key) => FIELDS.find((field) => field.key === key);
   /** A stress price to the cent, so that the open-position buffer's line adds up: €255.86/MWh. */
   const perMWh = (price) => `€${price.toFixed(2)}/MWh`;
-  /** The open-position buffer's working: 20 MWh a day × 1 day at risk × €255.86/MWh (the …), €5,117. */
+  /** An open position to the tenth, so that the buffer's line adds up: 50.3 MWh. */
+  const TENTHS = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 });
+  const positionMWh = (value) => `${TENTHS.format(value)} MWh`;
+  /** The open-position buffer's working: 50.3 MWh short × 1 day at risk × €255.86/MWh (the …), €12,870. */
   const openWorking = (open) =>
-    `${wholeNumber.format(open.position)} MWh a day × ${open.days} day${open.days === 1 ? '' : 's'} at risk × ` +
+    `${positionMWh(open.position)} ${open.side} × ${open.days} day${open.days === 1 ? '' : 's'} at risk × ` +
     `${perMWh(open.price)} (${open.description}), ${euros(open.security)}`;
 
   // ---------- page state ----------
@@ -4215,8 +4226,9 @@ const PageUI = ((Engine) => {
     let text;
     if (br.rule === 'open') {
       text =
-        'Without assets, what you buy and sell nets out unless you leave it open, so Direct+ covers that instead of ' +
-        `TenneT's rule in force: ${openWorking(open)}. There is no minimum for members.`;
+        "Without assets, what you buy and sell nets out unless you leave it open, and Direct+ can't limit that. So " +
+        `instead of TenneT's rule in force your largest open position at any time of the day is covered: ` +
+        `${openWorking(open)}. There is no minimum for members.`;
     } else if (br.basis === 'marginal') {
       text =
         br[br.rule].security < 0.5 && current
@@ -4253,7 +4265,7 @@ const PageUI = ((Engine) => {
     };
     const levers = LEVERS[br.rule];
     if (open) {
-      levers.push({ key: 'openCap', label: 'Open position allowed' }, { key: 'openPercentile', label: 'Stress price' });
+      levers.push({ key: 's', label: 'Largest open position' }, { key: 'openPercentile', label: 'Stress price' });
     }
     const title = br.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security on your own';
     return partCard('var(--p-brp)', title, br.security, y.brp.security, text, levers);
@@ -4403,14 +4415,15 @@ const PageUI = ((Engine) => {
         { text: format(expected), className: 'r' },
         { text: format(stress), className: 'r' },
       ]);
-    const mwhs = (value) => wholeNumber.format(value);
+    const mwhs = (value) => TENTHS.format(value);
     line('Daily net volume used (MWh)', br.volume, y.brp.volume, mwhs);
     let ruleLine;
     if (br.rule === 'open') {
       const [o, os] = [open, y.brp.open];
-      line('Open position Direct+ allows (MWh a day)', o.cap, os.cap, mwhs);
-      if (o.planned) line('Your plan leaves open (MWh a day)', Math.abs(o.planned), Math.abs(os.planned), mwhs);
-      line(`Open position, ${o.side} (MWh a day)`, o.position, os.position, mwhs);
+      line('Largest open position, short (MWh)', o.largest.short, os.largest.short, mwhs);
+      line('Largest open position, long (MWh)', o.largest.long, os.largest.long, mwhs);
+      if (o.fromPlan) line('Your plan leaves open (MWh)', Math.abs(o.planned), Math.abs(os.planned), mwhs);
+      line(`Open position that counts, ${o.side} (MWh)`, o.position, os.position, mwhs);
       line('Days at risk', o.days, os.days, mwhs);
       line(`Stress price (${o.label.toLowerCase()} of ${o.measureName})`, o.price, os.price, perMWh);
       ruleLine = line('Your BRP collateral: open position × days × price', o.security, os.security);
@@ -4435,7 +4448,7 @@ const PageUI = ((Engine) => {
     if (open && br.rule !== 'open') {
       const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
       line(
-        `Open-position buffer: ${wholeNumber.format(open.position)} MWh × ${days} × ${perMWh(open.price)} ` +
+        `Open-position buffer: ${positionMWh(open.position)} ${open.side} × ${days} × ${perMWh(open.price)} ` +
           `(${open.label.toLowerCase()} of ${open.measureName})`,
         open.security,
         y.brp.open.security,

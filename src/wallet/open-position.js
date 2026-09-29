@@ -2,8 +2,9 @@
    nothing under TenneT's formula, yet it can leave a position open, and the Direct+ BRP is then settled at TenneT's
    imbalance price. ECC's limits don't catch it: a sale uses no limit (ECC manual §3.11). So Direct+ members also cover
    what they may leave open: option 1 of the paper "Covering open-position risk in the Direct+ BRP" (draft, 26 Sep 2026).
-     S = E_cap × T × P_stress
-     E_cap     the most energy a day Direct+ lets the member leave open (MWh a day), monitored and enforced
+     S = E × T × P_stress
+     E         the open position, MWh. The paper has a cap Direct+ enforces (E_cap); Direct+ can't limit it (Direct+
+               decision, 29 Sep 2026), so this is the largest open position the member holds at any time of the day
      T         the days at risk before Direct+ can act: one (Direct+ decision, 29 Sep 2026; the paper has three)
      P_stress  a high percentile of the day's imbalance price in 2025, or of its spread over the day-ahead price
                (MEASURES): the top end for an open short, max(0, −bottom end) for an open long, whichever is larger
@@ -85,24 +86,33 @@ const WalletOpenPosition = (() => {
   }
 
   /**
-   * The buffer S, € (`security`), at percentile `percentile` of `measure`, for `days` days at risk. The open position
-   * is `cap` MWh a day either way (what Direct+ allows), or what the plan leaves open if that is more: `planned` MWh a
-   * day, + when the member sells more than it buys (open short), − when it buys more (open long). The side that loses
-   * more sets S.
+   * The buffer S, € (`security`), at percentile `percentile` of `measure`, for `days` days at risk. Direct+ can't limit
+   * what a member leaves open, so the open position on each side is the largest the member holds at any time of the
+   * day (`largest`: { short, long }, MWh), or what its plan leaves open if that is more: `planned` MWh, + when it sells
+   * more than it buys (an open short), − when it buys more (an open long). The side that loses more sets S.
    */
-  function buffer({ cap = 0, planned = 0, days = 1, percentile = DEFAULT_PERCENTILE, measure = DEFAULT_MEASURE }) {
+  function buffer({
+    largest = { short: 0, long: 0 },
+    planned = 0,
+    days = 1,
+    percentile = DEFAULT_PERCENTILE,
+    measure = DEFAULT_MEASURE,
+  }) {
     const stress = stressPrice(percentile, measure);
-    const short = { position: Math.max(cap, planned), price: stress.short };
-    const long = { position: Math.max(cap, -planned), price: stress.longLoss };
-    const side = short.position * short.price >= long.position * long.price ? 'short' : 'long';
-    const { position, price } = side === 'short' ? short : long;
+    const sides = {
+      short: { position: Math.max(largest.short, planned), price: stress.short, fromPlan: planned > largest.short },
+      long: { position: Math.max(largest.long, -planned), price: stress.longLoss, fromPlan: -planned > largest.long },
+    };
+    const side = sides.short.position * sides.short.price >= sides.long.position * sides.long.price ? 'short' : 'long';
+    const { position, price, fromPlan } = sides[side];
     return {
       ...stress,
-      cap,
+      largest,
       planned,
       days,
       side,
       position,
+      fromPlan,
       price,
       loses: MEASURES[measure][side],
       security: days * position * price,

@@ -669,18 +669,10 @@ const WalletSettings = ((OpenPosition) => {
       id: 'open',
       title: 'Open positions',
       note:
-        'What you may leave open is settled at the imbalance price, so it is covered too: open position × days at risk × ' +
-        "stress price. Your BRP collateral is this or the rule's amount, whichever is larger.",
+        "Members without assets: what they leave open is settled at the imbalance price, and Direct+ can't limit it. So " +
+        "instead of TenneT's rule in force their BRP collateral covers their largest open position at any time of the " +
+        'day (from the buys and sells, and the share closed again set under ECC limits) × days at risk × stress price.',
       fields: [
-        {
-          key: 'openCap',
-          label: 'Open position Direct+ allows you',
-          unit: 'MWh a day',
-          kind: 'number',
-          tag: 'Direct+ contract',
-          src: 'The most energy a day you may leave open, monitored and enforced by Direct+; 0 if you always close your positions. Whether members may leave positions open on purpose is not decided yet',
-          default: 0,
-        },
         {
           key: 'openDays',
           label: 'Days at risk before Direct+ can act',
@@ -767,7 +759,6 @@ const WalletSettings = ((OpenPosition) => {
         imbShare: LEVELS.imbShare.tight,
         imbBase: 'traded',
         bias: LEVELS.bias.neither,
-        openCap: 20, // the options paper's example: a trader allowed 20 MWh a day open (for approval)
       },
     },
     aggregator: {

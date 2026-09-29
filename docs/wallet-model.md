@@ -448,20 +448,24 @@ continuous limit back (Risk Management Services Manual v056, §3.11). Niki's opt
 in the Direct+ BRP" (draft for discussion, 26 Sep 2026) sets out five ways to cover it. Niki chose **option 1, with one
 day at risk**. It lives in `open-position.js`.
 
-**S = E_cap × T × P_stress**
+**S = E × T × P_stress**
 
-- **E_cap** (`openCap`, MWh a day): the most energy a day Direct+ lets the member leave open, monitored and enforced. The default is 0: nothing to cover. The trader preset allows 20 MWh a day, the paper's own example (for approval).
+- **E**, the open position (MWh). The paper has E_cap, a cap Direct+ monitors and enforces. **Direct+ can't limit open positions** (Niki, 29 Sep 2026), so E is the member's **largest open position at any time of the day**, on each side:
+  - long: the continuous buys not yet sold again, 1 − s of them, plus the auction buys, which stay open until sold or used;
+  - short: the same for the sells, (1 − s) × continuous sells + auction sells;
+  - s is the share closed again when the position is largest (the estimate's netting question). The trader preset has 34%, so 0.66 × 55 + 14 = 50.3 MWh either way. The bad day of section 3 uses the long side of the same number.
 - **T** (`openDays`): the days at risk before Direct+ can act: **1** (Niki). The paper has 3, TenneT's own logic for 3A: D−1, D and D+1 are already nominated (BR-2024-2077 p.7).
 - **P_stress** (`openMeasure`, `openPercentile`): a percentile of 2025, **per day, not per quarter-hour**. A position open for a day spreads over its quarter-hours, which averages out single spikes. It measures one of two things (Niki, 29 Sep 2026):
   - **The imbalance price** (the default): what TenneT settles an open position at. An open short pays the shortage price, so its top end counts. An open long receives the surplus price and loses only when that price is negative, so max(0, −its bottom end) counts.
   - **The spread over the day-ahead price:** what an open short loses beyond the day-ahead price it sold at (the top end of shortage − day-ahead), or an open long below the price it bought at (the bottom end of surplus − day-ahead). This is the paper's option 3: it assumes the position was traded at day-ahead, and that the trade's money stays in the wallet until TenneT settles.
   - The buffer takes the larger of the two sides. That's the short side everywhere except at the spread's 90th percentile, where a long loses €49.99 against a short's €48.82.
 
-**Combined with the rule** as the paper recommends (its §4): BRP collateral = **max(the marginal rule, S)**, not the sum.
-A member whose imbalance already counts in the rule (B) doesn't pay for it twice.
+**Who covers it:** members without assets (below).
+- They take the open-position rule in place of TenneT's rule in force.
+- From 2027 they put up **the larger of the draft and S**, as the paper recommends (its §4), so imbalance that already counts in the draft (B) isn't paid twice.
+- Members with assets back their positions with them and keep TenneT's rule.
 - It applies on the Direct+ basis only: "On your own as a BRP" is TenneT's rule alone.
-- S is the same in a normal and a tough week, since it's already a stress amount.
-- The volume sensitivities don't scale E_cap: it's a contract setting, not a volume.
+- S is the same in a normal and a tough week, since it's already a stress amount. The volume sensitivities scale E with the buys and sells.
 
 **The prices** are 2025's, averaged per local day over the day's 15-minute periods, each period weighted equally:
 - **The imbalance prices:** TenneT's final settlement prices (its export of 4 Apr 2026). 2025 still has dual pricing: the shortage and surplus prices differ in the 26% of periods in regulation state 2.
@@ -481,12 +485,12 @@ A member whose imbalance already counts in the rule (B) doesn't pay for it twice
 | Worst day | €286.42 (25 Sep) | −€70.44 (6 Apr) | €286.42 | €210.52 | −€142.72 | €210.52 |
 
 **Worked example:** the trader preset, week of 5 Oct 2026 (the rule in force).
-- A flat trader gets €0 under the rule, so S = 20 × 1 × €255.86 = **€5,117.20** sets its BRP collateral.
-- The estimate rises from about €30,000 to about €35,000 (a tough week: from €74,000 to €79,000).
-- From 2027 (the draft), 4B is €2,004 in a normal week, so S still sets it. In a tough week 4B is larger, and S adds nothing.
-- On the spread over day-ahead instead, S = 20 × 1 × €162.62 = €3,252.40.
+- Its largest open position is 50.3 MWh either way, and the short side loses more: S = 50.3 × 1 × €255.86 = **€12,869.76** (TenneT's rule in force would give a flat trader €0).
+- The estimate rises from about €30,000 before the rule to about €43,000 (a tough week: from €74,000 to €87,000).
+- From 2027 (the draft), 4B is €2,004 in a normal week and €6,728 in a tough one, so S sets it in both.
+- On the spread over day-ahead instead, S = 50.3 × 1 × €162.62 = €8,179.79.
 - `tests/wallet/wallet.test.js` pins these numbers.
-- The worked example of section 8 predates the buffer and leaves nothing open.
+- The worked example of section 8 predates the rule and has no days at risk, so its BRP collateral stays €0.
 
 **Keep in mind** (from the price analysis):
 - **Daily averaging smooths the tail a lot.** In 2025, the shortage price's 99th percentile is about €400/MWh per quarter-hour, against €256 per day. The worst quarter-hour was about €5,500 and the worst day €286. That's what T = 1 day intends, but a position left open only in the worst quarter-hours costs more.
@@ -502,11 +506,11 @@ without assets has no connections in the Direct+ BRP and nothing nominated in fr
 What it buys and sells nets out unless it leaves it open, so TenneT's rule in force, which only sees the daily net
 volume at €40/MWh, is replaced by the open-position rule (`rule: 'open'`).
 - **The rule:** BRP collateral = S, not the larger of the rule and S.
-- **The plan:** a net sale or purchase can't be delivered without assets. So the open position is what Direct+ allows or what the plan leaves open, whichever is more, **per side** (ASSUMPTION, W16). Selling more than it buys is an open short; buying more is an open long, which loses less (only when the surplus price is negative). The side that loses more sets S.
-  - A trader without assets that mainly sells (110 MWh a day net): an open short of 110 MWh, 110 × €255.86 = **€28,144.60** (it was 2 × 110 × €40 = €8,800 under the rule in force).
-  - One that mainly buys: an open long of 110 MWh loses 110 × €37.78 = €4,155.80, less than the allowed short, so S stays **€5,117.20** (it was €8,800). On the spread, the long side loses more: 110 × €87.89 = €9,667.90.
+- **The plan:** a net sale or purchase can't be delivered without assets. So on each side the open position is the largest during the day or what the plan leaves open, whichever is more (ASSUMPTION, W16). Selling more than it buys is an open short; buying more is an open long, which loses less (only when the surplus price is negative). The side that loses more sets S.
+  - A trader without assets that mainly sells (110 MWh a day net): an open short of 110 MWh, more than its largest short during the day (0.66 × 99 + 25 = 90.34 MWh). 110 × €255.86 = **€28,144.60** (it was 2 × 110 × €40 = €8,800 under the rule in force).
+  - One that mainly buys: an open long of 110 MWh loses 110 × €37.78 = **€4,155.80**, more than its largest short (10.26 MWh × €255.86 = €2,625). It was €8,800. On the spread: 110 × €87.89 = €9,667.90.
 - **From 2027** the ACM draft applies to them as to everyone: the larger of the draft and S. The estimate's "Detailed calculation" shows the open-position rule and the draft; the wallet calculator shows the rule that applies.
-- **Aggregators** (nominations from other BRPs) and **asset owners** (connections) keep TenneT's rule, with S as the larger of the two when they may leave positions open. So does "On your own as a BRP".
+- **Aggregators** (nominations from other BRPs) and **asset owners** (connections) keep TenneT's rule, without S: their assets back their positions. So does "On your own as a BRP".
 
 **Not modelled:** the paper recommends daily collection of realised imbalance (its option 4) next to the buffer. Both
 need Direct+ to see each member's open position after gate closure, and to suspend a member that breaches its cap
@@ -646,7 +650,7 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 | State-2 share / gap | 5% / €150 | Dual pricing is rare but expensive |
 | Bad days | 1 (normal week), 2 (tough week), €100 lost per MWh of open position | Niki, 26 Sep 2026: room for one or two bad days, not a bad week (section 3); traders only, the aggregator and asset presets set 0. The old stress share (5% of buys lost every day) is off |
 | Purchases paid before their sale | 30% of a day's buys (all three presets) | Roughly the day-ahead buying, sold intraday the next day; everyone is assumed to hold some positions over 16:00 |
-| Open position allowed | 20 MWh a day, 1 day at risk, at the 99th percentile of the imbalance price | The options paper's example (section 4.5), for approval; the aggregator and asset presets leave nothing open |
+| Largest open position (BRP) | 50.3 MWh either way (s = 34%), 1 day at risk, at the 99th percentile of the imbalance price | No assets, so the open-position rule sets its BRP collateral (section 4.5); the aggregator and asset presets keep TenneT's rule |
 | Connections | none | |
 
 **Aggregator** (flexibility held in other BRPs' portfolios, as in the aggregator video)
@@ -680,7 +684,7 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 This uses a **larger desk** than the financial-trader preset above: 240 / 240 MWh a day continuous, 100 / 100 auctions,
 €10,000 resting and €5,000 evening and s = 0 (the preset before 26 Sep 2026), everything else as the preset. `tests/wallet/wallet.test.js`
 pins it as `LARGE_DESK`. It uses Direct+ marginal BRP collateral (section 4.4), everything as cash unless stated, and
-replenishment none. It predates the open-position buffer (section 4.5) and leaves nothing open. A throwaway script
+replenishment none. It predates the open-position rule (section 4.5), so it has no days at risk and its BRP collateral stays €0. A throwaway script
 repeated each step with the engine, and every figure matches.
 
 ### 8.1 Part 1: ECC collateral
@@ -748,7 +752,7 @@ repeated each step with the engine, and every figure matches.
 
 The trader is flat in every settlement period, so the realised net volume with the exchange's BRP is 0 under both
 readings. Since 29 Sep 2026 a member without assets takes the open-position rule in place of the rule in force
-(section 4.5). The desk leaves nothing open, so it's €0 either way; the rule in force is worked out below.
+(section 4.5). The desk has no days at risk, so it's €0 either way; the rule in force is worked out below.
 
 **Marginal collateral** (Direct+, section 4.4):
 - A = 0 × €80 = 0.
