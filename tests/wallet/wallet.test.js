@@ -8,8 +8,9 @@ const { assertMoney } = require('../helpers.js');
 // The worked example (§8) is a larger desk than today's trader preset: the preset's volumes before it was resized to
 // about 150 MWh a day (26 Sep 2026); everything else is the preset. It also keeps the €80 normal price (BRP at the
 // market averages) and the loss rule of that time: 5% of gross buys lost every business day in a tough week, and no
-// bad days.
+// bad days. It predates the open-position buffer (29 Sep 2026), so it leaves nothing open.
 const LARGE_DESK = {
+  openCap: 0,
   contBuy: 240,
   contSell: 240,
   aucBuy: 100,
@@ -118,6 +119,39 @@ test('marginal BRP collateral: the rule on the member’s own figures, never bel
     earning.draft.sum < 0 && earning.security === 0,
     'a member whose imbalance earns money adds €0, not a negative amount',
   );
+});
+
+test('the open-position buffer (§4.5): the larger of the rule and what the member may leave open', () => {
+  // The trader preset may leave 20 MWh a day open, one day at risk, at the 2025 daily 99th percentile, €255.86/MWh.
+  const trader = C.compute(C.preset('trader'));
+  const { brp } = trader.expected;
+  assert.deepEqual(
+    [brp.open.cap, brp.open.days, brp.open.id, brp.open.side, brp.open.price],
+    [20, 1, 'p99', 'short', 255.86],
+    'the buffer the trader preset uses',
+  );
+  assertMoney(brp.current.security, 0, 'a flat trader adds nothing under the rule in force');
+  assertMoney(brp.security, 20 * 1 * 255.86, 'so the buffer sets its BRP collateral: 20 × 1 × €255.86');
+  assert.ok(C.openSets(brp), 'the buffer sets it');
+  assertMoney(trader.stress.brp.security, 5117.2, 'the same buffer in a tough week');
+
+  // Under the 2027 draft, the imbalance invoices count (4B): the larger of the two, not both.
+  const draft = C.compute({ ...C.preset('trader'), week: '2027-10-04' });
+  assertMoney(draft.expected.brp.draft.security, 2004.45, 'normal week: 4B is €2,004');
+  assertMoney(draft.expected.brp.security, 5117.2, 'normal week: the buffer is larger');
+  assert.ok(
+    !C.openSets(draft.stress.brp) && draft.stress.brp.security === draft.stress.brp.draft.security,
+    'tough week: the draft is larger, and the buffer adds nothing on top',
+  );
+
+  const set = (extra) => C.compute({ ...C.preset('trader'), ...extra }).expected.brp;
+  assertMoney(set({ openPercentile: 'p98', openDays: 3 }).security, 20 * 3 * 220.63, 'p98, three days at risk');
+  assertMoney(set({ openCap: 0 }).security, 0, 'nothing left open, no buffer');
+  const alone = set({ brpBasis: 'standalone' });
+  assert.ok(alone.open === null && alone.security === alone.current.security, 'on your own as a BRP: no buffer');
+  for (const id of ['aggregator', 'asset']) {
+    assert.equal(C.compute(C.preset(id)).expected.brp.open, null, `${id}: nothing left open by default, no buffer`);
+  }
 });
 
 test('the week, the rule, the split and the auction prices move the right parts', () => {

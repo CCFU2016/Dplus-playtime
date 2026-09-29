@@ -6,7 +6,8 @@ import re
 
 from support import PHONE, fits, main, redrawn
 
-WORKED_EXAMPLE = '€30,000 to €74,000'
+# The financial trader preset, week of 5 Oct 2026: a normal to a tough week.
+TRADER_EXAMPLE = '€35,000 to €79,000'
 
 
 def hero(tab):
@@ -17,7 +18,7 @@ def presets(run):
     tab = run.open('wallet')
     check = run.check
     check(
-        tab.input_value('#week') == '2026-10-05' and hero(tab) == WORKED_EXAMPLE,
+        tab.input_value('#week') == '2026-10-05' and hero(tab) == TRADER_EXAMPLE,
         'financial trader, week of 5 Oct 2026: ' + hero(tab),
     )
     for member in ['trader', 'aggregator', 'asset']:
@@ -54,7 +55,23 @@ def settings(run):
         'reset puts the preset value back in the input',
     )
     tab.click('#tab-wallet')
-    check(hero(tab) == WORKED_EXAMPLE, 'reset to the preset')
+    check(hero(tab) == TRADER_EXAMPLE, 'reset to the preset')
+
+
+def open_position(run):
+    """The trader preset may leave 20 MWh a day open: the buffer sets its BRP collateral, and the percentile and the
+    days at risk in Settings move it."""
+    tab = run.open('wallet')
+    check = run.check
+    total = tab.inner_text('#brp-table tbody tr:last-child')
+    check('the larger of the two' in total and '€5,000' in total, 'the buffer sets the BRP collateral: ' + total)
+    tab.click('#tab-settings')
+    tab.select_option('[data-key="openPercentile"]', 'p98')
+    tab.fill('[data-key="openDays"]', '3')
+    redrawn(tab)
+    tab.click('#tab-wallet')
+    total = tab.inner_text('#brp-table tbody tr:last-child')
+    check('€13,000' in total, 'p98 and three days at risk: 20 × 3 × €220.63 = €13,238: ' + total)
 
 
 def levers(run):
@@ -73,7 +90,7 @@ def phone(run):
 
 
 def check_wallet(run):
-    for scenario in [presets, settings, levers, phone]:
+    for scenario in [presets, settings, open_position, levers, phone]:
         scenario(run)
 
 

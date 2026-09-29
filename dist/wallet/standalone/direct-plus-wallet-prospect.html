@@ -2479,16 +2479,74 @@ const WalletTennet = ((Engine, Dates, Brp) => {
   typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
 );
 
+/* Direct+ wallet: the open-position buffer (docs/wallet-model.md §4.5). A trader who ends every quarter-hour flat adds
+   nothing under TenneT's formula, yet it can leave a position open, and the Direct+ BRP is then settled at TenneT's
+   imbalance price. ECC's limits don't catch it: a sale uses no limit (ECC manual §3.11). So Direct+ members also cover
+   what they may leave open: option 1 of the paper "Covering open-position risk in the Direct+ BRP" (draft, 26 Sep 2026).
+     S = E_cap × T × P_stress
+     E_cap     the most energy a day Direct+ lets the member leave open (MWh a day), monitored and enforced
+     T         the days at risk before Direct+ can act: one (Direct+ decision, 29 Sep 2026; the paper has three)
+     P_stress  a high percentile of TenneT's imbalance prices in 2025, averaged per day: the top end of the price an
+               open short pays, or max(0, −bottom end) of the price an open long receives, whichever is larger
+   Per day, not per quarter-hour: a position open for a day spreads over its quarter-hours, which averages out single
+   spikes (2025: the worst quarter-hour was about €5,500/MWh, the worst day €286). */
+const WalletOpenPosition = (() => {
+  'use strict';
+
+  /* TenneT's final imbalance prices for 2025 (its settlement-price export), averaged over each local day's
+     quarter-hours, €/MWh: percentiles over the 365 days, linear between days (numpy's default). A short BRP pays the
+     shortage price, `short` is its top end; a long BRP receives the surplus price, `long` is the mirror percentile of
+     its bottom end (the 1st for the 99th). tests/wallet/open-position.test.js recomputes them from
+     reference/tennet/tennet_imbalance-prices-2025_daily-averages_2026-09-29.csv. */
+  const PERCENTILES = [
+    { id: 'p90', label: '90th percentile', short: 146.24, long: 20.16 },
+    { id: 'p95', label: '95th percentile', short: 178.06, long: 8.13 },
+    { id: 'p97.5', label: '97.5th percentile', short: 204.2, long: -4.6 },
+    { id: 'p98', label: '98th percentile', short: 220.63, long: -7.53 },
+    { id: 'p99', label: '99th percentile', short: 255.86, long: -37.78 },
+    { id: 'p99.5', label: '99.5th percentile', short: 274.73, long: -46.54 },
+    { id: 'max', label: 'The worst day', short: 286.42, long: -70.44 },
+  ];
+  const DEFAULT_PERCENTILE = 'p99';
+
+  /** The stress price at percentile `id`, €/MWh: what an open short pays or an open long loses, whichever is more;
+   *  with its source in words for the pages. */
+  function stressPrice(id = DEFAULT_PERCENTILE) {
+    const level = PERCENTILES.find((one) => one.id === id);
+    if (!level) throw new Error(`No imbalance price percentile "${id}" for the open-position buffer`);
+    const longLoss = Math.max(0, -level.long);
+    return {
+      ...level,
+      longLoss,
+      price: Math.max(level.short, longLoss),
+      side: level.short >= longLoss ? 'short' : 'long',
+      description:
+        id === 'max' ? "2025's worst day for imbalance prices" : `the ${level.label} of 2025's daily imbalance prices`,
+    };
+  }
+
+  /** The buffer for `cap` MWh a day left open, `days` days at risk, at percentile `percentile`: amount = S, €. */
+  function buffer({ cap = 0, days = 1, percentile = DEFAULT_PERCENTILE }) {
+    const stress = stressPrice(percentile);
+    return { cap, days, ...stress, amount: cap * days * stress.price };
+  }
+
+  return { PERCENTILES, DEFAULT_PERCENTILE, stressPrice, buffer };
+})();
+
 /* Direct+ wallet: every setting of the calculator (label, unit, kind, tag, source and default), grouped as the
    Settings view shows them, and the three example members. The Settings view and the "Assumptions and sources" list
    are generated from GROUPS.
      kind  number | share (0-1, shown as %) | bool | select | list (MW, comma-separated) | optional (number or empty)
      tag   input (the member's own plan) | ASSUMPTION | INTERPRETATION | ECC setting (set with ECC; no built-in value) |
            Direct+ contract */
-const WalletSettings = (() => {
+const WalletSettings = ((OpenPosition) => {
   'use strict';
 
   const DIRECT_PLUS = 'Direct+ decision, 26 Sep 2026';
+  const OPEN_DECISION = 'Direct+ decision, 29 Sep 2026';
+  // "€256" or "−€38": a 2025 daily imbalance price in the percentile list.
+  const perMWh = (value) => `${value < 0 ? '−' : ''}€${Math.round(Math.abs(value))}`;
   const UPDATE_HOURS = [
     [18, 'Around 18:00'],
     [19, 'Around 19:00'],
@@ -3144,6 +3202,46 @@ const WalletSettings = (() => {
       ],
     },
     {
+      id: 'open',
+      title: 'Open positions',
+      note:
+        'What you may leave open is settled at the imbalance price, so it is covered too: open position × days at risk × ' +
+        "stress price. Your BRP collateral is this or the rule's amount, whichever is larger.",
+      fields: [
+        {
+          key: 'openCap',
+          label: 'Open position Direct+ allows you',
+          unit: 'MWh a day',
+          kind: 'number',
+          tag: 'Direct+ contract',
+          src: 'The most energy a day you may leave open, monitored and enforced by Direct+; 0 if you always close your positions. Whether members may leave positions open on purpose is not decided yet',
+          default: 0,
+        },
+        {
+          key: 'openDays',
+          label: 'Days at risk before Direct+ can act',
+          unit: 'days',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: `${OPEN_DECISION}: one day. TenneT's own logic would give three: D−1, D and D+1 are already nominated (proposal BR-2024-2077 p.7)`,
+          default: 1,
+        },
+        {
+          key: 'openPercentile',
+          label: "Stress price: 2025's daily imbalance price at the",
+          unit: '',
+          kind: 'select',
+          tag: 'ASSUMPTION',
+          src: "TenneT's imbalance prices in 2025, averaged per day (365 days): an open short pays the shortage price, the top end; an open long loses when the surplus price is negative, the bottom end. The larger of the two counts. Per day, not per quarter-hour: a day's quarter-hours average out single spikes",
+          default: OpenPosition.DEFAULT_PERCENTILE,
+          options: OpenPosition.PERCENTILES.map(({ id, label, short, long }) => [
+            id,
+            `${label}: short ${perMWh(short)}, long ${perMWh(long)}`,
+          ]),
+        },
+      ],
+    },
+    {
       id: 'tennet',
       title: 'TenneT account',
       fields: [
@@ -3195,6 +3293,7 @@ const WalletSettings = (() => {
         imbShare: LEVELS.imbShare.tight,
         imbBase: 'traded',
         bias: LEVELS.bias.neither,
+        openCap: 20, // the options paper's example: a trader allowed 20 MWh a day open (for approval)
       },
     },
     aggregator: {
@@ -3264,7 +3363,7 @@ const WalletSettings = (() => {
     );
 
   return { GROUPS, BASE, LEVELS, PRESETS, preset, assumptions };
-})();
+})(typeof WalletOpenPosition !== 'undefined' ? WalletOpenPosition : require('./open-position.js'));
 
 /* Direct+ wallet: the prospect questionnaire (src/pages/estimate/). Its plain answers map onto the settings of
    settings.js, and with each member type's default answers they give exactly its preset (docs/wallet-model.md §12). */
@@ -3402,7 +3501,7 @@ const WalletAnswers = ((Settings) => {
    as its own BRP, and the wallet pools all members at one connected bank, so nothing nets between members
    (wallet-model §11.1). WalletCalc is the one object the pages use: the calculation, plus the settings (settings.js)
    and the prospect questionnaire (answers.js). */
-const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet, Settings, Answers) => {
+const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet, OpenPosition, Settings, Answers) => {
   'use strict';
 
   const SEGMENTS = {
@@ -3417,6 +3516,8 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     { id: 'price', label: 'All prices at the stress price', variant: { priceStress: true } },
     { id: 'imb', label: 'Imbalance twice the assumption', variant: { imbMult: 2 } },
   ];
+
+  const RULE_NAMES = { current: 'TenneT rule', draft: 'Draft rule' };
 
   const UNREACHABLE =
     'The targets cannot be reached with this split: a market with a 0% share only has its base limit.';
@@ -3434,6 +3535,9 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
       .filter((mw) => Number.isFinite(mw) && mw > 0);
 
   const highestC = (days) => (days.length ? Math.max(...days.map((day) => day.C)) : null);
+
+  /** Whether the open-position buffer, not the rule, sets a BRP result's collateral. */
+  const openSets = (brp) => !!brp.open && brp.open.amount > brp[brp.rule].security;
 
   /** The daily trading plan, as WalletBehaviour.dayFlows() reads it. */
   function tradingPlan(st, stress, volMult) {
@@ -3609,8 +3713,10 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
 
   /**
    * BRP collateral on the member's own figures (wallet-model §4). Direct+ members put up their marginal collateral:
-   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). 'standalone' is the
-   * member as its own BRP, with both, for comparison.
+   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). They also cover what they
+   * may leave open (the open-position buffer, §4.5), and put up whichever of the two is larger: a member whose
+   * imbalance already counts in the rule doesn't pay for it twice. 'standalone' is the member as its own BRP, with the
+   * minimum and the floors and without the buffer, for comparison.
    */
   function brpCollateral(run, weekly) {
     const { st, days, hot, stress } = run;
@@ -3650,13 +3756,20 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
       profile: st.profileMean !== 0 || st.profileSd > 0,
       smart: st.smartMean !== 0 || st.smartSd > 0,
     });
+    // What the member may leave open, when it may (null otherwise).
+    const open =
+      marginal && +st.openCap > 0
+        ? OpenPosition.buffer({ cap: +st.openCap, days: +st.openDays || 0, percentile: st.openPercentile })
+        : null;
+    const ruleSecurity = (rule === 'current' ? current : draft).security;
     return {
       basis: marginal ? 'marginal' : 'standalone',
       rule,
       other: rule === 'current' ? 'draft' : 'current',
       current,
       draft,
-      security: (rule === 'current' ? current : draft).security,
+      open,
+      security: open ? Math.max(ruleSecurity, open.amount) : ruleSecurity,
       volume,
       price,
       ramp,
@@ -3726,7 +3839,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
         label: brp.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security (TenneT)',
         segment: 'brp',
         value: brp.security,
-        confidence: `${brp.rule === 'current' ? 'TenneT rule' : 'Draft rule'} · Direct+ contract`,
+        confidence: `${openSets(brp) ? 'Open-position buffer' : RULE_NAMES[brp.rule]} · Direct+ contract`,
       },
       { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, confidence: 'Estimate' },
     ];
@@ -3765,6 +3878,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     SEGMENTS,
     scenario,
     compute,
+    openSets,
     GROUPS: Settings.GROUPS,
     BASE: Settings.BASE,
     PRESETS: Settings.PRESETS,
@@ -3782,6 +3896,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
   typeof WalletEccLink !== 'undefined' ? WalletEccLink : require('./ecc-link.js'),
   typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
   typeof WalletTennet !== 'undefined' ? WalletTennet : require('./tennet-account.js'),
+  typeof WalletOpenPosition !== 'undefined' ? WalletOpenPosition : require('./open-position.js'),
   typeof WalletSettings !== 'undefined' ? WalletSettings : require('./settings.js'),
   typeof WalletAnswers !== 'undefined' ? WalletAnswers : require('./answers.js'),
 );
@@ -4636,6 +4751,9 @@ const Handoff = (() => {
     invoices: 'Imbalance invoices',
   };
 
+  /** A stress price to the cent, so that the open-position buffer's line adds up: €255.86/MWh. */
+  const perMWh = (price) => `€${price.toFixed(2)}/MWh`;
+
   function describe(part, { expected, settings }) {
     const { ecc, settlement } = expected;
     if (part.id === 'ecc') {
@@ -4663,7 +4781,15 @@ const Handoff = (() => {
       return text;
     }
     if (part.id === 'brp') {
-      return "Your share of the Direct+ BRP's security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.";
+      let text =
+        "Your share of the Direct+ BRP's security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.";
+      const { open } = expected.brp;
+      if (open) {
+        text +=
+          ` It also covers the ${wholeNumber.format(open.cap)} MWh a day you may leave open, which TenneT settles at its ` +
+          `imbalance price: ${thousands(open.amount)}, or the rule's amount if that is larger.`;
+      }
+      return text;
     }
     if (part.id === 'invoices') return 'TenneT invoices imbalance every week, about four weeks after delivery.';
     return '';
@@ -4720,10 +4846,36 @@ const Handoff = (() => {
       value: mwh(brp.volume),
     };
     const fixedPrice = settings.brpPrice != null && settings.brpPrice !== '';
+    // What the member may leave open: the rule's amount becomes one line, the buffer follows, and the larger counts.
+    const { open } = brp;
+    const withBuffer = (rows, ruleResult) => {
+      if (!open) return rows;
+      const buffer = Math.round(open.amount);
+      const side = open.side === 'short' ? 'what an open short pays' : 'what an open long loses';
+      return [
+        ...rows.slice(0, -1),
+        { ...rows[rows.length - 1], label: 'Under the rule', sum: false },
+        { label: 'Open position allowed', how: 'what Direct+ lets you leave open', value: mwh(open.cap) + ' a day' },
+        {
+          label: 'Days at risk',
+          how: 'before Direct+ can act',
+          value: `${open.days} day${open.days === 1 ? '' : 's'}`,
+        },
+        { label: 'Stress price', how: `${open.description}, ${side}`, value: perMWh(open.price) },
+        { label: 'Open-position buffer', how: 'open position × days × price', value: euros(buffer) },
+        {
+          label: 'BRP collateral',
+          how: 'the larger of the two',
+          value: euros(Math.max(ruleResult, buffer)),
+          sum: true,
+        },
+      ];
+    };
     const RULES = {
       current: {
         label: 'Rule in force (2026)',
         title: "TenneT's rule in force: Systeemcode elektriciteit 2026, article 10.8",
+        result: currentResult,
         rows: [
           volume,
           {
@@ -4761,6 +4913,7 @@ const Handoff = (() => {
       draft: {
         label: 'ACM draft (from 2027)',
         title: "ACM's draft rule from 1 January 2027 (ACM/25/196985, not yet final)",
+        result: draftResult,
         rows: [
           volume,
           {
@@ -4771,7 +4924,11 @@ const Handoff = (() => {
           { label: 'A', how: 'volume × price', value: euros(dA) },
           { label: 'B', how: 'weekly imbalance invoices, last 10 weeks: average + 2σ', value: euros(dB) },
           { label: 'C', how: 'profile-metered reconciliation, 12 months: average + 0.5σ', value: euros(dC) },
-          { label: 'D', how: 'telemetry and smart-meter reconciliation, 12 months: average + 0.5σ', value: euros(dD) },
+          {
+            label: 'D',
+            how: 'telemetry and smart-meter reconciliation, 12 months: average + 0.5σ',
+            value: euros(dD),
+          },
           { label: '3 × A', value: euros(3 * dA) },
           { label: '4 × B', value: euros(4 * dB) },
           { label: '6 × C', value: euros(6 * dC) },
@@ -4788,6 +4945,7 @@ const Handoff = (() => {
           : 'As your own BRP, with the €96,000 minimum.',
       },
     };
+    for (const rule of Object.values(RULES)) rule.rows = withBuffer(rule.rows, rule.result);
 
     const details = el('details', 'calc');
     details.appendChild(el('summary', null, 'Detailed calculation'));
@@ -5111,10 +5269,16 @@ const Handoff = (() => {
     }
     if (x.ecc.fixed) add('Trading collateral at ECC', `From your limit calculator, ${thousands(x.ecc.fixed.C)}`);
     add('Split continuous / auctions', `${x.ecc.key}% / ${100 - x.ecc.key}%`);
+    const { open } = x.brp;
     add(
       'BRP collateral',
-      `${x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027'} at ${euros(x.brp.price)}/MWh, no minimum`,
+      `${x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027'} at ${euros(x.brp.price)}/MWh, no minimum` +
+        (open ? ', or the open-position buffer if larger' : ''),
     );
+    if (open) {
+      const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
+      add('Open position', `Up to ${mwh(open.cap)} a day, ${days} at risk, at ${perMWh(open.price)}`);
+    }
     add('Collateral at ECC', answers.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
     add('Top-ups', TOPUP_TEXT[settings.replenish]);
   }
@@ -5164,6 +5328,15 @@ const Handoff = (() => {
     add(
       `BRP collateral follows ${rule}, applied to your own figures, with no minimum, at ${euros(x.brp.price)}/MWh${floor}.`,
     );
+    const { open } = x.brp;
+    if (open) {
+      add(
+        `You may leave up to ${wholeNumber.format(open.cap)} MWh a day open, and TenneT settles what is left open at its ` +
+          `imbalance price. Your BRP collateral covers that for ${open.days === 1 ? 'one day' : `${open.days} days`} ` +
+          `at ${perMWh(open.price)}, ${open.description} (an open short pays the top end; an open long loses when ` +
+          "prices are negative). You put up this or the rule's amount, whichever is larger.",
+      );
+    }
     add(
       "Imbalance is settled at TenneT's imbalance prices; a small share of periods has separate prices for short and " +
         `long positions.${answers.tough ? ' A tough week takes a high but not extreme imbalance week.' : ''}`,

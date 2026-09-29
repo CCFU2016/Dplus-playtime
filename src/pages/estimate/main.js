@@ -463,6 +463,9 @@
     invoices: 'Imbalance invoices',
   };
 
+  /** A stress price to the cent, so that the open-position buffer's line adds up: €255.86/MWh. */
+  const perMWh = (price) => `€${price.toFixed(2)}/MWh`;
+
   function describe(part, { expected, settings }) {
     const { ecc, settlement } = expected;
     if (part.id === 'ecc') {
@@ -490,7 +493,15 @@
       return text;
     }
     if (part.id === 'brp') {
-      return "Your share of the Direct+ BRP's security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.";
+      let text =
+        "Your share of the Direct+ BRP's security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.";
+      const { open } = expected.brp;
+      if (open) {
+        text +=
+          ` It also covers the ${wholeNumber.format(open.cap)} MWh a day you may leave open, which TenneT settles at its ` +
+          `imbalance price: ${thousands(open.amount)}, or the rule's amount if that is larger.`;
+      }
+      return text;
     }
     if (part.id === 'invoices') return 'TenneT invoices imbalance every week, about four weeks after delivery.';
     return '';
@@ -547,10 +558,36 @@
       value: mwh(brp.volume),
     };
     const fixedPrice = settings.brpPrice != null && settings.brpPrice !== '';
+    // What the member may leave open: the rule's amount becomes one line, the buffer follows, and the larger counts.
+    const { open } = brp;
+    const withBuffer = (rows, ruleResult) => {
+      if (!open) return rows;
+      const buffer = Math.round(open.amount);
+      const side = open.side === 'short' ? 'what an open short pays' : 'what an open long loses';
+      return [
+        ...rows.slice(0, -1),
+        { ...rows[rows.length - 1], label: 'Under the rule', sum: false },
+        { label: 'Open position allowed', how: 'what Direct+ lets you leave open', value: mwh(open.cap) + ' a day' },
+        {
+          label: 'Days at risk',
+          how: 'before Direct+ can act',
+          value: `${open.days} day${open.days === 1 ? '' : 's'}`,
+        },
+        { label: 'Stress price', how: `${open.description}, ${side}`, value: perMWh(open.price) },
+        { label: 'Open-position buffer', how: 'open position × days × price', value: euros(buffer) },
+        {
+          label: 'BRP collateral',
+          how: 'the larger of the two',
+          value: euros(Math.max(ruleResult, buffer)),
+          sum: true,
+        },
+      ];
+    };
     const RULES = {
       current: {
         label: 'Rule in force (2026)',
         title: "TenneT's rule in force: Systeemcode elektriciteit 2026, article 10.8",
+        result: currentResult,
         rows: [
           volume,
           {
@@ -588,6 +625,7 @@
       draft: {
         label: 'ACM draft (from 2027)',
         title: "ACM's draft rule from 1 January 2027 (ACM/25/196985, not yet final)",
+        result: draftResult,
         rows: [
           volume,
           {
@@ -598,7 +636,11 @@
           { label: 'A', how: 'volume × price', value: euros(dA) },
           { label: 'B', how: 'weekly imbalance invoices, last 10 weeks: average + 2σ', value: euros(dB) },
           { label: 'C', how: 'profile-metered reconciliation, 12 months: average + 0.5σ', value: euros(dC) },
-          { label: 'D', how: 'telemetry and smart-meter reconciliation, 12 months: average + 0.5σ', value: euros(dD) },
+          {
+            label: 'D',
+            how: 'telemetry and smart-meter reconciliation, 12 months: average + 0.5σ',
+            value: euros(dD),
+          },
           { label: '3 × A', value: euros(3 * dA) },
           { label: '4 × B', value: euros(4 * dB) },
           { label: '6 × C', value: euros(6 * dC) },
@@ -615,6 +657,7 @@
           : 'As your own BRP, with the €96,000 minimum.',
       },
     };
+    for (const rule of Object.values(RULES)) rule.rows = withBuffer(rule.rows, rule.result);
 
     const details = el('details', 'calc');
     details.appendChild(el('summary', null, 'Detailed calculation'));
@@ -938,10 +981,16 @@
     }
     if (x.ecc.fixed) add('Trading collateral at ECC', `From your limit calculator, ${thousands(x.ecc.fixed.C)}`);
     add('Split continuous / auctions', `${x.ecc.key}% / ${100 - x.ecc.key}%`);
+    const { open } = x.brp;
     add(
       'BRP collateral',
-      `${x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027'} at ${euros(x.brp.price)}/MWh, no minimum`,
+      `${x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027'} at ${euros(x.brp.price)}/MWh, no minimum` +
+        (open ? ', or the open-position buffer if larger' : ''),
     );
+    if (open) {
+      const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
+      add('Open position', `Up to ${mwh(open.cap)} a day, ${days} at risk, at ${perMWh(open.price)}`);
+    }
     add('Collateral at ECC', answers.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
     add('Top-ups', TOPUP_TEXT[settings.replenish]);
   }
@@ -991,6 +1040,15 @@
     add(
       `BRP collateral follows ${rule}, applied to your own figures, with no minimum, at ${euros(x.brp.price)}/MWh${floor}.`,
     );
+    const { open } = x.brp;
+    if (open) {
+      add(
+        `You may leave up to ${wholeNumber.format(open.cap)} MWh a day open, and TenneT settles what is left open at its ` +
+          `imbalance price. Your BRP collateral covers that for ${open.days === 1 ? 'one day' : `${open.days} days`} ` +
+          `at ${perMWh(open.price)}, ${open.description} (an open short pays the top end; an open long loses when ` +
+          "prices are negative). You put up this or the rule's amount, whichever is larger.",
+      );
+    }
     add(
       "Imbalance is settled at TenneT's imbalance prices; a small share of periods has separate prices for short and " +
         `long positions.${answers.tough ? ' A tough week takes a high but not extreme imbalance week.' : ''}`,

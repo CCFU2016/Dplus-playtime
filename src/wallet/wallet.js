@@ -2,7 +2,7 @@
    as its own BRP, and the wallet pools all members at one connected bank, so nothing nets between members
    (wallet-model §11.1). WalletCalc is the one object the pages use: the calculation, plus the settings (settings.js)
    and the prospect questionnaire (answers.js). */
-const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet, Settings, Answers) => {
+const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet, OpenPosition, Settings, Answers) => {
   'use strict';
 
   const SEGMENTS = {
@@ -17,6 +17,8 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     { id: 'price', label: 'All prices at the stress price', variant: { priceStress: true } },
     { id: 'imb', label: 'Imbalance twice the assumption', variant: { imbMult: 2 } },
   ];
+
+  const RULE_NAMES = { current: 'TenneT rule', draft: 'Draft rule' };
 
   const UNREACHABLE =
     'The targets cannot be reached with this split: a market with a 0% share only has its base limit.';
@@ -34,6 +36,9 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
       .filter((mw) => Number.isFinite(mw) && mw > 0);
 
   const highestC = (days) => (days.length ? Math.max(...days.map((day) => day.C)) : null);
+
+  /** Whether the open-position buffer, not the rule, sets a BRP result's collateral. */
+  const openSets = (brp) => !!brp.open && brp.open.amount > brp[brp.rule].security;
 
   /** The daily trading plan, as WalletBehaviour.dayFlows() reads it. */
   function tradingPlan(st, stress, volMult) {
@@ -209,8 +214,10 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
 
   /**
    * BRP collateral on the member's own figures (wallet-model §4). Direct+ members put up their marginal collateral:
-   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). 'standalone' is the
-   * member as its own BRP, with both, for comparison.
+   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). They also cover what they
+   * may leave open (the open-position buffer, §4.5), and put up whichever of the two is larger: a member whose
+   * imbalance already counts in the rule doesn't pay for it twice. 'standalone' is the member as its own BRP, with the
+   * minimum and the floors and without the buffer, for comparison.
    */
   function brpCollateral(run, weekly) {
     const { st, days, hot, stress } = run;
@@ -250,13 +257,20 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
       profile: st.profileMean !== 0 || st.profileSd > 0,
       smart: st.smartMean !== 0 || st.smartSd > 0,
     });
+    // What the member may leave open, when it may (null otherwise).
+    const open =
+      marginal && +st.openCap > 0
+        ? OpenPosition.buffer({ cap: +st.openCap, days: +st.openDays || 0, percentile: st.openPercentile })
+        : null;
+    const ruleSecurity = (rule === 'current' ? current : draft).security;
     return {
       basis: marginal ? 'marginal' : 'standalone',
       rule,
       other: rule === 'current' ? 'draft' : 'current',
       current,
       draft,
-      security: (rule === 'current' ? current : draft).security,
+      open,
+      security: open ? Math.max(ruleSecurity, open.amount) : ruleSecurity,
       volume,
       price,
       ramp,
@@ -326,7 +340,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
         label: brp.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security (TenneT)',
         segment: 'brp',
         value: brp.security,
-        confidence: `${brp.rule === 'current' ? 'TenneT rule' : 'Draft rule'} · Direct+ contract`,
+        confidence: `${openSets(brp) ? 'Open-position buffer' : RULE_NAMES[brp.rule]} · Direct+ contract`,
       },
       { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, confidence: 'Estimate' },
     ];
@@ -365,6 +379,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     SEGMENTS,
     scenario,
     compute,
+    openSets,
     GROUPS: Settings.GROUPS,
     BASE: Settings.BASE,
     PRESETS: Settings.PRESETS,
@@ -382,6 +397,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
   typeof WalletEccLink !== 'undefined' ? WalletEccLink : require('./ecc-link.js'),
   typeof WalletBrp !== 'undefined' ? WalletBrp : require('./brp.js'),
   typeof WalletTennet !== 'undefined' ? WalletTennet : require('./tennet-account.js'),
+  typeof WalletOpenPosition !== 'undefined' ? WalletOpenPosition : require('./open-position.js'),
   typeof WalletSettings !== 'undefined' ? WalletSettings : require('./settings.js'),
   typeof WalletAnswers !== 'undefined' ? WalletAnswers : require('./answers.js'),
 );

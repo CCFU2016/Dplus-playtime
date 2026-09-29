@@ -66,7 +66,8 @@ All wallet code lives in `src/wallet/`. It uses only the engine's public API, in
 | `ecc-link.js` | Limit targets per calculation day, base limits, the per-day solver, the split search | engine, dates |
 | `brp.js` | Current and draft art. 10.8 on the member's own figures (as its own BRP), the ramp-up series | its rule numbers |
 | `tennet-account.js` | The weekly imbalance invoice and the seeded Monte Carlo for B's stress end, the Dutch working-day calendar, the debit day, the exit tail | engine, dates, brp |
-| `settings.js` | Every setting (label, unit, kind, tag, source, default) and the presets | nothing |
+| `open-position.js` | The open-position buffer and TenneT's 2025 daily imbalance price percentiles (section 4.5) | nothing |
+| `settings.js` | Every setting (label, unit, kind, tag, source, default) and the presets | open-position (its percentile list) |
 | `answers.js` | The prospect questionnaire: answers → settings | settings |
 | `wallet.js` | Totals by purpose and by wallet segment, the expected–stress range, sensitivities; `WalletCalc`, the one object the pages use | all |
 | `src/pages/wallet/`, `src/pages/estimate/` | The pages: markup, stylesheet and script each, with the shared files in `src/pages/shared/` | |
@@ -438,6 +439,64 @@ BRP.
 
 The brief's pricelist mode is dropped.
 
+### 4.5 The open-position buffer (Niki, 29 Sep 2026)
+
+A trader that ends every quarter-hour flat adds nothing under TenneT's formula: no net volume with another BRP (A), no
+imbalance invoice (B), no reconciliation (C, D). Yet it can leave a position open, and the Direct+ BRP is then settled
+at TenneT's imbalance price. ECC's limits don't catch it: a sale at a positive price uses no limit and even gives
+continuous limit back (Risk Management Services Manual v056, §3.11). Niki's options paper "Covering open-position risk
+in the Direct+ BRP" (draft for discussion, 26 Sep 2026) sets out five ways to cover it. Niki chose **option 1, with one
+day at risk**. It lives in `open-position.js`.
+
+**S = E_cap × T × P_stress**
+
+- **E_cap** (`openCap`, MWh a day): the most energy a day Direct+ lets the member leave open, monitored and enforced. The default is 0: nothing to cover. The trader preset allows 20 MWh a day, the paper's own example (for approval).
+- **T** (`openDays`): the days at risk before Direct+ can act: **1** (Niki). The paper has 3, TenneT's own logic for 3A: D−1, D and D+1 are already nominated (BR-2024-2077 p.7).
+- **P_stress** (`openPercentile`): a percentile of TenneT's 2025 imbalance prices, **per day, not per quarter-hour**. A position open for a day spreads over its quarter-hours, which averages out single spikes.
+  - An open short pays the shortage price, so the top end of that price counts.
+  - An open long receives the surplus price and loses only when that price is negative, so max(0, −its bottom end) counts.
+  - The buffer takes the larger of the two; at every percentile offered, that's the short side.
+
+**Combined with the rule** as the paper recommends (its §4): BRP collateral = **max(the marginal rule, S)**, not the sum.
+A member whose imbalance already counts in the rule (B) doesn't pay for it twice.
+- It applies on the Direct+ basis only: "On your own as a BRP" is TenneT's rule alone.
+- S is the same in a normal and a tough week, since it's already a stress amount.
+- The volume sensitivities don't scale E_cap: it's a contract setting, not a volume.
+
+**The prices.** They're TenneT's final settlement prices for 2025 (its export of 4 Apr 2026, 15-minute periods), averaged per local
+day over the day's periods, each period weighted equally.
+- Coverage: 365 days and 35,040 periods, with no gaps (30 Mar has 92 periods and 26 Oct 100).
+- 2025 still has dual pricing: the shortage and surplus prices differ in the 26% of periods in regulation state 2.
+- The percentiles are taken over the 365 days, linear between days (numpy's default).
+- The daily averages are in `reference/tennet/tennet_imbalance-prices-2025_daily-averages_2026-09-29.csv`, made with `~/imbalance_analysis/nl_daily_export.py`. `tests/wallet/open-position.test.js` recomputes the table below from them.
+
+| Setting | Short: shortage price, top end | Long: surplus price, bottom end | Stress price |
+|---|---|---|---|
+| 90th percentile | €146.24 | €20.16 (p10) | €146.24 |
+| 95th percentile | €178.06 | €8.13 (p5) | €178.06 |
+| 97.5th percentile | €204.20 | −€4.60 (p2.5) | €204.20 |
+| 98th percentile | €220.63 | −€7.53 (p2) | €220.63 |
+| **99th percentile (default)** | **€255.86** | **−€37.78 (p1)** | **€255.86** |
+| 99.5th percentile | €274.73 | −€46.54 (p0.5) | €274.73 |
+| The worst day | €286.42 (25 Sep) | −€70.44 (6 Apr) | €286.42 |
+
+**Worked example:** the trader preset, week of 5 Oct 2026 (the rule in force).
+- A flat trader gets €0 under the rule, so S = 20 × 1 × €255.86 = **€5,117.20** sets its BRP collateral.
+- The estimate rises from about €30,000 to about €35,000 (a tough week: from €74,000 to €79,000).
+- From 2027 (the draft), 4B is €2,004 in a normal week, so S still sets it. In a tough week 4B is larger, and S adds nothing.
+- `tests/wallet/wallet.test.js` pins these numbers.
+- The worked example of section 8 predates the buffer and leaves nothing open.
+
+**Keep in mind** (from the price analysis):
+- **Daily averaging smooths the tail a lot.** In 2025, the shortage price's 99th percentile is about €400/MWh per quarter-hour, against €256 per day. The worst quarter-hour was about €5,500 and the worst day €286. That's what T = 1 day intends, but a position left open only in the worst quarter-hours costs more.
+- **365 days make a thin tail.** The 99th percentile lies between the 4th and 5th worst days (the five worst days: €250, €266, €274, €277 and €286), so one more bad day moves it.
+- **The long side only costs money below the 2.5th percentile,** where the daily surplus price turns negative.
+- **2026 isn't in the data yet:** TenneT's API needs a key (W15).
+
+**Not modelled:** the paper recommends daily collection of realised imbalance (its option 4) next to the buffer. Both
+need Direct+ to see each member's open position after gate closure, and to suspend a member that breaches its cap
+(W13, W14).
+
 ---
 
 ## 5. Part 4: TenneT account cash for invoices
@@ -572,6 +631,7 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 | State-2 share / gap | 5% / €150 | Dual pricing is rare but expensive |
 | Bad days | 1 (normal week), 2 (tough week), €100 lost per MWh of open position | Niki, 26 Sep 2026: room for one or two bad days, not a bad week (section 3); traders only, the aggregator and asset presets set 0. The old stress share (5% of buys lost every day) is off |
 | Purchases paid before their sale | 30% of a day's buys (all three presets) | Roughly the day-ahead buying, sold intraday the next day; everyone is assumed to hold some positions over 16:00 |
+| Open position allowed | 20 MWh a day, 1 day at risk, 99th percentile | The options paper's example (section 4.5), for approval; the aggregator and asset presets leave nothing open |
 | Connections | none | |
 
 **Aggregator** (flexibility held in other BRPs' portfolios, as in the aggregator video)
@@ -605,7 +665,8 @@ evening, to about 150 MWh a day like the other two presets, so the examples comp
 This uses a **larger desk** than the financial-trader preset above: 240 / 240 MWh a day continuous, 100 / 100 auctions,
 €10,000 resting and €5,000 evening and s = 0 (the preset before 26 Sep 2026), everything else as the preset. `tests/wallet/wallet.test.js`
 pins it as `LARGE_DESK`. It uses Direct+ marginal BRP collateral (section 4.4), everything as cash unless stated, and
-replenishment none. A throwaway script repeated each step with the engine, and every figure matches.
+replenishment none. It predates the open-position buffer (section 4.5) and leaves nothing open. A throwaway script
+repeated each step with the engine, and every figure matches.
 
 ### 8.1 Part 1: ECC collateral
 

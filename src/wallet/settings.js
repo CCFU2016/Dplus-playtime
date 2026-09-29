@@ -4,10 +4,13 @@
      kind  number | share (0-1, shown as %) | bool | select | list (MW, comma-separated) | optional (number or empty)
      tag   input (the member's own plan) | ASSUMPTION | INTERPRETATION | ECC setting (set with ECC; no built-in value) |
            Direct+ contract */
-const WalletSettings = (() => {
+const WalletSettings = ((OpenPosition) => {
   'use strict';
 
   const DIRECT_PLUS = 'Direct+ decision, 26 Sep 2026';
+  const OPEN_DECISION = 'Direct+ decision, 29 Sep 2026';
+  // "€256" or "−€38": a 2025 daily imbalance price in the percentile list.
+  const perMWh = (value) => `${value < 0 ? '−' : ''}€${Math.round(Math.abs(value))}`;
   const UPDATE_HOURS = [
     [18, 'Around 18:00'],
     [19, 'Around 19:00'],
@@ -663,6 +666,46 @@ const WalletSettings = (() => {
       ],
     },
     {
+      id: 'open',
+      title: 'Open positions',
+      note:
+        'What you may leave open is settled at the imbalance price, so it is covered too: open position × days at risk × ' +
+        "stress price. Your BRP collateral is this or the rule's amount, whichever is larger.",
+      fields: [
+        {
+          key: 'openCap',
+          label: 'Open position Direct+ allows you',
+          unit: 'MWh a day',
+          kind: 'number',
+          tag: 'Direct+ contract',
+          src: 'The most energy a day you may leave open, monitored and enforced by Direct+; 0 if you always close your positions. Whether members may leave positions open on purpose is not decided yet',
+          default: 0,
+        },
+        {
+          key: 'openDays',
+          label: 'Days at risk before Direct+ can act',
+          unit: 'days',
+          kind: 'number',
+          tag: 'ASSUMPTION',
+          src: `${OPEN_DECISION}: one day. TenneT's own logic would give three: D−1, D and D+1 are already nominated (proposal BR-2024-2077 p.7)`,
+          default: 1,
+        },
+        {
+          key: 'openPercentile',
+          label: "Stress price: 2025's daily imbalance price at the",
+          unit: '',
+          kind: 'select',
+          tag: 'ASSUMPTION',
+          src: "TenneT's imbalance prices in 2025, averaged per day (365 days): an open short pays the shortage price, the top end; an open long loses when the surplus price is negative, the bottom end. The larger of the two counts. Per day, not per quarter-hour: a day's quarter-hours average out single spikes",
+          default: OpenPosition.DEFAULT_PERCENTILE,
+          options: OpenPosition.PERCENTILES.map(({ id, label, short, long }) => [
+            id,
+            `${label}: short ${perMWh(short)}, long ${perMWh(long)}`,
+          ]),
+        },
+      ],
+    },
+    {
       id: 'tennet',
       title: 'TenneT account',
       fields: [
@@ -714,6 +757,7 @@ const WalletSettings = (() => {
         imbShare: LEVELS.imbShare.tight,
         imbBase: 'traded',
         bias: LEVELS.bias.neither,
+        openCap: 20, // the options paper's example: a trader allowed 20 MWh a day open (for approval)
       },
     },
     aggregator: {
@@ -783,5 +827,5 @@ const WalletSettings = (() => {
     );
 
   return { GROUPS, BASE, LEVELS, PRESETS, preset, assumptions };
-})();
+})(typeof WalletOpenPosition !== 'undefined' ? WalletOpenPosition : require('./open-position.js'));
 if (typeof module !== 'undefined') module.exports = WalletSettings;

@@ -274,6 +274,32 @@ def brp_details(run):
     check('Imbalance' not in core(tab), 'trader: no imbalance line (kept short)')
 
 
+def open_position(run):
+    """The trader example may leave 20 MWh a day open: the BRP calculation adds the open-position buffer, and the larger
+    of the rule and the buffer counts. The asset owner leaves nothing open."""
+    tab = run.open('estimate')
+    check = run.check
+    skip(tab)  # the trader example
+    row = next(
+        row for row in tab.query_selector_all('#purposes tbody tr') if row.inner_text().startswith('BRP collateral')
+    )
+    details = row.query_selector('details.calc')
+    details.query_selector('summary').click()
+    steps = [
+        ['Under the rule', '€0'],
+        ['Open position allowed', '20 MWh a day'],
+        ['Days at risk', '1 day'],
+        ['Stress price', '€255.86/MWh'],
+        ['Open-position buffer', '€5,117'],
+        ['BRP collateral', '€5,117'],
+    ]
+    rows = calc_rows(details)[-6:]
+    check(rows == steps, 'trader: the buffer sets the BRP collateral: ' + ' | '.join(' '.join(row) for row in rows))
+    check('Up to 20 MWh a day, 1 day at risk' in core(tab), 'trader: the open position in the core assumptions')
+    tab.click('[data-extype="asset"]')
+    check('Open position' not in core(tab), 'asset owner: nothing left open, no buffer')
+
+
 def topups(run):
     """The top-up table compares the three rhythms and marks the answer; the selector recomputes."""
     tab = run.open('estimate')
@@ -416,7 +442,8 @@ def phone(run):
 
 def check_estimate(run):
     scenarios = [
-        example, questions, default_trader, netting, asset_questions, brp_details, topups, tough_week, weekends_both,
+        example, questions, default_trader, netting, asset_questions, brp_details, open_position, topups, tough_week,
+        weekends_both,
         portfolio, daily_collateral, no_auction_buys, validation, errors, weeks, phone,
     ]  # fmt: skip
     for scenario in scenarios:

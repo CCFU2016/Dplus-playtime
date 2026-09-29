@@ -20,6 +20,7 @@ const WALLET_MODULES = [
   'ecc-link',
   'brp',
   'tennet-account',
+  'open-position',
   'settings',
   'answers',
   'wallet',
