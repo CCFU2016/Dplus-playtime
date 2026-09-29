@@ -31,6 +31,10 @@
   const fieldOf = (key) => FIELDS.find((field) => field.key === key);
   /** A stress price to the cent, so that the open-position buffer's line adds up: €255.86/MWh. */
   const perMWh = (price) => `€${price.toFixed(2)}/MWh`;
+  /** The open-position buffer's working: 20 MWh a day × 1 day at risk × €255.86/MWh (the …), €5,117. */
+  const openWorking = (open) =>
+    `${wholeNumber.format(open.position)} MWh a day × ${open.days} day${open.days === 1 ? '' : 's'} at risk × ` +
+    `${perMWh(open.price)} (${open.description}), ${euros(open.security)}`;
 
   // ---------- page state ----------
 
@@ -350,22 +354,22 @@
     const current = br.rule === 'current';
     const ruleName = current ? 'the rule in force (Systeemcode 2026, art. 10.8)' : "ACM's draft for 2027";
     const formula = current ? (br.current.twoA ? '2 × A' : 'A + B') : '3A + 4B + 6C + 6D';
-    const ruleSecurity = br[br.rule].security;
     let text;
-    if (br.basis === 'marginal') {
+    if (br.rule === 'open') {
       text =
-        ruleSecurity < 0.5 && current
+        'Without assets, what you buy and sell nets out unless you leave it open, so Direct+ covers that instead of ' +
+        `TenneT's rule in force: ${openWorking(open)}. There is no minimum for members.`;
+    } else if (br.basis === 'marginal') {
+      text =
+        br[br.rule].security < 0.5 && current
           ? 'Your marginal collateral: you add no net volume with other BRPs and no large connections to the Direct+ ' +
             `BRP, so under ${ruleName} it is €0. There is no minimum for members.`
           : `Your marginal collateral under ${ruleName}: ${formula} on your own figures. There is no minimum for ` +
             'members: the €96,000 and the 50 MW floors apply once to the Direct+ BRP.';
       if (C.openSets(br)) {
-        text +=
-          ` What you may leave open is larger, so it sets the amount: ${wholeNumber.format(open.cap)} MWh a day × ` +
-          `${open.days} day${open.days === 1 ? '' : 's'} at risk × ${perMWh(open.price)} (${open.description}), ` +
-          `${euros(open.amount)}.`;
+        text += ` What you may leave open is larger, so it sets the amount: ${openWorking(open)}.`;
       } else if (open) {
-        text += ` The open-position buffer for what you may leave open, ${thousands(open.amount)}, is smaller.`;
+        text += ` The open-position buffer for what you may leave open, ${thousands(open.security)}, is smaller.`;
       }
     } else if (current) {
       text =
@@ -378,15 +382,18 @@
           ? `On your own as a BRP, under ${ruleName} the €96,000 minimum applies: 3A + 4B + 6C + 6D is ${thousands(br.draft.sum)}.`
           : `On your own as a BRP, under ${ruleName}: 3A + 4B + 6C + 6D.`;
     }
-    const levers = current
-      ? [
-          { key: 'perPeriod', label: 'How daily net volume is read' },
-          { key: 'connectionsMW', label: 'Large connections' },
-        ]
-      : [
-          { key: 'imbShare', label: 'Imbalance' },
-          { key: 'bias', label: 'Short or long bias' },
-        ];
+    const LEVERS = {
+      current: [
+        { key: 'perPeriod', label: 'How daily net volume is read' },
+        { key: 'connectionsMW', label: 'Large connections' },
+      ],
+      draft: [
+        { key: 'imbShare', label: 'Imbalance' },
+        { key: 'bias', label: 'Short or long bias' },
+      ],
+      open: [],
+    };
+    const levers = LEVERS[br.rule];
     if (open) {
       levers.push({ key: 'openCap', label: 'Open position allowed' }, { key: 'openPercentile', label: 'Stress price' });
     }
@@ -504,20 +511,31 @@
     const { open } = br;
     const other = br.other;
     // The other rule as this one: with the open-position buffer when the larger.
-    const withBuffer = (brp, amount) => Math.max(amount, brp.open ? brp.open.amount : 0);
+    const withBuffer = (brp, amount) => Math.max(amount, brp.open ? brp.open.security : 0);
     const otherExpected = withBuffer(br, br[other].security);
     const otherStress = withBuffer(y.brp, y.brp[other].security);
+    const week = dateLabel(st.week, true);
+    const RULE = {
+      current: `Rule in force on ${week}: Systeemcode elektriciteit 2026, art. 10.8 (TenneT rule).`,
+      draft: 'ACM draft decision of 25 August 2026 for dates from 1 January 2027 (draft rule, not yet final).',
+      open: `Rule on ${week} for a member without assets: Direct+'s open-position rule, in place of TenneT's rule in force.`,
+    };
+    const OTHER = { current: 'rule in force now', draft: 'ACM draft', open: 'open-position rule' };
+    let basis = 'Shown on your own as a BRP, with the minimum (for comparison).';
+    if (br.basis === 'marginal' && (br.rule === 'open' || other === 'open')) {
+      basis =
+        "Members without assets take Direct+'s open-position rule instead of TenneT's rule in force: what they buy " +
+        'and sell nets out unless they leave it open.';
+    } else if (br.basis === 'marginal') {
+      basis =
+        'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum' +
+        (open ? ', or the open-position buffer for what they may leave open if that is larger.' : '.');
+    }
     $('brp-sub').textContent =
-      (br.rule === 'current'
-        ? `Rule in force on ${dateLabel(st.week, true)}: Systeemcode elektriciteit 2026, art. 10.8 (TenneT rule).`
-        : 'ACM draft decision of 25 August 2026 for dates from 1 January 2027 (draft rule, not yet final).') +
-      ` Under the ${other === 'current' ? 'rule in force now' : 'ACM draft'} it would be ${thousands(otherExpected)}` +
+      RULE[br.rule] +
+      ` Under the ${OTHER[other]} it would be ${thousands(otherExpected)}` +
       (Math.round(otherStress) !== Math.round(otherExpected) ? ` to ${thousands(otherStress)}` : '') +
-      '. ' +
-      (br.basis === 'marginal'
-        ? 'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum' +
-          (open ? ', or the open-position buffer for what they may leave open if that is larger.' : '.')
-        : 'Shown on your own as a BRP, with the minimum (for comparison).');
+      `. ${basis}`;
     const table = clear($('brp-table'));
     tableHead(table, [{ text: 'Component' }, { text: 'Expected', className: 'r' }, { text: 'Stress', className: 'r' }]);
     const body = el('tbody');
@@ -527,9 +545,18 @@
         { text: format(expected), className: 'r' },
         { text: format(stress), className: 'r' },
       ]);
-    line('Daily net volume used (MWh)', br.volume, y.brp.volume, (value) => wholeNumber.format(value));
+    const mwhs = (value) => wholeNumber.format(value);
+    line('Daily net volume used (MWh)', br.volume, y.brp.volume, mwhs);
     let ruleLine;
-    if (br.rule === 'current') {
+    if (br.rule === 'open') {
+      const [o, os] = [open, y.brp.open];
+      line('Open position Direct+ allows (MWh a day)', o.cap, os.cap, mwhs);
+      if (o.planned) line('Your plan leaves open (MWh a day)', Math.abs(o.planned), Math.abs(os.planned), mwhs);
+      line(`Open position, ${o.side} (MWh a day)`, o.position, os.position, mwhs);
+      line('Days at risk', o.days, os.days, mwhs);
+      line(`Stress price (${o.label.toLowerCase()} of ${o.measureName})`, o.price, os.price, perMWh);
+      ruleLine = line('Your BRP collateral: open position × days × price', o.security, os.security);
+    } else if (br.rule === 'current') {
       const [c, cs] = [br.current, y.brp.current];
       line('A (first calculation)', c.A, cs.A);
       line('A if TenneT asks for more (para 5)', c.Aup, cs.Aup);
@@ -547,13 +574,13 @@
         br.basis === 'marginal' ? 'Your marginal collateral (no minimum, not below €0)' : 'Security (minimum €96,000)';
       ruleLine = line(label, d.security, ds.security);
     }
-    if (open) {
+    if (open && br.rule !== 'open') {
       const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
       line(
-        `Open-position buffer: ${wholeNumber.format(open.cap)} MWh × ${days} × ${perMWh(open.price)} ` +
+        `Open-position buffer: ${wholeNumber.format(open.position)} MWh × ${days} × ${perMWh(open.price)} ` +
           `(${open.label.toLowerCase()} of ${open.measureName})`,
-        open.amount,
-        y.brp.open.amount,
+        open.security,
+        y.brp.open.security,
       );
       line('Your BRP collateral: the larger of the two', br.security, y.brp.security).className = 'total';
     } else {

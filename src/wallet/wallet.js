@@ -18,7 +18,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     { id: 'imb', label: 'Imbalance twice the assumption', variant: { imbMult: 2 } },
   ];
 
-  const RULE_NAMES = { current: 'TenneT rule', draft: 'Draft rule' };
+  const RULE_NAMES = { current: 'TenneT rule', draft: 'Draft rule', open: 'Open-position rule' };
 
   const UNREACHABLE =
     'The targets cannot be reached with this split: a market with a 0% share only has its base limit.';
@@ -37,8 +37,8 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
 
   const highestC = (days) => (days.length ? Math.max(...days.map((day) => day.C)) : null);
 
-  /** Whether the open-position buffer, not the rule, sets a BRP result's collateral. */
-  const openSets = (brp) => !!brp.open && brp.open.amount > brp[brp.rule].security;
+  /** Whether the open-position buffer, larger than the TenneT rule next to it, sets a BRP result's collateral. */
+  const openSets = (brp) => brp.rule !== 'open' && !!brp.open && brp.open.security > brp[brp.rule].security;
 
   /** The daily trading plan, as WalletBehaviour.dayFlows() reads it. */
   function tradingPlan(st, stress, volMult) {
@@ -216,8 +216,9 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
    * BRP collateral on the member's own figures (wallet-model §4). Direct+ members put up their marginal collateral:
    * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). They also cover what they
    * may leave open (the open-position buffer, §4.5), and put up whichever of the two is larger: a member whose
-   * imbalance already counts in the rule doesn't pay for it twice. 'standalone' is the member as its own BRP, with the
-   * minimum and the floors and without the buffer, for comparison.
+   * imbalance already counts in the rule doesn't pay for it twice. A member without assets takes the open-position
+   * rule instead of TenneT's rule in force ('open'). 'standalone' is the member as its own BRP, with the minimum and the
+   * floors and without the buffer, for comparison.
    */
   function brpCollateral(run, weekly) {
     const { st, days, hot, stress } = run;
@@ -225,7 +226,13 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     const volume = brpVolume(run);
     // €40 for now (Direct+ decision), in a tough week too; blank: the market's average price.
     const price = optional(st.brpPrice) ?? (hot ? st.stressAvgPrice : st.price);
-    const rule = Brp.ruleFor(Engine.iso(days[0]), st.rule);
+    // Without assets (no connections in the Direct+ BRP, nothing nominated in from other BRPs), what a member buys and
+    // sells nets out unless it is left open, and a net sale or purchase can't be delivered: its open position is what
+    // Direct+ allows, or what the plan leaves open if that is more (Direct+ decision, 29 Sep 2026).
+    const openRule = marginal && listMW(st.connectionsMW).length === 0 && !(+st.nominatedIn > 0);
+    // The rule before the draft: TenneT's rule in force, or the open-position rule for a member without assets.
+    const now = openRule ? 'open' : 'current';
+    const rule = Brp.ruleFor(Engine.iso(days[0]), st.rule) === 'draft' ? 'draft' : now;
     const current = Brp.current({
       volume,
       price3m: price,
@@ -257,25 +264,27 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
       profile: st.profileMean !== 0 || st.profileSd > 0,
       smart: st.smartMean !== 0 || st.smartSd > 0,
     });
-    // What the member may leave open, when it may (null otherwise).
+    // What the member may leave open, when it may or has no assets (null otherwise).
     const open =
-      marginal && +st.openCap > 0
+      marginal && (openRule || +st.openCap > 0)
         ? OpenPosition.buffer({
-            cap: +st.openCap,
+            cap: +st.openCap || 0,
+            planned: openRule ? run.volumes.sells - run.volumes.buys : 0, // + open short, − open long
             days: +st.openDays || 0,
             percentile: st.openPercentile,
             measure: st.openMeasure,
           })
         : null;
-    const ruleSecurity = (rule === 'current' ? current : draft).security;
+    // Next to a TenneT rule the buffer counts if larger; the open-position rule is the buffer itself.
+    const floor = open && rule !== 'open' ? open.security : 0;
     return {
       basis: marginal ? 'marginal' : 'standalone',
       rule,
-      other: rule === 'current' ? 'draft' : 'current',
+      other: rule === 'draft' ? now : 'draft',
       current,
       draft,
       open,
-      security: open ? Math.max(ruleSecurity, open.amount) : ruleSecurity,
+      security: Math.max({ current, draft, open }[rule].security, floor),
       volume,
       price,
       ramp,

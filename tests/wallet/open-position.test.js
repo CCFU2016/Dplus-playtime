@@ -57,12 +57,12 @@ test('the buffer: open position × days at risk × the larger of what a short an
     [p99.measure, p99.side, p99.short, p99.longLoss, p99.price],
     ['price', 'short', 255.86, 37.78, 255.86],
   );
-  assertMoney(p99.amount, 5117.2, '20 MWh × 1 day × €255.86');
-  assertMoney(O.buffer({ cap: 20, days: 3, percentile: 'max' }).amount, 20 * 3 * 286.42, 'the worst day, three days');
+  assertMoney(p99.security, 5117.2, '20 MWh × 1 day × €255.86');
+  assertMoney(O.buffer({ cap: 20, days: 3, percentile: 'max' }).security, 20 * 3 * 286.42, 'the worst day, three days');
   assert.equal(O.stressPrice('p90').longLoss, 0, 'at p90 a long still receives money (€20.16): it loses nothing');
   const spread = O.buffer({ cap: 20, days: 1, percentile: 'p99', measure: 'spread' });
   assert.deepEqual([spread.side, spread.price], ['short', 162.62], 'the spread over day-ahead: €162.62 at p99');
-  assertMoney(spread.amount, 3252.4, '20 MWh × 1 day × €162.62');
+  assertMoney(spread.security, 3252.4, '20 MWh × 1 day × €162.62');
   const p90 = O.stressPrice('p90', 'spread');
   assert.deepEqual(
     [p90.side, p90.price],
@@ -70,7 +70,25 @@ test('the buffer: open position × days at risk × the larger of what a short an
     'spread p90: an open long bought at day-ahead loses more (€49.99) than a short (€48.82)',
   );
   assert.deepEqual([O.stressPrice().id, O.stressPrice().measure], ['p99', 'price'], 'by default: p99 of the price');
-  assert.equal(O.buffer({ cap: 0 }).amount, 0, 'nothing left open, no buffer');
+  assert.equal(O.buffer({ cap: 0 }).security, 0, 'nothing left open, no buffer');
+
+  // What the plan leaves open (a member without assets): + an open short, − an open long; the cap still works either way.
+  const seller = O.buffer({ cap: 20, planned: 110 });
+  assert.deepEqual([seller.side, seller.position], ['short', 110], 'selling 110 MWh more than it buys: short 110');
+  assertMoney(seller.security, 110 * 255.86, '110 MWh × €255.86');
+  const buyer = O.buffer({ cap: 20, planned: -110 });
+  assert.deepEqual(
+    [buyer.side, buyer.position],
+    ['short', 20],
+    'buying 110 MWh more: long 110 × €37.78 = €4,156 loses less than a short of the 20 allowed × €255.86',
+  );
+  const buyerOnSpread = O.buffer({ cap: 20, planned: -110, measure: 'spread' });
+  assert.deepEqual(
+    [buyerOnSpread.side, buyerOnSpread.position, buyerOnSpread.loses],
+    ['long', 110, 'what an open long loses under the day-ahead price it bought at'],
+    'on the spread the long side loses more: 110 × €87.89',
+  );
+  assertMoney(buyerOnSpread.security, 110 * 87.89, '€9,667.90');
   assert.throws(() => O.stressPrice('p42'), /No percentile "p42"/);
   assert.throws(() => O.stressPrice('p99', 'vwap'), /No stress price measure "vwap"/);
 });

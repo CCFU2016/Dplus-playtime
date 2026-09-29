@@ -59,12 +59,12 @@ def settings(run):
 
 
 def open_position(run):
-    """The trader preset may leave 20 MWh a day open: the buffer sets its BRP collateral, and the percentile and the
-    days at risk in Settings move it."""
+    """The trader preset has no assets and may leave 20 MWh a day open: the open-position rule sets its BRP collateral,
+    and the percentile, the days at risk and the measure in Settings move it."""
     tab = run.open('wallet')
     check = run.check
     total = tab.inner_text('#brp-table tbody tr:last-child')
-    check('the larger of the two' in total and '€5,000' in total, 'the buffer sets the BRP collateral: ' + total)
+    check('open position × days × price' in total and '€5,000' in total, 'the open-position rule sets it: ' + total)
     tab.click('#tab-settings')
     tab.select_option('[data-key="openPercentile"]', 'p98')
     tab.fill('[data-key="openDays"]', '3')

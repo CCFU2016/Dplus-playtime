@@ -84,11 +84,29 @@ const WalletOpenPosition = (() => {
     };
   }
 
-  /** The buffer for `cap` MWh a day left open, `days` days at risk, at percentile `percentile` of `measure`: amount =
-   *  S, €. */
-  function buffer({ cap = 0, days = 1, percentile = DEFAULT_PERCENTILE, measure = DEFAULT_MEASURE }) {
+  /**
+   * The buffer S, € (`security`), at percentile `percentile` of `measure`, for `days` days at risk. The open position
+   * is `cap` MWh a day either way (what Direct+ allows), or what the plan leaves open if that is more: `planned` MWh a
+   * day, + when the member sells more than it buys (open short), − when it buys more (open long). The side that loses
+   * more sets S.
+   */
+  function buffer({ cap = 0, planned = 0, days = 1, percentile = DEFAULT_PERCENTILE, measure = DEFAULT_MEASURE }) {
     const stress = stressPrice(percentile, measure);
-    return { cap, days, ...stress, amount: cap * days * stress.price };
+    const short = { position: Math.max(cap, planned), price: stress.short };
+    const long = { position: Math.max(cap, -planned), price: stress.longLoss };
+    const side = short.position * short.price >= long.position * long.price ? 'short' : 'long';
+    const { position, price } = side === 'short' ? short : long;
+    return {
+      ...stress,
+      cap,
+      planned,
+      days,
+      side,
+      position,
+      price,
+      loses: MEASURES[measure][side],
+      security: days * position * price,
+    };
   }
 
   return { MEASURES, PERCENTILES, DEFAULT_PERCENTILE, DEFAULT_MEASURE, stressPrice, buffer };

@@ -67,8 +67,8 @@ test('the worked example (§8.5): a financial trader, week of 5 Oct 2026', () =>
   );
   assert.deepEqual(
     [ft.expected.brp.rule, ft.expected.brp.basis],
-    ['current', 'marginal'],
-    'the rule in force, marginal collateral',
+    ['open', 'marginal'],
+    'marginal collateral; without assets, the open-position rule in place of the rule in force (nothing left open: €0)',
   );
   assertMoney(ft.expected.brp.draft.security, 7973, 'under the draft, 4B = 4 × 1,993.25 and no minimum');
   const { trading, brp, available } = ft.expected.segments;
@@ -121,19 +121,29 @@ test('marginal BRP collateral: the rule on the member’s own figures, never bel
   );
 });
 
-test('the open-position buffer (§4.5): the larger of the rule and what the member may leave open', () => {
+test('the open-position rule (§4.5): for a member without assets, in place of the rule in force', () => {
   // The trader preset may leave 20 MWh a day open, one day at risk, at the 2025 daily 99th percentile, €255.86/MWh.
   const trader = C.compute(C.preset('trader'));
   const { brp } = trader.expected;
   assert.deepEqual(
-    [brp.open.cap, brp.open.days, brp.open.id, brp.open.side, brp.open.price],
-    [20, 1, 'p99', 'short', 255.86],
-    'the buffer the trader preset uses',
+    [brp.rule, brp.other, brp.open.cap, brp.open.days, brp.open.id, brp.open.side, brp.open.price],
+    ['open', 'draft', 20, 1, 'p99', 'short', 255.86],
+    'no assets: the open-position rule, with the draft from 2027 as the other rule',
   );
-  assertMoney(brp.current.security, 0, 'a flat trader adds nothing under the rule in force');
-  assertMoney(brp.security, 20 * 1 * 255.86, 'so the buffer sets its BRP collateral: 20 × 1 × €255.86');
-  assert.ok(C.openSets(brp), 'the buffer sets it');
-  assertMoney(trader.stress.brp.security, 5117.2, 'the same buffer in a tough week');
+  assertMoney(brp.current.security, 0, "TenneT's rule in force would have given a flat trader €0");
+  assertMoney(brp.security, 20 * 1 * 255.86, 'its BRP collateral: 20 × 1 × €255.86');
+  assertMoney(trader.stress.brp.security, 5117.2, 'the same in a tough week');
+
+  // Without assets, what the plan leaves open counts when it is more than the cap: selling 110 MWh a day more than it
+  // buys is an open short of 110; buying 110 more is an open long, which loses less than the allowed short.
+  const set = (extra) => C.compute({ ...C.preset('trader'), ...extra }).expected.brp;
+  assertMoney(set({ contBuy: 11, contSell: 99, aucBuy: 3, aucSell: 25 }).security, 110 * 255.86, 'mainly selling');
+  assertMoney(set({ contBuy: 99, contSell: 11, aucBuy: 25, aucSell: 3 }).security, 20 * 255.86, 'mainly buying');
+  const connected = set({ connectionsMW: '5' });
+  assert.ok(
+    connected.rule === 'current' && C.openSets(connected),
+    'with assets: the rule in force, and the buffer as the larger of the two',
+  );
 
   // Under the 2027 draft, the imbalance invoices count (4B): the larger of the two, not both.
   const draft = C.compute({ ...C.preset('trader'), week: '2027-10-04' });
@@ -144,12 +154,14 @@ test('the open-position buffer (§4.5): the larger of the rule and what the memb
     'tough week: the draft is larger, and the buffer adds nothing on top',
   );
 
-  const set = (extra) => C.compute({ ...C.preset('trader'), ...extra }).expected.brp;
   assertMoney(set({ openPercentile: 'p98', openDays: 3 }).security, 20 * 3 * 220.63, 'p98, three days at risk');
   assertMoney(set({ openMeasure: 'spread' }).security, 20 * 162.62, 'the spread over day-ahead at p99: €162.62');
-  assertMoney(set({ openCap: 0 }).security, 0, 'nothing left open, no buffer');
+  assertMoney(set({ openCap: 0 }).security, 0, 'nothing left open, nothing to cover');
   const alone = set({ brpBasis: 'standalone' });
-  assert.ok(alone.open === null && alone.security === alone.current.security, 'on your own as a BRP: no buffer');
+  assert.ok(
+    alone.rule === 'current' && alone.open === null && alone.security === alone.current.security,
+    "on your own as a BRP: TenneT's rule, no buffer",
+  );
   for (const id of ['aggregator', 'asset']) {
     assert.equal(C.compute(C.preset(id)).expected.brp.open, null, `${id}: nothing left open by default, no buffer`);
   }
@@ -164,8 +176,8 @@ test('the week, the rule, the split and the auction prices move the right parts'
   );
   assert.equal(
     C.compute(desk({ week: '2027-03-22', rule: 'current' })).expected.brp.rule,
-    'current',
-    'the rule can be chosen',
+    'open',
+    'the rule in force can be chosen (for a member without assets, the open-position rule in its place)',
   );
   assert.ok(
     C.compute(desk({ splitMode: 'mine', key: 60 })).expected.ecc.C > 125745,

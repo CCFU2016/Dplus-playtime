@@ -275,8 +275,8 @@ def brp_details(run):
 
 
 def open_position(run):
-    """The trader example may leave 20 MWh a day open: the BRP calculation adds the open-position buffer, and the larger
-    of the rule and the buffer counts. The asset owner leaves nothing open."""
+    """The trader example has no assets and may leave 20 MWh a day open: its BRP calculation shows the open-position
+    rule in place of TenneT's rule in force. The asset owner keeps TenneT's rule and leaves nothing open."""
     tab = run.open('estimate')
     check = run.check
     skip(tab)  # the trader example
@@ -285,16 +285,19 @@ def open_position(run):
     )
     details = row.query_selector('details.calc')
     details.query_selector('summary').click()
+    tabs = details.eval_on_selector_all('.rule-switch button', 'buttons => buttons.map(b => b.innerText)')
+    check(
+        tabs == ['Open-position rule (2026)', 'ACM draft (from 2027)'],
+        'trader: the open-position rule in place of the rule in force: ' + ' | '.join(tabs),
+    )
     steps = [
-        ['Under the rule', '€0'],
-        ['Open position allowed', '20 MWh a day'],
+        ['Open position Direct+ allows', '20 MWh a day'],
         ['Days at risk', '1 day'],
         ['Stress price', '€255.86/MWh'],
-        ['Open-position buffer', '€5,117'],
         ['BRP collateral', '€5,117'],
     ]
-    rows = calc_rows(details)[-6:]
-    check(rows == steps, 'trader: the buffer sets the BRP collateral: ' + ' | '.join(' '.join(row) for row in rows))
+    rows = calc_rows(details)
+    check(rows == steps, 'trader: the open-position rule sets it: ' + ' | '.join(' '.join(row) for row in rows))
     check('Up to 20 MWh a day, 1 day at risk' in core(tab), 'trader: the open position in the core assumptions')
     tab.click('[data-extype="asset"]')
     check('Open position' not in core(tab), 'asset owner: nothing left open, no buffer')

@@ -497,6 +497,17 @@ A member whose imbalance already counts in the rule (B) doesn't pay for it twice
 - **The spread assumes a day-ahead trade.** For a position that wasn't bought or sold at day-ahead, the imbalance price is the right basis.
 - **2026 isn't in the data yet:** TenneT's API needs a key (W15).
 
+**Members without assets (Niki, 29 Sep 2026): the open-position rule replaces TenneT's rule in force.** A member
+without assets has no connections in the Direct+ BRP and nothing nominated in from other BRPs, like the trader preset.
+What it buys and sells nets out unless it leaves it open, so TenneT's rule in force, which only sees the daily net
+volume at €40/MWh, is replaced by the open-position rule (`rule: 'open'`).
+- **The rule:** BRP collateral = S, not the larger of the rule and S.
+- **The plan:** a net sale or purchase can't be delivered without assets. So the open position is what Direct+ allows or what the plan leaves open, whichever is more, **per side** (ASSUMPTION, W16). Selling more than it buys is an open short; buying more is an open long, which loses less (only when the surplus price is negative). The side that loses more sets S.
+  - A trader without assets that mainly sells (110 MWh a day net): an open short of 110 MWh, 110 × €255.86 = **€28,144.60** (it was 2 × 110 × €40 = €8,800 under the rule in force).
+  - One that mainly buys: an open long of 110 MWh loses 110 × €37.78 = €4,155.80, less than the allowed short, so S stays **€5,117.20** (it was €8,800). On the spread, the long side loses more: 110 × €87.89 = €9,667.90.
+- **From 2027** the ACM draft applies to them as to everyone: the larger of the draft and S. The estimate's "Detailed calculation" shows the open-position rule and the draft; the wallet calculator shows the rule that applies.
+- **Aggregators** (nominations from other BRPs) and **asset owners** (connections) keep TenneT's rule, with S as the larger of the two when they may leave positions open. So does "On your own as a BRP".
+
 **Not modelled:** the paper recommends daily collection of realised imbalance (its option 4) next to the buffer. Both
 need Direct+ to see each member's open position after gate closure, and to suspend a member that breaches its cap
 (W13, W14).
@@ -736,7 +747,8 @@ repeated each step with the engine, and every figure matches.
 ### 8.3 Part 3: BRP collateral (marginal; 5 October 2026, so the current rule)
 
 The trader is flat in every settlement period, so the realised net volume with the exchange's BRP is 0 under both
-readings.
+readings. Since 29 Sep 2026 a member without assets takes the open-position rule in place of the rule in force
+(section 4.5). The desk leaves nothing open, so it's €0 either way; the rule in force is worked out below.
 
 **Marginal collateral** (Direct+, section 4.4):
 - A = 0 × €80 = 0.

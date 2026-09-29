@@ -493,13 +493,21 @@
       return text;
     }
     if (part.id === 'brp') {
+      const { brp } = expected;
+      const { open } = brp;
+      if (brp.rule === 'open') {
+        return (
+          "Your share of the Direct+ BRP's security towards TenneT. Without assets, what you buy and sell nets out " +
+          `unless you leave it open, so it covers what you may leave open: ${wholeNumber.format(open.position)} MWh a ` +
+          `day at a high imbalance price, ${thousands(open.security)}.`
+        );
+      }
       let text =
         "Your share of the Direct+ BRP's security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.";
-      const { open } = expected.brp;
       if (open) {
         text +=
-          ` It also covers the ${wholeNumber.format(open.cap)} MWh a day you may leave open, which TenneT settles at its ` +
-          `imbalance price: ${thousands(open.amount)}, or the rule's amount if that is larger.`;
+          ` It also covers the ${wholeNumber.format(open.position)} MWh a day you may leave open, which TenneT settles ` +
+          `at its imbalance price: ${thousands(open.security)}, or the rule's amount if that is larger.`;
       }
       return text;
     }
@@ -535,9 +543,10 @@
     if (links.childNodes.length) cell.appendChild(links);
   }
 
-  /* The BRP collateral step by step, with the figures used: TenneT's rule in force and ACM's draft from 2027, with a
-     switch between them that starts on the rule the estimate uses for the week shown. A table: one step per line, its
-     amount on the right, the result at the bottom. Exact euros, not rounded to €1,000. */
+  /* The BRP collateral step by step, with the figures used: TenneT's rule in force (for a member without assets,
+     Direct+'s open-position rule in its place) and ACM's draft from 2027, with a switch between them that starts on the
+     rule the estimate uses for the week shown. A table: one step per line, its amount on the right, the result at the
+     bottom. Exact euros, not rounded to €1,000. */
   function brpDetails(cell, x, settings) {
     const { brp } = x;
     const { current, draft } = brp;
@@ -558,21 +567,52 @@
       value: mwh(brp.volume),
     };
     const fixedPrice = settings.brpPrice != null && settings.brpPrice !== '';
-    // What the member may leave open: the rule's amount becomes one line, the buffer follows, and the larger counts.
+    // What the member may leave open, step by step: what Direct+ allows, what the plan leaves open (without assets),
+    // the days at risk and the stress price.
     const { open } = brp;
-    const withBuffer = (rows, ruleResult) => {
-      if (!open) return rows;
-      const buffer = Math.round(open.amount);
-      return [
-        ...rows.slice(0, -1),
-        { ...rows[rows.length - 1], label: 'Under the rule', sum: false },
-        { label: 'Open position allowed', how: 'what Direct+ lets you leave open', value: mwh(open.cap) + ' a day' },
+    const openRows = () => {
+      const rows = [
+        {
+          label: 'Open position Direct+ allows',
+          how: 'what you may leave open, either way',
+          value: `${mwh(open.cap)} a day`,
+        },
+      ];
+      if (open.planned) {
+        rows.push(
+          {
+            label: 'Your plan leaves open',
+            how:
+              open.planned > 0
+                ? 'you sell more than you buy, with no assets to deliver it'
+                : 'you buy more than you sell, with no assets to use it',
+            value: `${mwh(Math.abs(open.planned))} a day`,
+          },
+          {
+            label: 'Open position',
+            how: `${open.side}, the side that loses most`,
+            value: `${mwh(open.position)} a day`,
+          },
+        );
+      }
+      rows.push(
         {
           label: 'Days at risk',
           how: 'before Direct+ can act',
           value: `${open.days} day${open.days === 1 ? '' : 's'}`,
         },
         { label: 'Stress price', how: `${open.description}: ${open.loses}`, value: perMWh(open.price) },
+      );
+      return rows;
+    };
+    // Next to a TenneT rule: the rule's amount becomes one line, the buffer follows, and the larger counts.
+    const withBuffer = (rows, ruleResult) => {
+      if (!open) return rows;
+      const buffer = Math.round(open.security);
+      return [
+        ...rows.slice(0, -1),
+        { ...rows[rows.length - 1], label: 'Under the rule', sum: false },
+        ...openRows(),
         { label: 'Open-position buffer', how: 'open position × days × price', value: euros(buffer) },
         {
           label: 'BRP collateral',
@@ -656,7 +696,26 @@
           : 'As your own BRP, with the €96,000 minimum.',
       },
     };
-    for (const rule of Object.values(RULES)) rule.rows = withBuffer(rule.rows, rule.result);
+    for (const id of ['current', 'draft']) RULES[id].rows = withBuffer(RULES[id].rows, RULES[id].result);
+    // Without assets, Direct+'s open-position rule takes the place of TenneT's rule in force.
+    if (open && (brp.rule === 'open' || brp.other === 'open')) {
+      RULES.open = {
+        label: 'Open-position rule (2026)',
+        title: "Direct+'s open-position rule for members without assets, in place of TenneT's rule in force",
+        rows: [
+          ...openRows(),
+          {
+            label: 'BRP collateral',
+            how: 'open position × days × price',
+            value: euros(Math.round(open.security)),
+            sum: true,
+          },
+        ],
+        note:
+          'Without assets, what you buy and sell nets out unless you leave it open, so Direct+ covers what you may ' +
+          "leave open instead of TenneT's rule in force.",
+      };
+    }
 
     const details = el('details', 'calc');
     details.appendChild(el('summary', null, 'Detailed calculation'));
@@ -691,7 +750,8 @@
           : `The estimate uses the other rule for the week of ${week}.`;
       body.appendChild(el('p', null, `${rule.note} ${which}`));
     };
-    for (const id of ['current', 'draft']) {
+    // The rule before the draft (TenneT's in force, or the open-position rule), and the draft.
+    for (const id of [brp.rule === 'draft' ? brp.other : brp.rule, 'draft']) {
       const button = el('button', null, RULES[id].label);
       button.type = 'button';
       button.dataset.rule = id;
@@ -981,15 +1041,19 @@
     if (x.ecc.fixed) add('Trading collateral at ECC', `From your limit calculator, ${thousands(x.ecc.fixed.C)}`);
     add('Split continuous / auctions', `${x.ecc.key}% / ${100 - x.ecc.key}%`);
     const { open } = x.brp;
+    const BRP_RULE = {
+      current: `TenneT rule at ${euros(x.brp.price)}/MWh, no minimum`,
+      draft: `ACM draft 2027 at ${euros(x.brp.price)}/MWh, no minimum`,
+      open: "Open-position rule, in place of TenneT's rule in force (no assets)",
+    };
     add(
       'BRP collateral',
-      `${x.brp.rule === 'current' ? 'TenneT rule' : 'ACM draft 2027'} at ${euros(x.brp.price)}/MWh, no minimum` +
-        (open ? ', or the open-position buffer if larger' : ''),
+      BRP_RULE[x.brp.rule] + (open && x.brp.rule !== 'open' ? ', or the open-position buffer if larger' : ''),
     );
     if (open) {
       const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
       const over = open.measure === 'spread' ? ' over day-ahead' : '';
-      add('Open position', `Up to ${mwh(open.cap)} a day, ${days} at risk, at ${perMWh(open.price)}${over}`);
+      add('Open position', `Up to ${mwh(open.position)} a day, ${days} at risk, at ${perMWh(open.price)}${over}`);
     }
     add('Collateral at ECC', answers.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
     add('Top-ups', TOPUP_TEXT[settings.replenish]);
@@ -1037,19 +1101,31 @@
       settings.brpPrice != null && settings.brpPrice !== ''
         ? " (TenneT's price floor, used for now instead of the market average)"
         : '';
-    add(
-      `BRP collateral follows ${rule}, applied to your own figures, with no minimum, at ${euros(x.brp.price)}/MWh${floor}.`,
-    );
+    if (x.brp.rule === 'open') {
+      add(
+        "BRP collateral follows Direct+'s open-position rule, in place of TenneT's rule in force: without assets, what " +
+          'you buy and sell nets out unless you leave it open.',
+      );
+    } else {
+      add(
+        `BRP collateral follows ${rule}, applied to your own figures, with no minimum, at ${euros(x.brp.price)}/MWh${floor}.`,
+      );
+    }
     const { open } = x.brp;
     if (open) {
+      const planned = open.planned
+        ? ` Your plan leaves ${wholeNumber.format(Math.abs(open.planned))} MWh a day open: you ` +
+          `${open.planned > 0 ? 'sell more than you buy' : 'buy more than you sell'}, with no assets.`
+        : '';
       add(
         `You may leave up to ${wholeNumber.format(open.cap)} MWh a day open, and TenneT settles what is left open at its ` +
-          `imbalance price. Your BRP collateral covers that for ${open.days === 1 ? 'one day' : `${open.days} days`} ` +
-          `at ${perMWh(open.price)}, ${open.description}: ${open.loses}.` +
+          `imbalance price.${planned} Your BRP collateral covers ${wholeNumber.format(open.position)} MWh a day for ` +
+          `${open.days === 1 ? 'one day' : `${open.days} days`} at ${perMWh(open.price)}, ${open.description}: ` +
+          `${open.loses}.` +
           (open.measure === 'spread'
             ? ' That assumes the position was traded at day-ahead and its money stays in your wallet until TenneT settles.'
             : '') +
-          " You put up this or the rule's amount, whichever is larger.",
+          (x.brp.rule === 'open' ? '' : " You put up this or the rule's amount, whichever is larger."),
       );
     }
     add(
