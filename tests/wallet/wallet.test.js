@@ -146,6 +146,7 @@ test('the open-position buffer (§4.5): the larger of the rule and what the memb
 
   const set = (extra) => C.compute({ ...C.preset('trader'), ...extra }).expected.brp;
   assertMoney(set({ openPercentile: 'p98', openDays: 3 }).security, 20 * 3 * 220.63, 'p98, three days at risk');
+  assertMoney(set({ openMeasure: 'spread' }).security, 20 * 162.62, 'the spread over day-ahead at p99: €162.62');
   assertMoney(set({ openCap: 0 }).security, 0, 'nothing left open, no buffer');
   const alone = set({ brpBasis: 'standalone' });
   assert.ok(alone.open === null && alone.security === alone.current.security, 'on your own as a BRP: no buffer');

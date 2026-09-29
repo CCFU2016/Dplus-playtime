@@ -550,7 +550,8 @@
     if (open) {
       const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
       line(
-        `Open-position buffer: ${wholeNumber.format(open.cap)} MWh × ${days} × ${perMWh(open.price)} (${open.label})`,
+        `Open-position buffer: ${wholeNumber.format(open.cap)} MWh × ${days} × ${perMWh(open.price)} ` +
+          `(${open.label.toLowerCase()} of ${open.measureName})`,
         open.amount,
         y.brp.open.amount,
       );

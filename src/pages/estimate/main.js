@@ -563,7 +563,6 @@
     const withBuffer = (rows, ruleResult) => {
       if (!open) return rows;
       const buffer = Math.round(open.amount);
-      const side = open.side === 'short' ? 'what an open short pays' : 'what an open long loses';
       return [
         ...rows.slice(0, -1),
         { ...rows[rows.length - 1], label: 'Under the rule', sum: false },
@@ -573,7 +572,7 @@
           how: 'before Direct+ can act',
           value: `${open.days} day${open.days === 1 ? '' : 's'}`,
         },
-        { label: 'Stress price', how: `${open.description}, ${side}`, value: perMWh(open.price) },
+        { label: 'Stress price', how: `${open.description}: ${open.loses}`, value: perMWh(open.price) },
         { label: 'Open-position buffer', how: 'open position × days × price', value: euros(buffer) },
         {
           label: 'BRP collateral',
@@ -989,7 +988,8 @@
     );
     if (open) {
       const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
-      add('Open position', `Up to ${mwh(open.cap)} a day, ${days} at risk, at ${perMWh(open.price)}`);
+      const over = open.measure === 'spread' ? ' over day-ahead' : '';
+      add('Open position', `Up to ${mwh(open.cap)} a day, ${days} at risk, at ${perMWh(open.price)}${over}`);
     }
     add('Collateral at ECC', answers.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
     add('Top-ups', TOPUP_TEXT[settings.replenish]);
@@ -1045,8 +1045,11 @@
       add(
         `You may leave up to ${wholeNumber.format(open.cap)} MWh a day open, and TenneT settles what is left open at its ` +
           `imbalance price. Your BRP collateral covers that for ${open.days === 1 ? 'one day' : `${open.days} days`} ` +
-          `at ${perMWh(open.price)}, ${open.description} (an open short pays the top end; an open long loses when ` +
-          "prices are negative). You put up this or the rule's amount, whichever is larger.",
+          `at ${perMWh(open.price)}, ${open.description}: ${open.loses}.` +
+          (open.measure === 'spread'
+            ? ' That assumes the position was traded at day-ahead and its money stays in your wallet until TenneT settles.'
+            : '') +
+          " You put up this or the rule's amount, whichever is larger.",
       );
     }
     add(

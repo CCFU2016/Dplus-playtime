@@ -9,8 +9,8 @@ const WalletSettings = ((OpenPosition) => {
 
   const DIRECT_PLUS = 'Direct+ decision, 26 Sep 2026';
   const OPEN_DECISION = 'Direct+ decision, 29 Sep 2026';
-  // "€256" or "−€38": a 2025 daily imbalance price in the percentile list.
-  const perMWh = (value) => `${value < 0 ? '−' : ''}€${Math.round(Math.abs(value))}`;
+  // "€256": a stress price in the percentile list.
+  const perMWh = (value) => `€${Math.round(value)}`;
   const UPDATE_HOURS = [
     [18, 'Around 18:00'],
     [19, 'Around 19:00'],
@@ -691,17 +691,27 @@ const WalletSettings = ((OpenPosition) => {
           default: 1,
         },
         {
-          key: 'openPercentile',
-          label: "Stress price: 2025's daily imbalance price at the",
+          key: 'openMeasure',
+          label: 'Stress price: measured on',
           unit: '',
           kind: 'select',
           tag: 'ASSUMPTION',
-          src: "TenneT's imbalance prices in 2025, averaged per day (365 days): an open short pays the shortage price, the top end; an open long loses when the surplus price is negative, the bottom end. The larger of the two counts. Per day, not per quarter-hour: a day's quarter-hours average out single spikes",
+          src: "The imbalance price: what TenneT settles an open position at. The spread: what an open short loses beyond the day-ahead price it sold at (an open long, below the day-ahead price it bought at), provided the trade's own money stays in the wallet until TenneT settles; it assumes the position was traded at day-ahead",
+          default: OpenPosition.DEFAULT_MEASURE,
+          options: Object.entries(OpenPosition.MEASURES).map(([id, measure]) => [id, measure.label]),
+        },
+        {
+          key: 'openPercentile',
+          label: 'Stress price: percentile of the days in 2025',
+          unit: '',
+          kind: 'select',
+          tag: 'ASSUMPTION',
+          src: "TenneT's imbalance prices and ENTSO-E's NL day-ahead prices in 2025, averaged per day (365 days). An open short loses at the top end, an open long at the bottom end (a negative surplus price, or one below day-ahead); the larger of the two counts. Per day, not per quarter-hour: a day's quarter-hours average out single spikes",
           default: OpenPosition.DEFAULT_PERCENTILE,
-          options: OpenPosition.PERCENTILES.map(({ id, label, short, long }) => [
-            id,
-            `${label}: short ${perMWh(short)}, long ${perMWh(long)}`,
-          ]),
+          options: OpenPosition.PERCENTILES.map(({ id, label }) => {
+            const [price, spread] = ['price', 'spread'].map((measure) => OpenPosition.stressPrice(id, measure).price);
+            return [id, `${label}: price ${perMWh(price)}, spread ${perMWh(spread)}`];
+          }),
         },
       ],
     },

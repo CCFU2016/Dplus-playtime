@@ -260,7 +260,12 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     // What the member may leave open, when it may (null otherwise).
     const open =
       marginal && +st.openCap > 0
-        ? OpenPosition.buffer({ cap: +st.openCap, days: +st.openDays || 0, percentile: st.openPercentile })
+        ? OpenPosition.buffer({
+            cap: +st.openCap,
+            days: +st.openDays || 0,
+            percentile: st.openPercentile,
+            measure: st.openMeasure,
+          })
         : null;
     const ruleSecurity = (rule === 'current' ? current : draft).security;
     return {

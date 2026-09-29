@@ -72,6 +72,12 @@ def open_position(run):
     tab.click('#tab-wallet')
     total = tab.inner_text('#brp-table tbody tr:last-child')
     check('€13,000' in total, 'p98 and three days at risk: 20 × 3 × €220.63 = €13,238: ' + total)
+    tab.click('#tab-settings')
+    tab.select_option('[data-key="openMeasure"]', 'spread')
+    redrawn(tab)
+    tab.click('#tab-wallet')
+    total = tab.inner_text('#brp-table tbody tr:last-child')
+    check('€7,000' in total, 'the spread over day-ahead at p98: 20 × 3 × €120.10 = €7,206: ' + total)
 
 
 def levers(run):

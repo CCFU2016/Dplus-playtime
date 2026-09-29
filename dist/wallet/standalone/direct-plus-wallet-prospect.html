@@ -2486,52 +2486,93 @@ const WalletTennet = ((Engine, Dates, Brp) => {
      S = E_cap × T × P_stress
      E_cap     the most energy a day Direct+ lets the member leave open (MWh a day), monitored and enforced
      T         the days at risk before Direct+ can act: one (Direct+ decision, 29 Sep 2026; the paper has three)
-     P_stress  a high percentile of TenneT's imbalance prices in 2025, averaged per day: the top end of the price an
-               open short pays, or max(0, −bottom end) of the price an open long receives, whichever is larger
+     P_stress  a high percentile of the day's imbalance price in 2025, or of its spread over the day-ahead price
+               (MEASURES): the top end for an open short, max(0, −bottom end) for an open long, whichever is larger
    Per day, not per quarter-hour: a position open for a day spreads over its quarter-hours, which averages out single
-   spikes (2025: the worst quarter-hour was about €5,500/MWh, the worst day €286). */
+   spikes (2025: the worst quarter-hour's imbalance price was about €5,500/MWh, the worst day's €286). */
 const WalletOpenPosition = (() => {
   'use strict';
 
-  /* TenneT's final imbalance prices for 2025 (its settlement-price export), averaged over each local day's
-     quarter-hours, €/MWh: percentiles over the 365 days, linear between days (numpy's default). A short BRP pays the
-     shortage price, `short` is its top end; a long BRP receives the surplus price, `long` is the mirror percentile of
-     its bottom end (the 1st for the 99th). tests/wallet/open-position.test.js recomputes them from
-     reference/tennet/tennet_imbalance-prices-2025_daily-averages_2026-09-29.csv. */
-  const PERCENTILES = [
-    { id: 'p90', label: '90th percentile', short: 146.24, long: 20.16 },
-    { id: 'p95', label: '95th percentile', short: 178.06, long: 8.13 },
-    { id: 'p97.5', label: '97.5th percentile', short: 204.2, long: -4.6 },
-    { id: 'p98', label: '98th percentile', short: 220.63, long: -7.53 },
-    { id: 'p99', label: '99th percentile', short: 255.86, long: -37.78 },
-    { id: 'p99.5', label: '99.5th percentile', short: 274.73, long: -46.54 },
-    { id: 'max', label: 'The worst day', short: 286.42, long: -70.44 },
-  ];
-  const DEFAULT_PERCENTILE = 'p99';
+  /* What the stress price measures, with the words the pages use:
+       price   the imbalance price, at which TenneT settles what is left open
+       spread  the imbalance price minus the day-ahead price: what an open short loses beyond the day-ahead price it
+               sold at, or an open long below the price it bought at, as long as the trade's own money stays in the
+               wallet until TenneT settles (the paper's option 3). It assumes the position was traded at day-ahead. */
+  const MEASURES = {
+    price: {
+      label: 'The imbalance price',
+      name: 'the imbalance price',
+      of: "2025's daily imbalance prices",
+      short: 'what an open short pays',
+      long: 'what an open long loses',
+    },
+    spread: {
+      label: 'The spread between the imbalance and day-ahead prices',
+      name: 'the spread over day-ahead',
+      of: "2025's daily spread between the imbalance and day-ahead prices",
+      short: 'what an open short loses over the day-ahead price it sold at',
+      long: 'what an open long loses under the day-ahead price it bought at',
+    },
+  };
 
-  /** The stress price at percentile `id`, €/MWh: what an open short pays or an open long loses, whichever is more;
-   *  with its source in words for the pages. */
-  function stressPrice(id = DEFAULT_PERCENTILE) {
+  /* 2025 per local day, €/MWh: TenneT's final imbalance prices (its settlement-price export) averaged over the day's
+     quarter-hours, and their spread over ENTSO-E's NL day-ahead price in the same quarter-hours. Percentiles over the
+     365 days, linear between days (numpy's default). A short BRP pays the shortage price, so `short` is the top end; a
+     long BRP receives the surplus price, so `long` is the mirror percentile of the bottom end (the 1st for the 99th).
+     tests/wallet/open-position.test.js recomputes them from
+     reference/tennet/tennet-entsoe_imbalance-and-day-ahead-prices-2025_daily-averages_2026-09-29.csv. */
+  const TABLE = [
+    // id, label, price: short, long, spread: short, long
+    ['p90', '90th percentile', 146.24, 20.16, 48.82, -49.99],
+    ['p95', '95th percentile', 178.06, 8.13, 75.94, -58.39],
+    ['p97.5', '97.5th percentile', 204.2, -4.6, 109.71, -70.95],
+    ['p98', '98th percentile', 220.63, -7.53, 120.1, -74.77],
+    ['p99', '99th percentile', 255.86, -37.78, 162.62, -87.89],
+    ['p99.5', '99.5th percentile', 274.73, -46.54, 183.87, -95.11],
+    ['max', 'Worst day', 286.42, -70.44, 210.52, -142.72],
+  ];
+  const PERCENTILES = TABLE.map(([id, label, priceShort, priceLong, spreadShort, spreadLong]) => ({
+    id,
+    label,
+    price: { short: priceShort, long: priceLong },
+    spread: { short: spreadShort, long: spreadLong },
+  }));
+  const DEFAULT_PERCENTILE = 'p99';
+  const DEFAULT_MEASURE = 'price';
+
+  /** The stress price at percentile `id` of `measure`, €/MWh: what an open short or an open long loses, whichever is
+   *  more; with the words for the pages. */
+  function stressPrice(id = DEFAULT_PERCENTILE, measure = DEFAULT_MEASURE) {
     const level = PERCENTILES.find((one) => one.id === id);
-    if (!level) throw new Error(`No imbalance price percentile "${id}" for the open-position buffer`);
-    const longLoss = Math.max(0, -level.long);
+    if (!level) throw new Error(`No percentile "${id}" for the open-position buffer`);
+    const words = MEASURES[measure];
+    if (!words) throw new Error(`No stress price measure "${measure}" for the open-position buffer`);
+    const { short, long } = level[measure];
+    const longLoss = Math.max(0, -long);
+    const side = short >= longLoss ? 'short' : 'long';
     return {
-      ...level,
+      id,
+      label: level.label,
+      measure,
+      measureName: words.name,
+      short,
+      long,
       longLoss,
-      price: Math.max(level.short, longLoss),
-      side: level.short >= longLoss ? 'short' : 'long',
-      description:
-        id === 'max' ? "2025's worst day for imbalance prices" : `the ${level.label} of 2025's daily imbalance prices`,
+      price: Math.max(short, longLoss),
+      side,
+      description: `the ${level.label.toLowerCase()} of ${words.of}`,
+      loses: words[side],
     };
   }
 
-  /** The buffer for `cap` MWh a day left open, `days` days at risk, at percentile `percentile`: amount = S, €. */
-  function buffer({ cap = 0, days = 1, percentile = DEFAULT_PERCENTILE }) {
-    const stress = stressPrice(percentile);
+  /** The buffer for `cap` MWh a day left open, `days` days at risk, at percentile `percentile` of `measure`: amount =
+   *  S, €. */
+  function buffer({ cap = 0, days = 1, percentile = DEFAULT_PERCENTILE, measure = DEFAULT_MEASURE }) {
+    const stress = stressPrice(percentile, measure);
     return { cap, days, ...stress, amount: cap * days * stress.price };
   }
 
-  return { PERCENTILES, DEFAULT_PERCENTILE, stressPrice, buffer };
+  return { MEASURES, PERCENTILES, DEFAULT_PERCENTILE, DEFAULT_MEASURE, stressPrice, buffer };
 })();
 
 /* Direct+ wallet: every setting of the calculator (label, unit, kind, tag, source and default), grouped as the
@@ -2545,8 +2586,8 @@ const WalletSettings = ((OpenPosition) => {
 
   const DIRECT_PLUS = 'Direct+ decision, 26 Sep 2026';
   const OPEN_DECISION = 'Direct+ decision, 29 Sep 2026';
-  // "€256" or "−€38": a 2025 daily imbalance price in the percentile list.
-  const perMWh = (value) => `${value < 0 ? '−' : ''}€${Math.round(Math.abs(value))}`;
+  // "€256": a stress price in the percentile list.
+  const perMWh = (value) => `€${Math.round(value)}`;
   const UPDATE_HOURS = [
     [18, 'Around 18:00'],
     [19, 'Around 19:00'],
@@ -3227,17 +3268,27 @@ const WalletSettings = ((OpenPosition) => {
           default: 1,
         },
         {
-          key: 'openPercentile',
-          label: "Stress price: 2025's daily imbalance price at the",
+          key: 'openMeasure',
+          label: 'Stress price: measured on',
           unit: '',
           kind: 'select',
           tag: 'ASSUMPTION',
-          src: "TenneT's imbalance prices in 2025, averaged per day (365 days): an open short pays the shortage price, the top end; an open long loses when the surplus price is negative, the bottom end. The larger of the two counts. Per day, not per quarter-hour: a day's quarter-hours average out single spikes",
+          src: "The imbalance price: what TenneT settles an open position at. The spread: what an open short loses beyond the day-ahead price it sold at (an open long, below the day-ahead price it bought at), provided the trade's own money stays in the wallet until TenneT settles; it assumes the position was traded at day-ahead",
+          default: OpenPosition.DEFAULT_MEASURE,
+          options: Object.entries(OpenPosition.MEASURES).map(([id, measure]) => [id, measure.label]),
+        },
+        {
+          key: 'openPercentile',
+          label: 'Stress price: percentile of the days in 2025',
+          unit: '',
+          kind: 'select',
+          tag: 'ASSUMPTION',
+          src: "TenneT's imbalance prices and ENTSO-E's NL day-ahead prices in 2025, averaged per day (365 days). An open short loses at the top end, an open long at the bottom end (a negative surplus price, or one below day-ahead); the larger of the two counts. Per day, not per quarter-hour: a day's quarter-hours average out single spikes",
           default: OpenPosition.DEFAULT_PERCENTILE,
-          options: OpenPosition.PERCENTILES.map(({ id, label, short, long }) => [
-            id,
-            `${label}: short ${perMWh(short)}, long ${perMWh(long)}`,
-          ]),
+          options: OpenPosition.PERCENTILES.map(({ id, label }) => {
+            const [price, spread] = ['price', 'spread'].map((measure) => OpenPosition.stressPrice(id, measure).price);
+            return [id, `${label}: price ${perMWh(price)}, spread ${perMWh(spread)}`];
+          }),
         },
       ],
     },
@@ -3759,7 +3810,12 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     // What the member may leave open, when it may (null otherwise).
     const open =
       marginal && +st.openCap > 0
-        ? OpenPosition.buffer({ cap: +st.openCap, days: +st.openDays || 0, percentile: st.openPercentile })
+        ? OpenPosition.buffer({
+            cap: +st.openCap,
+            days: +st.openDays || 0,
+            percentile: st.openPercentile,
+            measure: st.openMeasure,
+          })
         : null;
     const ruleSecurity = (rule === 'current' ? current : draft).security;
     return {
@@ -4851,7 +4907,6 @@ const Handoff = (() => {
     const withBuffer = (rows, ruleResult) => {
       if (!open) return rows;
       const buffer = Math.round(open.amount);
-      const side = open.side === 'short' ? 'what an open short pays' : 'what an open long loses';
       return [
         ...rows.slice(0, -1),
         { ...rows[rows.length - 1], label: 'Under the rule', sum: false },
@@ -4861,7 +4916,7 @@ const Handoff = (() => {
           how: 'before Direct+ can act',
           value: `${open.days} day${open.days === 1 ? '' : 's'}`,
         },
-        { label: 'Stress price', how: `${open.description}, ${side}`, value: perMWh(open.price) },
+        { label: 'Stress price', how: `${open.description}: ${open.loses}`, value: perMWh(open.price) },
         { label: 'Open-position buffer', how: 'open position × days × price', value: euros(buffer) },
         {
           label: 'BRP collateral',
@@ -5277,7 +5332,8 @@ const Handoff = (() => {
     );
     if (open) {
       const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
-      add('Open position', `Up to ${mwh(open.cap)} a day, ${days} at risk, at ${perMWh(open.price)}`);
+      const over = open.measure === 'spread' ? ' over day-ahead' : '';
+      add('Open position', `Up to ${mwh(open.cap)} a day, ${days} at risk, at ${perMWh(open.price)}${over}`);
     }
     add('Collateral at ECC', answers.collateral === 'daily' ? 'Adjusted every business day' : 'The same all week');
     add('Top-ups', TOPUP_TEXT[settings.replenish]);
@@ -5333,8 +5389,11 @@ const Handoff = (() => {
       add(
         `You may leave up to ${wholeNumber.format(open.cap)} MWh a day open, and TenneT settles what is left open at its ` +
           `imbalance price. Your BRP collateral covers that for ${open.days === 1 ? 'one day' : `${open.days} days`} ` +
-          `at ${perMWh(open.price)}, ${open.description} (an open short pays the top end; an open long loses when ` +
-          "prices are negative). You put up this or the rule's amount, whichever is larger.",
+          `at ${perMWh(open.price)}, ${open.description}: ${open.loses}.` +
+          (open.measure === 'spread'
+            ? ' That assumes the position was traded at day-ahead and its money stays in your wallet until TenneT settles.'
+            : '') +
+          " You put up this or the rule's amount, whichever is larger.",
       );
     }
     add(

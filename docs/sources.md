@@ -13,7 +13,13 @@ Added for the wallet calculator (`docs/wallet-brief.md`, `docs/wallet-model.md`)
 - `tennet/acm_systeemcode-elektriciteit-2026-h10-h11_vergelijking_BR-2025-2203_2026-02-20.pdf`: ACM's comparison document for chapters 10–11 (February 2026). It has three text columns, so read the current text from the `.txt` above.
 - `tennet/acm-25-196985_gecorrigeerd-ontwerpbesluit_2026-08-25.pdf`: ACM corrected draft decision ACM/25/196985 of 25 Aug 2026 (new art. 10.8: 3A + 4B + 6C + 6D, minimum €96,000, from 1 Jan 2027). `tennet/acm-25-196985_ontwerpbesluit-oorspronkelijk-vervallen_2026-08-17.pdf` is the superseded version, with the wrong formula "A + 4B + 6C + 6D"; don't use it.
 - `tennet/nbnl_BR-2024-2077_codewijzigingsvoorstel-financiele-zekerstelling-brps_2025-07-02.pdf`: the system operators' proposal BR-2024-2077 of 2 July 2025. It uses the old Netcode numbering (see `docs/wallet-brief.md` §10).
-- `tennet/tennet_imbalance-prices-2025_daily-averages_2026-09-29.csv`: TenneT's final imbalance prices for 2025, averaged per local day (Europe/Amsterdam) over the 15-minute periods, each weighted equally. Columns: the shortage price a short BRP pays, the surplus price a long BRP receives, and the number of periods (365 days, 35,040 periods). Made on 29 Sep 2026 by `~/imbalance_analysis/nl_daily_export.py` from TenneT's settlement-price export `settlement_prices_202412312300_202512312300_CET.csv` (exported 4 Apr 2026). It sets the open-position buffer's stress prices (`docs/wallet-model.md` §4.5).
+- `tennet/tennet-entsoe_imbalance-and-day-ahead-prices-2025_daily-averages_2026-09-29.csv`: 2025 prices averaged per local day (Europe/Amsterdam) over the 15-minute periods, each weighted equally (365 days, 35,040 periods). It sets the open-position buffer's stress prices (`docs/wallet-model.md` §4.5). Columns:
+  - the shortage price a short BRP pays and the surplus price a long BRP receives: TenneT's final imbalance prices, from its settlement-price export `settlement_prices_202412312300_202512312300_CET.csv` (exported 4 Apr 2026);
+  - the number of periods;
+  - the NL day-ahead price: ENTSO-E Transparency 12.1.D "Energy Prices", MapCode NL, contract type day-ahead (the SDAC clearing price). It's hourly until 30 Sep 2025, each price repeated over its four quarter-hours, and 15-minute from 1 Oct 2025;
+  - the spreads: shortage − day-ahead and surplus − day-ahead, averaged over the same periods.
+
+  Made on 29 Sep 2026 by `~/imbalance_analysis/nl_daily_export.py 2025`, with Windows line ends as exported.
 
 Not retrievable automatically: TenneT's BRP recognition page (tennet.eu blocks scripted access), TenneT's "inzake rekening" document, and TenneT's billing terms for imbalance invoices.
 
