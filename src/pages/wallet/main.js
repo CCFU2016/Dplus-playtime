@@ -370,11 +370,6 @@
             `BRP, so under ${ruleName} it is €0. There is no minimum for members.`
           : `Your marginal collateral under ${ruleName}: ${formula} on your own figures. There is no minimum for ` +
             'members: the €96,000 and the 50 MW floors apply once to the Direct+ BRP.';
-      if (C.openSets(br)) {
-        text += ` What you may leave open is larger, so it sets the amount: ${openWorking(open)}.`;
-      } else if (open) {
-        text += ` The open-position buffer for what you may leave open, ${thousands(open.security)}, is smaller.`;
-      }
     } else if (current) {
       text =
         st.reading === '1200' && br.volume < 1200
@@ -395,12 +390,12 @@
         { key: 'imbShare', label: 'Imbalance' },
         { key: 'bias', label: 'Short or long bias' },
       ],
-      open: [],
+      open: [
+        { key: 's', label: 'Largest open position' },
+        { key: 'openPercentile', label: 'Stress price' },
+      ],
     };
     const levers = LEVERS[br.rule];
-    if (open) {
-      levers.push({ key: 's', label: 'Largest open position' }, { key: 'openPercentile', label: 'Stress price' });
-    }
     const title = br.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security on your own';
     return partCard('var(--p-brp)', title, br.security, y.brp.security, text, levers);
   }
@@ -514,10 +509,8 @@
     const br = x.brp;
     const { open } = br;
     const other = br.other;
-    // The other rule as this one: with the open-position buffer when the larger.
-    const withBuffer = (brp, amount) => Math.max(amount, brp.open ? brp.open.security : 0);
-    const otherExpected = withBuffer(br, br[other].security);
-    const otherStress = withBuffer(y.brp, y.brp[other].security);
+    const otherExpected = br[other].security;
+    const otherStress = y.brp[other].security;
     const week = dateLabel(st.week, true);
     const RULE = {
       current: `Rule in force on ${week}: Systeemcode elektriciteit 2026, art. 10.8 (TenneT rule).`,
@@ -529,11 +522,11 @@
     if (br.basis === 'marginal' && (br.rule === 'open' || other === 'open')) {
       basis =
         "Members without assets take Direct+'s open-position rule instead of TenneT's rule in force: what they buy " +
-        'and sell nets out unless they leave it open.';
+        "and sell nets out unless they leave it open. From 2027 the ACM draft applies to them as to everyone: it's " +
+        "either TenneT's rule or Direct+'s own, never both.";
     } else if (br.basis === 'marginal') {
       basis =
-        'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum' +
-        (open ? ', or the open-position buffer for what they may leave open if that is larger.' : '.');
+        'Direct+ members put up their marginal collateral: the rule applied to their own figures, with no minimum.';
     }
     $('brp-sub').textContent =
       RULE[br.rule] +
@@ -579,18 +572,7 @@
         br.basis === 'marginal' ? 'Your marginal collateral (no minimum, not below €0)' : 'Security (minimum €96,000)';
       ruleLine = line(label, d.security, ds.security);
     }
-    if (open && br.rule !== 'open') {
-      const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
-      line(
-        `Open-position buffer: ${positionMWh(open.position)} ${open.side} × ${days} × ${perMWh(open.price)} ` +
-          `(${open.label.toLowerCase()} of ${open.measureName})`,
-        open.security,
-        y.brp.open.security,
-      );
-      line('Your BRP collateral: the larger of the two', br.security, y.brp.security).className = 'total';
-    } else {
-      ruleLine.className = 'total';
-    }
+    ruleLine.className = 'total';
     table.appendChild(body);
     renderRamp(br.ramp);
     const exit = br.exit;

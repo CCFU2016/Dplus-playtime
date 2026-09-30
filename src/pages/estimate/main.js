@@ -499,22 +499,14 @@
     }
     if (part.id === 'brp') {
       const { brp } = expected;
-      const { open } = brp;
       if (brp.rule === 'open') {
         return (
           "Your share of the Direct+ BRP's security towards TenneT. Without assets, what you buy and sell nets out " +
           "unless you leave it open, and Direct+ can't limit that: it covers your largest open position, " +
-          `${positionMWh(open.position)}, at a high imbalance price, ${thousands(open.security)}.`
+          `${positionMWh(brp.open.position)}, at a high imbalance price, ${thousands(brp.open.security)}.`
         );
       }
-      let text =
-        "Your share of the Direct+ BRP's security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.";
-      if (open) {
-        text +=
-          ` It also covers your largest open position, ${positionMWh(open.position)}, which TenneT would settle at its ` +
-          `imbalance price: ${thousands(open.security)}, or the rule's amount if that is larger.`;
-      }
-      return text;
+      return "Your share of the Direct+ BRP's security towards TenneT. You only put up the marginal part your trading and assets add: there is no minimum.";
     }
     if (part.id === 'invoices') return 'TenneT invoices imbalance every week, about four weeks after delivery.';
     return '';
@@ -606,28 +598,10 @@
       );
       return rows;
     };
-    // Next to a TenneT rule: the rule's amount becomes one line, the buffer follows, and the larger counts.
-    const withBuffer = (rows, ruleResult) => {
-      if (!open) return rows;
-      const buffer = Math.round(open.security);
-      return [
-        ...rows.slice(0, -1),
-        { ...rows[rows.length - 1], label: 'Under the rule', sum: false },
-        ...openRows(),
-        { label: 'Open-position buffer', how: 'open position × days × price', value: euros(buffer) },
-        {
-          label: 'BRP collateral',
-          how: 'the larger of the two',
-          value: euros(Math.max(ruleResult, buffer)),
-          sum: true,
-        },
-      ];
-    };
     const RULES = {
       current: {
         label: 'Rule in force (2026)',
         title: "TenneT's rule in force: Systeemcode elektriciteit 2026, article 10.8",
-        result: currentResult,
         rows: [
           volume,
           {
@@ -665,7 +639,6 @@
       draft: {
         label: 'ACM draft (from 2027)',
         title: "ACM's draft rule from 1 January 2027 (ACM/25/196985, not yet final)",
-        result: draftResult,
         rows: [
           volume,
           {
@@ -697,7 +670,6 @@
           : 'As your own BRP, with the €96,000 minimum.',
       },
     };
-    for (const id of ['current', 'draft']) RULES[id].rows = withBuffer(RULES[id].rows, RULES[id].result);
     // Without assets, Direct+'s open-position rule takes the place of TenneT's rule in force.
     if (open && (brp.rule === 'open' || brp.other === 'open')) {
       RULES.open = {
@@ -1047,11 +1019,8 @@
       draft: `ACM draft 2027 at ${euros(x.brp.price)}/MWh, no minimum`,
       open: "Open-position rule, in place of TenneT's rule in force (no assets)",
     };
-    add(
-      'BRP collateral',
-      BRP_RULE[x.brp.rule] + (open && x.brp.rule !== 'open' ? ', or the open-position buffer if larger' : ''),
-    );
-    if (open) {
+    add('BRP collateral', BRP_RULE[x.brp.rule]);
+    if (x.brp.rule === 'open') {
       const days = `${open.days} day${open.days === 1 ? '' : 's'}`;
       const over = open.measure === 'spread' ? ' over day-ahead' : '';
       add(
@@ -1116,7 +1085,7 @@
       );
     }
     const { open } = x.brp;
-    if (open) {
+    if (x.brp.rule === 'open') {
       const planned = open.fromPlan
         ? ` Your plan leaves more open, ${positionMWh(Math.abs(open.planned))}: you ` +
           `${open.planned > 0 ? 'sell more than you buy' : 'buy more than you sell'}, with no assets.`
@@ -1129,8 +1098,7 @@
           `${open.loses}.` +
           (open.measure === 'spread'
             ? ' That assumes the position was traded at day-ahead and its money stays in your wallet until TenneT settles.'
-            : '') +
-          (x.brp.rule === 'open' ? '' : " You put up this or the rule's amount, whichever is larger."),
+            : ''),
       );
     }
     add(

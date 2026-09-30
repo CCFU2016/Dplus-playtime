@@ -146,14 +146,16 @@ test('the open-position rule (§4.5): for a member without assets, in place of t
   const connected = set({ connectionsMW: '5' });
   assert.ok(connected.rule === 'current' && connected.open === null, "with assets: TenneT's rule in force, no buffer");
 
-  // Under the 2027 draft, the imbalance invoices count (4B): the larger of the draft and the buffer, not both.
+  // From 2027 the ACM draft applies to it as to everyone, on its own: one rule at a time, TenneT's or Direct+'s own,
+  // never both (Direct+ decision, 30 Sep 2026).
   const draft = C.compute({ ...C.preset('trader'), week: '2027-10-04' });
-  assertMoney(draft.expected.brp.draft.security, 2004.45, 'normal week: 4B is €2,004');
-  assert.ok(
-    C.openSets(draft.expected.brp) && C.openSets(draft.stress.brp),
-    'the buffer is larger in a normal and a tough week (4B then €6,728)',
+  assert.deepEqual(
+    [draft.expected.brp.rule, draft.expected.brp.other],
+    ['draft', 'open'],
+    'from 2027: the draft, with the open-position rule as the other rule',
   );
-  assertMoney(draft.stress.brp.security, 50.3 * 255.86, 'tough week: the buffer, not the draft on top');
+  assertMoney(draft.expected.brp.security, 2004.45, 'normal week: the draft alone, 4B = €2,004');
+  assertMoney(draft.stress.brp.security, draft.stress.brp.draft.security, 'tough week: the draft alone');
 
   assertMoney(set({ openPercentile: 'p98', openDays: 3 }).security, 50.3 * 3 * 220.63, 'p98, three days at risk');
   assertMoney(set({ openMeasure: 'spread' }).security, 50.3 * 162.62, 'the spread over day-ahead at p99: €162.62');

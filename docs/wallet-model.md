@@ -462,7 +462,7 @@ day at risk**. It lives in `open-position.js`.
 
 **Who covers it:** members without assets (below).
 - They take the open-position rule in place of TenneT's rule in force.
-- From 2027 they put up **the larger of the draft and S**, as the paper recommends (its §4), so imbalance that already counts in the draft (B) isn't paid twice.
+- From 2027 the ACM draft applies to them as to everyone, **on its own**: one rule at a time, TenneT's or Direct+'s own, never both (Niki, 30 Sep 2026). The paper's §4 would take the larger of the two; Direct+ doesn't.
 - Members with assets back their positions with them and keep TenneT's rule.
 - It applies on the Direct+ basis only: "On your own as a BRP" is TenneT's rule alone.
 - S is the same in a normal and a tough week, since it's already a stress amount. The volume sensitivities scale E with the buys and sells.
@@ -487,7 +487,7 @@ day at risk**. It lives in `open-position.js`.
 **Worked example:** the trader preset, week of 5 Oct 2026 (the rule in force).
 - Its largest open position is 50.3 MWh either way, and the short side loses more: S = 50.3 × 1 × €255.86 = **€12,869.76** (TenneT's rule in force would give a flat trader €0).
 - The estimate rises from about €30,000 before the rule to about €43,000 (a tough week: from €74,000 to €87,000).
-- From 2027 (the draft), 4B is €2,004 in a normal week and €6,728 in a tough one, so S sets it in both.
+- From 2027 the draft applies on its own: 4B = €2,004 in a normal week and €6,728 in a tough one.
 - On the spread over day-ahead instead, S = 50.3 × 1 × €162.62 = €8,179.79.
 - `tests/wallet/wallet.test.js` pins these numbers.
 - The worked example of section 8 predates the rule and has no days at risk, so its BRP collateral stays €0.
@@ -509,7 +509,7 @@ volume at €40/MWh, is replaced by the open-position rule (`rule: 'open'`).
 - **The plan:** a net sale or purchase can't be delivered without assets. So on each side the open position is the largest during the day or what the plan leaves open, whichever is more (ASSUMPTION, W16). Selling more than it buys is an open short; buying more is an open long, which loses less (only when the surplus price is negative). The side that loses more sets S.
   - A trader without assets that mainly sells (110 MWh a day net): an open short of 110 MWh, more than its largest short during the day (0.66 × 99 + 25 = 90.34 MWh). 110 × €255.86 = **€28,144.60** (it was 2 × 110 × €40 = €8,800 under the rule in force).
   - One that mainly buys: an open long of 110 MWh loses 110 × €37.78 = **€4,155.80**, more than its largest short (10.26 MWh × €255.86 = €2,625). It was €8,800. On the spread: 110 × €87.89 = €9,667.90.
-- **From 2027** the ACM draft applies to them as to everyone: the larger of the draft and S. The estimate's "Detailed calculation" shows the open-position rule and the draft; the wallet calculator shows the rule that applies.
+- **From 2027** the ACM draft applies to them as to everyone, on its own, never combined with S. The estimate's "Detailed calculation" shows the two rules on two tabs; the wallet calculator shows the rule that applies.
 - **Aggregators** (nominations from other BRPs) and **asset owners** (connections) keep TenneT's rule, without S: their assets back their positions. So does "On your own as a BRP".
 
 **Not modelled:** the paper recommends daily collection of realised imbalance (its option 4) next to the buffer. Both

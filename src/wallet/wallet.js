@@ -37,9 +37,6 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
 
   const highestC = (days) => (days.length ? Math.max(...days.map((day) => day.C)) : null);
 
-  /** Whether the open-position buffer, larger than the TenneT rule next to it, sets a BRP result's collateral. */
-  const openSets = (brp) => brp.rule !== 'open' && !!brp.open && brp.open.security > brp[brp.rule].security;
-
   /** The daily trading plan, as WalletBehaviour.dayFlows() reads it. */
   function tradingPlan(st, stress, volMult) {
     return {
@@ -222,10 +219,11 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
 
   /**
    * BRP collateral on the member's own figures (wallet-model §4). Direct+ members put up their marginal collateral:
-   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). A member without assets
-   * covers what it may leave open instead: the open-position rule ('open', §4.5) in place of TenneT's rule in force,
-   * and from 2027 the draft or the open-position buffer, whichever is larger. 'standalone' is the member as its own BRP,
-   * with the minimum and the floors and without the buffer, for comparison.
+   * no minimum and no volume floors, which apply once to the Direct+ BRP (Direct+ decision). One rule applies at a
+   * time, TenneT's or Direct+'s own, never both (Direct+ decision, 30 Sep 2026): a member without assets covers what it
+   * may leave open with the open-position rule ('open', §4.5) in place of TenneT's rule in force; from 2027 the draft
+   * applies to it as to everyone. 'standalone' is the member as its own BRP, with the minimum and the floors and
+   * without the open-position rule, for comparison.
    */
   function brpCollateral(run, weekly) {
     const { st, days, hot, stress } = run;
@@ -270,9 +268,9 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
       profile: st.profileMean !== 0 || st.profileSd > 0,
       smart: st.smartMean !== 0 || st.smartSd > 0,
     });
-    // What the member may leave open, when it may or has no assets (null otherwise).
     // What a member without assets may leave open. Direct+ can't limit it, so its largest open position at any time of
     // the day, or what its plan leaves open if that is more: a net sale or purchase can't be delivered without assets.
+    // Worked out in the draft's weeks too, for the comparison with the other rule.
     const open = openRule
       ? OpenPosition.buffer({
           largest: largestOpen(run),
@@ -282,8 +280,6 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
           measure: st.openMeasure,
         })
       : null;
-    // Next to the draft the buffer counts if larger; the open-position rule is the buffer itself.
-    const floor = open && rule !== 'open' ? open.security : 0;
     return {
       basis: marginal ? 'marginal' : 'standalone',
       rule,
@@ -291,7 +287,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
       current,
       draft,
       open,
-      security: Math.max({ current, draft, open }[rule].security, floor),
+      security: { current, draft, open }[rule].security,
       volume,
       price,
       ramp,
@@ -361,7 +357,7 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
         label: brp.basis === 'marginal' ? 'BRP collateral (marginal)' : 'BRP security (TenneT)',
         segment: 'brp',
         value: brp.security,
-        confidence: `${openSets(brp) ? 'Open-position buffer' : RULE_NAMES[brp.rule]} · Direct+ contract`,
+        confidence: `${RULE_NAMES[brp.rule]} · Direct+ contract`,
       },
       { id: 'invoices', label: 'Imbalance invoices', segment: 'available', value: invoice, confidence: 'Estimate' },
     ];
@@ -400,7 +396,6 @@ const WalletCalc = ((Engine, Dates, Behaviour, Settlement, EccLink, Brp, Tennet,
     SEGMENTS,
     scenario,
     compute,
-    openSets,
     GROUPS: Settings.GROUPS,
     BASE: Settings.BASE,
     PRESETS: Settings.PRESETS,
