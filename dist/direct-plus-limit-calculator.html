@@ -1158,6 +1158,159 @@ details.method > .method-grid {
   margin-bottom: 8px;
 }
 
+/* Printing: one A4 page with the case and its results, to share (the print button). The form doesn't print, so the
+   case's inputs print as a list instead (#print-case). */
+.print-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.print-only {
+  display: none;
+}
+#print-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 20px;
+  margin: 6px 0 0;
+}
+#print-inputs div {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+#print-inputs dt {
+  color: var(--ink-2);
+}
+#print-inputs dt::after {
+  content: ':';
+}
+#print-inputs dd {
+  margin: 0;
+  font-weight: 500;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  body {
+    background: #fff;
+  }
+  .page {
+    max-width: none;
+    padding: 0;
+    gap: 8px;
+  }
+  .masthead {
+    max-width: none;
+    gap: 4px;
+  }
+  h1 {
+    font-size: 22px;
+  }
+  .lede,
+  #setup,
+  .print-row,
+  #handoff,
+  .day-card,
+  .view-switch,
+  .copy-row,
+  #method,
+  #tip {
+    display: none !important;
+  }
+  .markets-key {
+    font-size: 11px;
+  }
+  .fine {
+    font-size: 9.5px;
+    max-width: none;
+  }
+  /* The chart's key says what its long note says, and the platform settings repeat the case's base limits and the
+     split in the tiles. */
+  .chart-card .sub,
+  .o09 {
+    display: none;
+  }
+  .layout {
+    display: block;
+  }
+  .results {
+    gap: 8px;
+  }
+  .print-only {
+    display: block;
+  }
+  #print-case {
+    padding: 8px 12px;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .panel {
+    break-inside: avoid;
+  }
+  .card {
+    padding: 8px 12px;
+    gap: 5px;
+  }
+  .card h2,
+  #print-title {
+    font-size: 13px;
+  }
+  .card .sub {
+    font-size: 9.5px;
+    max-width: none;
+  }
+  .tile {
+    padding: 8px 12px;
+  }
+  .tile .t-label,
+  .tile .t-sub {
+    font-size: 10px;
+  }
+  .tile .t-value {
+    font-size: 20px;
+  }
+  .tile.hero .t-value {
+    font-size: 24px;
+  }
+  .table-wrap {
+    overflow: visible;
+  }
+  table {
+    min-width: 0;
+  }
+  th,
+  td {
+    padding: 3px 5px;
+  }
+  tbody td {
+    font-size: 10px;
+  }
+  thead th,
+  thead tr.grp th {
+    min-width: 0;
+    font-size: 8.5px;
+  }
+  .small-split,
+  .pill {
+    font-size: 8px;
+  }
+  .chart {
+    min-height: 0;
+  }
+  .chart svg {
+    width: auto;
+    max-width: 100%;
+    height: 150px;
+  }
+  .chart-key {
+    font-size: 9.5px;
+  }
+}
+
 </style>
 
 <div class="page">
@@ -1262,6 +1415,11 @@ details.method > .method-grid {
     </form>
 
     <section class="results" aria-label="Results">
+      <div class="print-row" id="print-row" hidden><button type="button" class="btn ghost" id="print">Print or save as PDF</button><span class="hint">One page with this case, to share</span></div>
+      <section class="panel print-only" id="print-case" aria-hidden="true">
+        <h2 id="print-title">The case</h2>
+        <dl id="print-inputs"></dl>
+      </section>
       <div class="panel handoff" id="handoff" role="note" hidden>
         <b>From your wallet estimate</b>
         <p id="handoff-text"></p>
@@ -1270,7 +1428,7 @@ details.method > .method-grid {
       <div class="panel tiles" id="tiles" aria-live="polite"></div>
       <div class="alert critical" id="alert" hidden></div>
 
-      <section class="panel card">
+      <section class="panel card day-card">
         <div class="card-head">
           <h2 id="day-title">Your limits through the day</h2>
           <div class="tabs" role="tablist" id="day-tabs" aria-label="Calculation day"></div>
@@ -1296,7 +1454,7 @@ details.method > .method-grid {
         <div class="table-wrap"><table id="week-table"></table></div>
       </section>
 
-      <section class="panel card">
+      <section class="panel card chart-card">
         <h2>Your limits at 12:00 each day</h2>
         <p class="sub">M7 continuous (blue) and MATS auctions (orange) on one scale. On business days both are the limits after the morning settlement; the day-ahead auction runs at 12:00. M7 doesn't reset on weekends and holidays, so it shows as one bar across them: one limit, the last business day's evening limit until the next business morning. MATS gets an equal share of that calculation for each weekend or holiday auction, and the next business day's auction is back at the full limit if they went unused.</p>
         <div class="chart" id="auction-chart" role="group" aria-label="M7 continuous and MATS auctions: limits at 12:00 each day"></div>
@@ -3350,9 +3508,53 @@ const Handoff = (() => {
       : 'Your split of excess collateral';
   }
 
+  // ---------- printing: one page with the case, to share ----------
+
+  const MEASURE_TEXT = { l18: 'from around 18:00', l09: "after the next morning's settlement" };
+
+  /** The case's inputs for the printed page, which leaves out the form. */
+  function renderPrintCase(input) {
+    const list = clear($('print-inputs'));
+    const add = (term, value) => {
+      const item = el('div');
+      item.appendChild(el('dt', null, term));
+      item.appendChild(el('dd', null, value));
+      list.appendChild(item);
+    };
+    const split = (key) => `M7 continuous ${key}%, MATS auctions ${100 - key}%`;
+    const baseLimit = ({ bd, nbd }) => `${euros(bd)} on business days, ${euros(nbd)} on other days`;
+    const week = $('week').selectedOptions[0];
+    add('Week', week ? week.textContent : dateLabel(input.week, true));
+    if (input.mode === 'fwd') {
+      add('Collateral posted', euros(input.C));
+      add('Split of excess collateral', split(input.split));
+    } else {
+      add('M7 continuous limit needed', `${euros(input.tCont)}, ${MEASURE_TEXT[input.tContMeasure]}`);
+      add(
+        'MATS auctions limit needed',
+        `${euros(input.tDa)} at each day-ahead auction${input.tDaNonBD ? ', weekends and holidays included' : ''}`,
+      );
+      add(
+        'Collateral',
+        input.cmode === 'daily'
+          ? 'Optimised by day'
+          : `The same all week, sized for ${input.scope === 'week' ? 'the whole week' : 'the weekend'}`,
+      );
+      add(
+        'Split of excess collateral',
+        input.keyMode === 'cheapest' ? 'The one that needs the least collateral' : split(input.split),
+      );
+    }
+    add('Unsettled net purchases (open risk)', euros(input.OR));
+    add('Base limit, M7 continuous', baseLimit(input.cont));
+    add('Base limit, MATS auctions', baseLimit(input.da));
+    $('print-title').textContent = `The case, as of ${dateLabel(E.iso(new Date()), true)}`;
+  }
+
   function render() {
     const input = readForm();
     syncForm(input);
+    renderPrintCase(input);
     const standardWeek = isStandardWeek(input.week);
     current = { ...compute(input), standardWeek, labels: dayLabels(standardWeek) };
     renderTiles(current);
@@ -3401,6 +3603,19 @@ const Handoff = (() => {
   }
   $('copy-o09').addEventListener('click', copyPlatformSettings);
   $('day-tabs').addEventListener('keydown', moveBetweenDays);
+  // Printing works on the hosted site and from disk; the claude.ai copy gets no button, as for the hand-off links.
+  $('print-row').hidden = !Handoff.linkTo('limits');
+  $('print').addEventListener('click', () => window.print());
+  // Paper is white: print in the light colours, whatever the screen shows.
+  let screenTheme = null;
+  window.addEventListener('beforeprint', () => {
+    screenTheme = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'light');
+  });
+  window.addEventListener('afterprint', () => {
+    if (screenTheme === null) document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', screenTheme);
+  });
   if (window.ResizeObserver) {
     new ResizeObserver(() => {
       if (current) renderAuctions(current);

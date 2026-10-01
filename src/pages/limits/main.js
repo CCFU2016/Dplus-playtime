@@ -1161,9 +1161,53 @@
       : 'Your split of excess collateral';
   }
 
+  // ---------- printing: one page with the case, to share ----------
+
+  const MEASURE_TEXT = { l18: 'from around 18:00', l09: "after the next morning's settlement" };
+
+  /** The case's inputs for the printed page, which leaves out the form. */
+  function renderPrintCase(input) {
+    const list = clear($('print-inputs'));
+    const add = (term, value) => {
+      const item = el('div');
+      item.appendChild(el('dt', null, term));
+      item.appendChild(el('dd', null, value));
+      list.appendChild(item);
+    };
+    const split = (key) => `M7 continuous ${key}%, MATS auctions ${100 - key}%`;
+    const baseLimit = ({ bd, nbd }) => `${euros(bd)} on business days, ${euros(nbd)} on other days`;
+    const week = $('week').selectedOptions[0];
+    add('Week', week ? week.textContent : dateLabel(input.week, true));
+    if (input.mode === 'fwd') {
+      add('Collateral posted', euros(input.C));
+      add('Split of excess collateral', split(input.split));
+    } else {
+      add('M7 continuous limit needed', `${euros(input.tCont)}, ${MEASURE_TEXT[input.tContMeasure]}`);
+      add(
+        'MATS auctions limit needed',
+        `${euros(input.tDa)} at each day-ahead auction${input.tDaNonBD ? ', weekends and holidays included' : ''}`,
+      );
+      add(
+        'Collateral',
+        input.cmode === 'daily'
+          ? 'Optimised by day'
+          : `The same all week, sized for ${input.scope === 'week' ? 'the whole week' : 'the weekend'}`,
+      );
+      add(
+        'Split of excess collateral',
+        input.keyMode === 'cheapest' ? 'The one that needs the least collateral' : split(input.split),
+      );
+    }
+    add('Unsettled net purchases (open risk)', euros(input.OR));
+    add('Base limit, M7 continuous', baseLimit(input.cont));
+    add('Base limit, MATS auctions', baseLimit(input.da));
+    $('print-title').textContent = `The case, as of ${dateLabel(E.iso(new Date()), true)}`;
+  }
+
   function render() {
     const input = readForm();
     syncForm(input);
+    renderPrintCase(input);
     const standardWeek = isStandardWeek(input.week);
     current = { ...compute(input), standardWeek, labels: dayLabels(standardWeek) };
     renderTiles(current);
@@ -1212,6 +1256,19 @@
   }
   $('copy-o09').addEventListener('click', copyPlatformSettings);
   $('day-tabs').addEventListener('keydown', moveBetweenDays);
+  // Printing works on the hosted site and from disk; the claude.ai copy gets no button, as for the hand-off links.
+  $('print-row').hidden = !Handoff.linkTo('limits');
+  $('print').addEventListener('click', () => window.print());
+  // Paper is white: print in the light colours, whatever the screen shows.
+  let screenTheme = null;
+  window.addEventListener('beforeprint', () => {
+    screenTheme = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'light');
+  });
+  window.addEventListener('afterprint', () => {
+    if (screenTheme === null) document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', screenTheme);
+  });
   if (window.ResizeObserver) {
     new ResizeObserver(() => {
       if (current) renderAuctions(current);

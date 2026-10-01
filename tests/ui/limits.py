@@ -1,6 +1,6 @@
 """The limit calculator: the week list and its labels, the day view and ECC's calculations in a standard week and at
 Easter, the chart, the method section, the market names (M7, MATS), the amount fields, the deck example's sizing
-(EUR 602,986 at 33/67), collateral optimised by day, and the phone layout."""
+(EUR 602,986 at 33/67), collateral optimised by day, the phone layout, and printing a case on one A4 page."""
 
 import re
 
@@ -277,8 +277,36 @@ def day_tabs(run):
     )
 
 
+def pdf_pages(tab):
+    """The pages of the page printed to PDF on A4."""
+    return len(re.findall(rb'/Type\s*/Page[^s]', tab.pdf(format='A4', prefer_css_page_size=True)))
+
+
+def printing(run):
+    """Print or save as PDF: one A4 page with the case's inputs and its results, in the light colours."""
+    tab = run.open('limits')
+    check = run.check
+    check(tab.is_visible('#print'), 'the print button shows (hosted site, or the page on disk)')
+    inputs = tab.eval_on_selector('#print-inputs', 'list => list.textContent')
+    check('Collateral posted€500,000' in inputs, 'the printed page lists the case: ' + inputs[:80])
+    check(pdf_pages(tab) == 1, 'limits from collateral: one page')
+    # The longest case: target limits, collateral optimised by day (an extra column), shown by day.
+    tab.click('label[for=mode-inv]')
+    tab.click('label:has(#cmode-daily)')
+    redrawn(tab)
+    show(tab, 'days')
+    redrawn(tab)
+    check(pdf_pages(tab) == 1, 'target limits, optimised by day, shown by day: one page')
+    tab.emulate_media(color_scheme='dark')
+    tab.evaluate("window.dispatchEvent(new Event('beforeprint'))")
+    theme = tab.evaluate("document.documentElement.getAttribute('data-theme')")
+    tab.evaluate("window.dispatchEvent(new Event('afterprint'))")
+    after = tab.evaluate("document.documentElement.getAttribute('data-theme')")
+    check(theme == 'light' and after is None, 'dark screen: prints in the light colours, then back')
+
+
 def check_limits(run):
-    for scenario in [weeks, easter, standard_week, method, market_names, amounts, sizing, phone, day_tabs]:
+    for scenario in [weeks, easter, standard_week, method, market_names, amounts, sizing, phone, day_tabs, printing]:
         scenario(run)
 
 

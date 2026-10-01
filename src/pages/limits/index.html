@@ -109,6 +109,11 @@
     </form>
 
     <section class="results" aria-label="Results">
+      <div class="print-row" id="print-row" hidden><button type="button" class="btn ghost" id="print">Print or save as PDF</button><span class="hint">One page with this case, to share</span></div>
+      <section class="panel print-only" id="print-case" aria-hidden="true">
+        <h2 id="print-title">The case</h2>
+        <dl id="print-inputs"></dl>
+      </section>
       <div class="panel handoff" id="handoff" role="note" hidden>
         <b>From your wallet estimate</b>
         <p id="handoff-text"></p>
@@ -117,7 +122,7 @@
       <div class="panel tiles" id="tiles" aria-live="polite"></div>
       <div class="alert critical" id="alert" hidden></div>
 
-      <section class="panel card">
+      <section class="panel card day-card">
         <div class="card-head">
           <h2 id="day-title">Your limits through the day</h2>
           <div class="tabs" role="tablist" id="day-tabs" aria-label="Calculation day"></div>
@@ -143,7 +148,7 @@
         <div class="table-wrap"><table id="week-table"></table></div>
       </section>
 
-      <section class="panel card">
+      <section class="panel card chart-card">
         <h2>Your limits at 12:00 each day</h2>
         <p class="sub">M7 continuous (blue) and MATS auctions (orange) on one scale. On business days both are the limits after the morning settlement; the day-ahead auction runs at 12:00. M7 doesn't reset on weekends and holidays, so it shows as one bar across them: one limit, the last business day's evening limit until the next business morning. MATS gets an equal share of that calculation for each weekend or holiday auction, and the next business day's auction is back at the full limit if they went unused.</p>
         <div class="chart" id="auction-chart" role="group" aria-label="M7 continuous and MATS auctions: limits at 12:00 each day"></div>

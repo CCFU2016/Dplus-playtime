@@ -955,3 +955,156 @@ details.method > .method-grid {
   font-weight: 600;
   margin-bottom: 8px;
 }
+
+/* Printing: one A4 page with the case and its results, to share (the print button). The form doesn't print, so the
+   case's inputs print as a list instead (#print-case). */
+.print-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.print-only {
+  display: none;
+}
+#print-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 20px;
+  margin: 6px 0 0;
+}
+#print-inputs div {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+#print-inputs dt {
+  color: var(--ink-2);
+}
+#print-inputs dt::after {
+  content: ':';
+}
+#print-inputs dd {
+  margin: 0;
+  font-weight: 500;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  body {
+    background: #fff;
+  }
+  .page {
+    max-width: none;
+    padding: 0;
+    gap: 8px;
+  }
+  .masthead {
+    max-width: none;
+    gap: 4px;
+  }
+  h1 {
+    font-size: 22px;
+  }
+  .lede,
+  #setup,
+  .print-row,
+  #handoff,
+  .day-card,
+  .view-switch,
+  .copy-row,
+  #method,
+  #tip {
+    display: none !important;
+  }
+  .markets-key {
+    font-size: 11px;
+  }
+  .fine {
+    font-size: 9.5px;
+    max-width: none;
+  }
+  /* The chart's key says what its long note says, and the platform settings repeat the case's base limits and the
+     split in the tiles. */
+  .chart-card .sub,
+  .o09 {
+    display: none;
+  }
+  .layout {
+    display: block;
+  }
+  .results {
+    gap: 8px;
+  }
+  .print-only {
+    display: block;
+  }
+  #print-case {
+    padding: 8px 12px;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .panel {
+    break-inside: avoid;
+  }
+  .card {
+    padding: 8px 12px;
+    gap: 5px;
+  }
+  .card h2,
+  #print-title {
+    font-size: 13px;
+  }
+  .card .sub {
+    font-size: 9.5px;
+    max-width: none;
+  }
+  .tile {
+    padding: 8px 12px;
+  }
+  .tile .t-label,
+  .tile .t-sub {
+    font-size: 10px;
+  }
+  .tile .t-value {
+    font-size: 20px;
+  }
+  .tile.hero .t-value {
+    font-size: 24px;
+  }
+  .table-wrap {
+    overflow: visible;
+  }
+  table {
+    min-width: 0;
+  }
+  th,
+  td {
+    padding: 3px 5px;
+  }
+  tbody td {
+    font-size: 10px;
+  }
+  thead th,
+  thead tr.grp th {
+    min-width: 0;
+    font-size: 8.5px;
+  }
+  .small-split,
+  .pill {
+    font-size: 8px;
+  }
+  .chart {
+    min-height: 0;
+  }
+  .chart svg {
+    width: auto;
+    max-width: 100%;
+    height: 150px;
+  }
+  .chart-key {
+    font-size: 9.5px;
+  }
+}
