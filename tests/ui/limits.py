@@ -217,6 +217,8 @@ def sizing(run):
     tab = run.open('limits')
     check = run.check
     tab.click('label[for=mode-inv]')
+    first = tab.eval_on_selector('#scope-field input', 'input => input.id')
+    check(first == 'scope-week' and tab.is_checked('#scope-week'), 'Size for: the whole week, first and by default')
     tab.click('label:has(#scope-week)')
     tab.click('label:has(#key-cheapest)')
     redrawn(tab)

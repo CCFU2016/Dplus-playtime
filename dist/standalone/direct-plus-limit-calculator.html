@@ -1382,8 +1382,8 @@ details.method > .method-grid {
         <div class="field" id="scope-field">
           <span class="label">Size for</span>
           <div class="radio-row" role="radiogroup" aria-label="Which days to size for">
-            <label><input type="radio" name="scope" id="scope-weekend" value="weekend" checked> The weekend only: the calculation before the next weekend or holiday, as in the deck</label>
-            <label><input type="radio" name="scope" id="scope-week" value="week"> The whole week, with one split for every day</label>
+            <label><input type="radio" name="scope" id="scope-week" value="week" checked> The whole week, with one split for every day</label>
+            <label><input type="radio" name="scope" id="scope-weekend" value="weekend"> The weekend only: the calculation before the next weekend or holiday, as in the deck</label>
           </div>
         </div>
         <div class="field">
@@ -1508,7 +1508,7 @@ After a weekend  = next auction back at the full limit (lower of two readings)</
           <li>Formulas follow ECC's DCP Simulation Tool v1.3.5 and ECC's client deck (July 2025). ECC's production system may differ in detail; ECC's calculation always prevails.</li>
           <li>Limits are shown before any new trades. Trading uses them up; only net buying counts (volume × price), so a sale at a negative price adds to what you owe.</li>
           <li>Unsettled purchases are assumed to be paid in full the next morning.</li>
-          <li>"Size for the weekend only" solves the calculation before the weekend or holiday, as the deck does; the other days are shown with the same split, so their M7 continuous limit can fall below your target, and the tile says what they need with a split of their own. "The whole week" finds one split that meets the targets every day.</li>
+          <li>"Size for the whole week" (the default) finds one split that meets the targets every day. "The weekend only" solves the calculation before the weekend or holiday, as the deck does; the other days are shown with the same split, so their M7 continuous limit can fall below your target, and the tile says what they need with a split of their own.</li>
           <li>After a weekend or holiday, the next business day's day-ahead auction is back at the full limit, as in ECC's client deck (ECC's simulation tool shows only one day's share there). ECC's worked example fits two readings: the unused weekend or holiday limit carried over, or the normal weekday level. With both markets and weekend base limits they differ by a few thousand euros; the calculator shows the lower one, assuming those auctions went unused.</li>
           <li>When collateral does not cover the reserved base limits, ECC's tool flags the setup as invalid. Adjust base limits or collateral.</li>
           <li>ECC business days for 2026–2027 from ECC's calendar. Base limits are used as entered (ECC's tool rounds them up to the next €10).</li>

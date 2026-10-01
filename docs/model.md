@@ -93,7 +93,7 @@ open risk that changes day by day. See `docs/wallet-model.md`.
 
 In "Collateral for a target limit" mode the page offers two ways to size collateral:
 
-- **Static:** one amount all week, sized for the hardest calculation (with "Size for": the weekend only, or the whole week).
+- **Static:** one amount all week, sized for the hardest calculation (with "Size for": the whole week, the default since 1 Oct 2026, or the weekend only).
 - **Optimised by day:** each business day's calculation is sized on its own (`solve` or `cheapestKey` on that one day), with its own cheapest split when that is chosen. The page shows the highest day, the other days' range, the static amount for comparison and the average held, weighted by calendar days.
 
 For the deck example (week of 5 Oct 2026, €150k continuous, €100k per auction, cheapest split):
