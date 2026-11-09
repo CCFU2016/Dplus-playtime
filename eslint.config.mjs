@@ -17,6 +17,7 @@ const inlinedModules = {
   WalletCalc: 'readonly',
   PageUI: 'readonly',
   Handoff: 'readonly',
+  AskPanel: 'readonly',
 };
 
 export default [

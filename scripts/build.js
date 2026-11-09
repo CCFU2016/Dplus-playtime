@@ -34,8 +34,8 @@ const PAGES = {
   limits: {
     dir: 'src/pages/limits',
     out: 'direct-plus-limit-calculator.html',
-    styles: [`${SHARED}/base.css`],
-    scripts: [ENGINE, `${SHARED}/ui.js`, `${SHARED}/handoff.js`],
+    styles: [`${SHARED}/base.css`, `${SHARED}/ask.css`],
+    scripts: [ENGINE, `${SHARED}/ui.js`, `${SHARED}/handoff.js`, `${SHARED}/ask.js`],
   },
   wallet: {
     dir: 'src/pages/wallet',

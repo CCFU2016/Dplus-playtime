@@ -9,13 +9,14 @@ described below.
 ## Layout
 
 - `src/engine.js` holds all the limit logic: calendar, base-limit reserve, evening/morning limits, sizing solver. It has no DOM; the pages and the tests use it.
-- `src/pages/` holds the pages, one folder each: `limits/` (this calculator), `wallet/` and `estimate/` (the wallet calculator and the estimate for prospects) and `home/` (the landing page of the hosted site). Each has `index.html` (the markup, with `/*__STYLES__*/` and `/*__SCRIPTS__*/` markers), `style.css` and, when the page has a script, `main.js`. `shared/` holds what several pages use: `base.css` (tokens, dark mode, buttons, tables, tooltip), `wallet.css` (the wallet pages' stacked bars), `ui.js` (`PageUI`: DOM, formatting, date and chart helpers) and `handoff.js` (`Handoff`: the links between the calculator and the estimate).
+- `src/pages/` holds the pages, one folder each: `limits/` (this calculator), `wallet/` and `estimate/` (the wallet calculator and the estimate for prospects) and `home/` (the landing page of the hosted site). Each has `index.html` (the markup, with `/*__STYLES__*/` and `/*__SCRIPTS__*/` markers), `style.css` and, when the page has a script, `main.js`. `shared/` holds what several pages use: `base.css` (tokens, dark mode, buttons, tables, tooltip), `wallet.css` (the wallet pages' stacked bars), `ui.js` (`PageUI`: DOM, formatting, date and chart helpers), `handoff.js` (`Handoff`: the links between the calculator and the estimate) and `ask.js` with `ask.css` (`AskPanel`: the "Ask about your result" panel, below).
 - `scripts/build.js` inlines each page's stylesheets and scripts (its `PAGES` list says which) and writes `dist/direct-plus-limit-calculator.html` (the page body, as published at the claude.ai link) and `dist/standalone/...` (a full document that opens from disk), the same pair for the wallet pages under `dist/wallet/`, and `dist/index.html`. Never edit `dist/` by hand.
 - `tests/dist.test.js`: builds the ECC pages into a temp directory and checks their SHA-256 against `tests/golden/ecc_dist.sha256`, and that every committed `dist/` file is what a fresh build makes. Any change to `src/engine.js`, `src/pages/limits/` or the shared files it uses (`base.css`, `ui.js`, `handoff.js`) changes these bytes. Re-record (`node tests/dist.test.js --write`) only on purpose, and say why in the commit message.
 - `tests/engine/ecc-examples.test.js`: ECC's own worked examples (deck p.8 and p.10). **Must always pass.**
 - `tests/engine/snapshot.test.js`: engine output for every business day in range, over 5 parameter sets, plus 3 sizing searches. A refactor must leave it unchanged. Only re-record (`node tests/engine/snapshot.test.js --write`) after a change that is meant to change numbers, and say which numbers changed and why in the commit message.
 - `tests/engine/markets.test.js`: market definitions against ECC's table, the markets form against the two-market form, and the cheapest split with three markets against every split.
-- `tests/ui/`: headless checks of the built pages (Playwright, Python): `limits.py`, `wallet.py`, `estimate.py`, `handoff.py`, with `support.py` and `run.py`.
+- `tests/ui/`: headless checks of the built pages (Playwright, Python): `limits.py`, `wallet.py`, `estimate.py`, `handoff.py`, `ask.py` (the panel, on the page served at a made-up address with the server's endpoints faked), with `support.py` and `run.py`.
+- `tests/serve.test.js` and `tests/ask.test.js`: the web server, and the panel's endpoints with a stand-in for the Claude API.
 - `scripts/diagnostics/monday-readings.js`: prints the readings of the open Monday question. It's a diagnostic, not a test.
 - `reference/`: ECC and EPEX source material. `docs/model.md` explains the model; `docs/open-questions.md` lists what ECC has not confirmed.
 
@@ -55,6 +56,29 @@ check, `npm test` and the UI tests on every push.
 6. **No browser storage** (localStorage etc.) for anything that matters.
 7. **Keep the engine's public API stable** (`day`, `week`, `weekDays`, `solve`, `binding`, `cheapestKey`, `parse`, `iso`, `isBD`, `nextBD`, `prevBD`, `holidayName`, `MARKETS`), or update the page and the deck copy in the same change. Both parameter forms stay supported: the markets list and the original `cont` / `da` (see `docs/model.md`).
 
+## "Ask about your result" (the limit calculator on the hosted site)
+
+A button at the bottom right of `/limits` opens a panel with two tabs (Niki, 9 Nov 2026):
+
+- **Ask the assistant:** an AI assistant (Claude, through the Claude API) explains a result. It knows only
+  `src/assistant/limits.md` and the member's case, which the page sends with each question as text (`caseText()` in
+  `src/pages/limits/main.js`: the inputs, the tiles and every calculation of the week). **Keep `limits.md` in step
+  with the page:** when a rule, a label or an assumption on the page changes, change it there too, in the page's
+  words, with no personal names (`tests/ask.test.js` checks). Its instructions are in `scripts/assistant.js`.
+- **Question or feedback:** a message to the Direct+ team, optionally with the case and an email address for a reply.
+
+The server side is `scripts/api.js` (`/api/panel` says which tabs are on offer; `/api/ask` streams the answer as JSON
+lines; `/api/feedback`), with
+`scripts/assistant.js` (the Messages API through `fetch`, since the server has no dependencies; streamed, with prompt
+caching and server-side refusal fallback) and `scripts/inbox.js` (JSON lines, and the staff page `/feedback` with
+`/feedback.csv`, behind the staff login). Both questions with their answers and messages are kept; nothing about the
+visitor is. Limits: 20 questions and 10 messages per visitor an hour, `ASK_DAILY_LIMIT` questions a day in all.
+
+The panel shows only on the hosted site: not from disk and not in the claude.ai copy, like the hand-off links. Without
+`ANTHROPIC_API_KEY` it offers only the question or feedback form. On Railway, what members send is kept on the
+service's volume (`RAILWAY_VOLUME_MOUNT_PATH`); without a volume it would be lost at every deploy, so the server then
+offers no feedback form and keeps no questions.
+
 ## Wallet calculator (`src/wallet/`)
 
 A second page in the same repo: how much money a Direct+ member needs, in which part of the wallet, and by when
@@ -72,5 +96,5 @@ A second page in the same repo: how much money a Direct+ member needs, in which 
 
 ## Outside this repo
 
-- The published calculator lives at a claude.ai artifact link and is republished from a Claude chat, not from here. Hand over `dist/direct-plus-limit-calculator.html`. It changed on 26 Sep 2026 (the static vs daily-optimised collateral option; the markets named M7 and MATS; amounts with thousands separators and arrow buttons) and again on 28 Sep 2026 (the code restructured, with the same numbers and look, and a fix: the claude.ai copy could show the target-limit fields and an empty wallet button that should be hidden), so the published link needs republishing. On 1 Oct 2026 it gained "Print or save as PDF": one A4 page with the case's inputs and results, to share with a client. The button shows only on the hosted site and on disk, like the hand-off links; the print layout also applies to the browser's own print command. The same page is also served at `/limits` on Railway (`scripts/serve.js`). The wallet calculator's equivalents are `dist/wallet/direct-plus-wallet-calculator.html` and, for prospects, `dist/wallet/direct-plus-wallet-prospect.html` (not published yet).
+- The published calculator lives at a claude.ai artifact link and is republished from a Claude chat, not from here. Hand over `dist/direct-plus-limit-calculator.html`. It changed on 26 Sep 2026 (the static vs daily-optimised collateral option; the markets named M7 and MATS; amounts with thousands separators and arrow buttons) and again on 28 Sep 2026 (the code restructured, with the same numbers and look, and a fix: the claude.ai copy could show the target-limit fields and an empty wallet button that should be hidden), so the published link needs republishing. On 1 Oct 2026 it gained "Print or save as PDF": one A4 page with the case's inputs and results, to share with a client. The button shows only on the hosted site and on disk, like the hand-off links; the print layout also applies to the browser's own print command. On 9 Nov 2026 the hosted site gained "Ask about your result" (above); the claude.ai copy carries its code but never shows it. The same page is also served at `/limits` on Railway (`scripts/serve.js`). The wallet calculator's equivalents are `dist/wallet/direct-plus-wallet-calculator.html` and, for prospects, `dist/wallet/direct-plus-wallet-prospect.html` (not published yet).
 - The member slide deck (a claude.ai Slides artifact) holds a **copy** of `src/engine.js` to generate its example numbers. After an engine change that alters numbers, say so, so the deck copy can be synced. The engine's code was rewritten on 28 Sep 2026 without changing a number (it now defines `const LimitEngine`), so the deck's older copy needs no sync.

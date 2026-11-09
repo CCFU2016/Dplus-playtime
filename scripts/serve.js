@@ -1,21 +1,34 @@
 // Serves the built calculators (Railway or any Node host). No dependencies.
-//   /           the landing page
-//   /estimate   the wallet estimate for prospects
-//   /limits     the ECC limit calculator
-//   /wallet     the full wallet calculator with its Settings view. It is for Direct+ staff, so it is only served when
-//               WALLET_PASSWORD is set, behind HTTP basic auth (user name WALLET_USER, default "directplus").
-//   /healthz    "ok"
+//   /              the landing page
+//   /estimate      the wallet estimate for prospects
+//   /limits        the ECC limit calculator, with its "Ask about your result" panel
+//   /wallet        the full wallet calculator with its Settings view
+//   /feedback      what members sent from the panel, and what they asked the assistant (/feedback.csv: as CSV)
+//   /api/…         the panel's endpoints (scripts/api.js)
+//   /healthz       "ok"
+// /wallet and /feedback are for Direct+ staff, so they are only served when WALLET_PASSWORD is set, behind HTTP basic
+// auth (user name WALLET_USER, default "directplus"). The assistant needs ANTHROPIC_API_KEY (scripts/assistant.js).
+// What members send is kept in FEEDBACK_DIR, else on the Railway volume (RAILWAY_VOLUME_MOUNT_PATH), else in data/ when
+// not on Railway. On Railway without a volume it would be lost at the next deploy, so there the panel takes none.
 // usage: npm start   (PORT defaults to 3000; the pages come from dist/: run npm run build after changing src/)
 const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const { createApi } = require('./api.js');
+const { createAssistant } = require('./assistant.js');
+const { createInbox, inboxPage, inboxCsv } = require('./inbox.js');
 
 const PAGES = {
   '/': 'index.html',
   '/estimate': 'wallet/standalone/direct-plus-wallet-prospect.html',
   '/limits': 'standalone/direct-plus-limit-calculator.html',
   '/wallet': 'wallet/standalone/direct-plus-wallet-calculator.html',
+};
+const STAFF = {
+  '/wallet': 'Sign in to see the full wallet calculator.',
+  '/feedback': 'Sign in to see the questions and feedback.',
+  '/feedback.csv': 'Sign in to download the questions and feedback.',
 };
 const HEADERS = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'same-origin' };
 const DEFAULT_USER = 'directplus';
@@ -40,28 +53,52 @@ function send(res, status, body, headers = {}) {
   res.end(body);
 }
 
-/** The request handler, for the pages built in `dir`. Each page is read once; `env` is read per request (WALLET_USER,
- *  WALLET_PASSWORD). */
-function createHandler(dir, env = process.env) {
+/**
+ * The request handler, for the pages built in `dir`. Each page is read once; `env` is read per request (WALLET_USER,
+ * WALLET_PASSWORD, ANTHROPIC_API_KEY, …). The tests pass `fetch` (the Claude API's stand-in), `dataDir` and `now`.
+ */
+function createHandler(dir, env = process.env, { fetch: fetchApi = fetch, dataDir, now } = {}) {
   const cache = new Map();
   const page = (file) => {
     if (!cache.has(file)) cache.set(file, fs.readFileSync(path.join(dir, file)));
     return cache.get(file);
   };
+  const local = env.RAILWAY_PROJECT_ID ? null : path.join(__dirname, '..', 'data');
+  const inboxDir = dataDir || env.FEEDBACK_DIR || env.RAILWAY_VOLUME_MOUNT_PATH || local;
+  const inbox = inboxDir ? createInbox(inboxDir) : null;
+  const api = createApi({ env, assistant: createAssistant(env, fetchApi), inbox, now });
+
   return (req, res) => {
+    const route = (req.url.split('?')[0].replace(/\/+$/, '') || '/').toLowerCase();
+    if (route.startsWith('/api/')) return api(route, req, res);
     if (req.method !== 'GET' && req.method !== 'HEAD')
       return send(res, 405, 'Method not allowed', { allow: 'GET, HEAD' });
-    const route = (req.url.split('?')[0].replace(/\/+$/, '') || '/').toLowerCase();
     if (route === '/healthz') return send(res, 200, 'ok');
-    if (!Object.hasOwn(PAGES, route)) return send(res, 404, 'Not found');
-    if (route === '/wallet') {
+    if (Object.hasOwn(STAFF, route)) {
       if (!env.WALLET_PASSWORD) return send(res, 404, 'Not found');
       if (!signedIn(req, env)) {
-        return send(res, 401, 'Sign in to see the full wallet calculator.', {
-          'www-authenticate': 'Basic realm="Direct+ wallet calculator", charset="UTF-8"',
+        return send(res, 401, STAFF[route], {
+          'www-authenticate': 'Basic realm="Direct+ staff", charset="UTF-8"',
         });
       }
     }
+    if (route.startsWith('/feedback') && !inbox) {
+      return send(res, 200, 'Nothing is kept: the server has no volume. Add one on Railway, or set FEEDBACK_DIR.');
+    }
+    if (route === '/feedback') {
+      return send(res, 200, inboxPage(inbox), {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+      });
+    }
+    if (route === '/feedback.csv') {
+      return send(res, 200, inboxCsv(inbox), {
+        'content-type': 'text/csv; charset=utf-8',
+        'content-disposition': 'attachment; filename="direct-plus-feedback.csv"',
+        'cache-control': 'no-store',
+      });
+    }
+    if (!Object.hasOwn(PAGES, route)) return send(res, 404, 'Not found');
     let body;
     try {
       body = page(PAGES[route]);
@@ -85,8 +122,9 @@ if (require.main === module) {
   }
   const port = Number(process.env.PORT) || 3000;
   const server = http.createServer(createHandler(dist)).listen(port, '0.0.0.0', () => {
-    const wallet = process.env.WALLET_PASSWORD ? ', full wallet calculator at /wallet' : '';
-    console.log(`Direct+ calculators on port ${port}${wallet}`);
+    const staff = process.env.WALLET_PASSWORD ? ', staff pages at /wallet and /feedback' : '';
+    const assistant = process.env.ANTHROPIC_API_KEY ? ', the assistant on' : '';
+    console.log(`Direct+ calculators on port ${port}${staff}${assistant}`);
   });
   process.on('SIGTERM', () => server.close(() => process.exit(0)));
 }

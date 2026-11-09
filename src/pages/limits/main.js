@@ -1165,44 +1165,109 @@
 
   const MEASURE_TEXT = { l18: 'from around 18:00', l09: "after the next morning's settlement" };
 
-  /** The case's inputs for the printed page, which leaves out the form. */
+  /** The case's inputs in words, as [term, value]: for the printed page, which leaves out the form, and the assistant. */
+  function caseInputs(input) {
+    const split = (key) => `M7 continuous ${key}%, MATS auctions ${100 - key}%`;
+    const baseLimit = ({ bd, nbd }) => `${euros(bd)} on business days, ${euros(nbd)} on other days`;
+    const week = $('week').selectedOptions[0];
+    const inputs = [['Week', week ? week.textContent : dateLabel(input.week, true)]];
+    if (input.mode === 'fwd') {
+      inputs.push(['Collateral posted', euros(input.C)], ['Split of excess collateral', split(input.split)]);
+    } else {
+      inputs.push(
+        ['M7 continuous limit needed', `${euros(input.tCont)}, ${MEASURE_TEXT[input.tContMeasure]}`],
+        [
+          'MATS auctions limit needed',
+          `${euros(input.tDa)} at each day-ahead auction${input.tDaNonBD ? ', weekends and holidays included' : ''}`,
+        ],
+        [
+          'Collateral',
+          input.cmode === 'daily'
+            ? 'Optimised by day'
+            : `The same all week, sized for ${input.scope === 'week' ? 'the whole week' : 'the weekend'}`,
+        ],
+        [
+          'Split of excess collateral',
+          input.keyMode === 'cheapest' ? 'The one that needs the least collateral' : split(input.split),
+        ],
+      );
+    }
+    inputs.push(
+      ['Unsettled net purchases (open risk)', euros(input.OR)],
+      ['Base limit, M7 continuous', baseLimit(input.cont)],
+      ['Base limit, MATS auctions', baseLimit(input.da)],
+    );
+    return inputs;
+  }
+
   function renderPrintCase(input) {
     const list = clear($('print-inputs'));
-    const add = (term, value) => {
+    for (const [term, value] of caseInputs(input)) {
       const item = el('div');
       item.appendChild(el('dt', null, term));
       item.appendChild(el('dd', null, value));
       list.appendChild(item);
-    };
-    const split = (key) => `M7 continuous ${key}%, MATS auctions ${100 - key}%`;
-    const baseLimit = ({ bd, nbd }) => `${euros(bd)} on business days, ${euros(nbd)} on other days`;
-    const week = $('week').selectedOptions[0];
-    add('Week', week ? week.textContent : dateLabel(input.week, true));
-    if (input.mode === 'fwd') {
-      add('Collateral posted', euros(input.C));
-      add('Split of excess collateral', split(input.split));
-    } else {
-      add('M7 continuous limit needed', `${euros(input.tCont)}, ${MEASURE_TEXT[input.tContMeasure]}`);
-      add(
-        'MATS auctions limit needed',
-        `${euros(input.tDa)} at each day-ahead auction${input.tDaNonBD ? ', weekends and holidays included' : ''}`,
-      );
-      add(
-        'Collateral',
-        input.cmode === 'daily'
-          ? 'Optimised by day'
-          : `The same all week, sized for ${input.scope === 'week' ? 'the whole week' : 'the weekend'}`,
-      );
-      add(
-        'Split of excess collateral',
-        input.keyMode === 'cheapest' ? 'The one that needs the least collateral' : split(input.split),
-      );
     }
-    add('Unsettled net purchases (open risk)', euros(input.OR));
-    add('Base limit, M7 continuous', baseLimit(input.cont));
-    add('Base limit, MATS auctions', baseLimit(input.da));
     $('print-title').textContent = `The case, as of ${dateLabel(E.iso(new Date()), true)}`;
   }
+
+  // ---------- the case as text, for the assistant and the team (the "Ask about your result" panel) ----------
+
+  /** One evening calculation: what it reserves, the excess, and each market's limits, with full dates. */
+  function calculationText(row) {
+    const { p } = row;
+    const until = `${row.gap1 > 1 ? `${row.gap1}-day gap, ` : ''}until ${DATED.day(row.nextBD)}`;
+    const auctions = row.da.auctions.map((auction) => {
+      let what = auction.settled ? 'after settlement' : `share${auction.note ? `, ${dayNote(auction.note)}` : ''}`;
+      if (auction.rollover) {
+        what += `, the lower of ${euros(auction.carry)} carried over and ${euros(auction.level)} at the weekday level`;
+      }
+      return `${DATED.day(auction.date)} ${euros(auction.limit)} (${what})`;
+    });
+    return [
+      `${DATED.day(row.date)} (${until}): collateral ${euros(p.C)}, split M7 ${p.cont.key}% / MATS ${p.da.key}%, ` +
+        `open risk ${euros(p.OR)}; reserved ${euros(row.blr)} (M7 ${euros(row.blrC)} + MATS ${euros(row.blrA)}); ` +
+        `excess ${euros(row.excess)}; settled purchases next morning ${euros(row.refill)}.`,
+      `  M7 continuous: 16:00 ${euros(row.cont.l16)}, from 18:00 ${euros(row.cont.l18)}, ` +
+        `after settlement ${euros(row.cont.l09)}.`,
+      `  MATS auctions: 16:00 ${euros(row.da.l16)}${row.gap1 > 1 ? ' per auction day' : ''}, ` +
+        `per auction from 18:00 ${euros(row.da.l18)}; auctions: ${auctions.join('; ')}.`,
+    ].join('\n');
+  }
+
+  /** The case as the member sees it: the inputs, the results at the top of the page, and the week's calculations. */
+  function caseText() {
+    if (!current) return '';
+    const { input, rows, standardWeek } = current;
+    const tiles = [...$('tiles').querySelectorAll('.tile')].map((tile) => {
+      const part = (selector) => (tile.querySelector(selector) || { textContent: '' }).textContent;
+      const sub = part('.t-sub');
+      return `- ${part('.t-label')}: ${part('.t-value')}${sub ? ` (${sub})` : ''}`;
+    });
+    const alert = $('alert').hidden ? [] : [`- Shortfall: ${$('alert').lastChild.textContent}`];
+    const shown = `The page shows ${DATED.day(selectedDay)} under "Your limits after the calculation"`;
+    return [
+      `Mode: ${input.mode === 'inv' ? 'Collateral for a target limit' : 'Limits from my collateral'}`,
+      ...caseInputs(input).map(([term, value]) => `${term}: ${value}`),
+      '',
+      'At the top of the page:',
+      ...tiles,
+      ...alert,
+      '',
+      `ECC's evening calculations this week. ${shown}${standardWeek ? '; in a standard week it names days by weekday only' : ''}.`,
+      ...rows.map(calculationText),
+    ].join('\n');
+  }
+
+  /** Questions to start with, for the page's mode. */
+  const SUGGESTIONS = {
+    fwd: [
+      'Why is the lowest M7 limit on that day?',
+      'How is the MATS auction limit worked out?',
+      'What is reserved for base limits, and why?',
+    ],
+    inv: ['What sets the collateral needed?', 'Why this split?', 'Why do some days need more collateral?'],
+  };
 
   function render() {
     const input = readForm();
@@ -1259,6 +1324,10 @@
   // Printing works on the hosted site and from disk; the claude.ai copy gets no button, as for the hand-off links.
   $('print-row').hidden = !Handoff.linkTo('limits');
   $('print').addEventListener('click', () => window.print());
+  // The panel needs the hosted site's server: not on disk, and not in the claude.ai copy.
+  if (Handoff.linkTo('limits') && location.protocol !== 'file:') {
+    AskPanel.mount({ page: 'limits', caseText, suggestions: () => SUGGESTIONS[readForm().mode] });
+  }
   // Paper is white: print in the light colours, whatever the screen shows.
   let screenTheme = null;
   window.addEventListener('beforeprint', () => {

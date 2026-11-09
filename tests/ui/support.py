@@ -4,6 +4,7 @@ Needs: pip install -r requirements-dev.txt (Playwright, with its Chromium instal
 
 import pathlib
 import sys
+from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
 
@@ -19,6 +20,9 @@ TODAY = '2026-09-28T09:00:00'
 # The calculators redraw a moment after an input (the limit calculator after 60 ms, the wallet after 120 ms), and their
 # charts in the next frame after a resize (a ResizeObserver).
 REDRAW_MS = 250
+# The hosted site's address in the tests that need its server (Run.serve), and the pages' routes there.
+SITE = 'http://dplus.test'
+ROUTES = {'limits': '/limits'}
 DESKTOP = {'width': 1280, 'height': 1000}
 PHONE = {'width': 390, 'height': 844}
 
@@ -46,13 +50,39 @@ class Run:
         self.failures = []
         self.errors = []
 
-    def open(self, page, viewport=DESKTOP, hash=''):
-        """A new tab on one of the built pages (optionally with a # link), with today fixed."""
+    def new_tab(self, viewport):
+        """A new tab with today fixed, whose errors count against the test."""
         tab = self.browser.new_page(viewport=viewport)
         tab.on('pageerror', lambda error: self.errors.append(str(error)))
         tab.on('console', lambda message: self.errors.append(message.text) if message.type == 'error' else None)
         tab.clock.set_fixed_time(TODAY)
+        return tab
+
+    def open(self, page, viewport=DESKTOP, hash=''):
+        """A new tab on one of the built pages from disk (optionally with a # link)."""
+        tab = self.new_tab(viewport)
         tab.goto(url(page) + hash)
+        return tab
+
+    def serve(self, page, api, viewport=DESKTOP):
+        """A new tab on a built page as the hosted site serves it, at SITE. `api(method, path, body)` answers the
+        server's endpoints (/api/...) with (status, content type, text); body is the posted JSON."""
+        tab = self.new_tab(viewport)
+
+        def answer(route):
+            request = route.request
+            path = urlparse(request.url).path
+            if path.startswith('/api/'):
+                body = request.post_data_json if request.method == 'POST' else None
+                status, kind, text = api(request.method, path, body)
+                route.fulfill(status=status, content_type=kind, body=text)
+            elif path == ROUTES[page]:
+                route.fulfill(path=PAGES[page], content_type='text/html; charset=utf-8')
+            else:
+                route.fulfill(status=404, body='Not found')
+
+        tab.route(f'{SITE}/**', answer)
+        tab.goto(SITE + ROUTES[page])
         return tab
 
     def check(self, ok, what):
